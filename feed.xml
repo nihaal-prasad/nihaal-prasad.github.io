@@ -1,0 +1,441 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2019-01-21T13:17:08-05:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Installing Linux In Chromebook Using Crouton</title><link href="http://localhost:4000/2019/01/15/installing-linux-in-chromebook.html" rel="alternate" type="text/html" title="Installing Linux In Chromebook Using Crouton" /><published>2019-01-15T00:00:00-05:00</published><updated>2019-01-15T00:00:00-05:00</updated><id>http://localhost:4000/2019/01/15/installing-linux-in-chromebook</id><content type="html" xml:base="http://localhost:4000/2019/01/15/installing-linux-in-chromebook.html">&lt;p&gt;In a &lt;a href=&quot;../14/my-raspberrypi-workstation.html&quot;&gt;previous blog post&lt;/a&gt;, I mentioned being able to run Linux on a Chromebook. Normally, ChromeOS (which is one of the most useless OSes created) just allows the user to do very basic tasks, such as browsing the internet or accessing documents, and is more geared towards older and more non-technical users. However, it is possible to unlock other potential uses for ChromeOS, one of which is running Linux on the Chromebook. In this post, I’m going to go ahead and show you exactly how I was able to get Ubuntu up and running in my Chromebook using a nice tool called &lt;a href=&quot;https://github.com/dnschneid/crouton&quot;&gt;crouton&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;The first step is to boot the Chromebook in recovery mode. This is done by pressing and holding the escape and refresh keys while pressing the power button at the same time. Once recovery mode opens up, press Ctrl-D to switch to developer mode. It will take a little while for the Chromebook to finish switching to developer mode, but once it is done, you will see a screen that looks like this:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-1-15-installing-linux-in-chromebook/boot.jpg&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Wait another minute, and it should reboot into ChromeOS. Sometimes you’ll hear two loud beeps coming out of the notebook. Now the Chromebook will always use developer mode whenever you boot into it (unless you turn it off).&lt;/p&gt;
+
+&lt;p&gt;The next step is to install crouton. Click &lt;a href=&quot;https://goo.gl/fd3zc&quot;&gt;here&lt;/a&gt; and place the file in the Downloads folder. Next, go into the Chromebook’s terminal by pressing Ctrl+Alt+T. Type in “shell” in the black window that pops up to open up the shell. Then run this command to install Linux onto the Chromebook:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;sudo sh ~/Downloads/crouton -t gnome
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;This will install Ubuntu by default, but you can change which OS is installed. Typing in “sudo sh ~/Downloads/crouton -r list” will show a list of operating systems that are supported by crouton. Typing in “sudo sh ~/Downloads/crouton -r [operating system]” will install that specific OS. To install a specific GUI, use the “-t” switch (and use “-t list” to list out all the different desktop environments).&lt;/p&gt;
+
+&lt;p&gt;It will take a few minutes to completely install the OS, and will also ask you to create a username and password for an account on the newly created chroot. Once this is done, you can type in “startgnome” to switch to that operating system (note that this command will change if you’ve installed a different GUI).&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-1-15-installing-linux-in-chromebook/linux.jpg&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;You should now be able to use Ctrl+Shift+Alt+Forward and Ctrl+Shift+Alt+Backward (Forwards and backwards keys are found at the upper left corner) to move back and forth between OSes.&lt;/p&gt;</content><author><name></name></author><summary type="html">In a previous blog post, I mentioned being able to run Linux on a Chromebook. Normally, ChromeOS (which is one of the most useless OSes created) just allows the user to do very basic tasks, such as browsing the internet or accessing documents, and is more geared towards older and more non-technical users. However, it is possible to unlock other potential uses for ChromeOS, one of which is running Linux on the Chromebook. In this post, I’m going to go ahead and show you exactly how I was able to get Ubuntu up and running in my Chromebook using a nice tool called crouton.</summary></entry><entry><title type="html">My Raspberry Pi Workstation Setup With VNC, hostapd, and dnsmasq</title><link href="http://localhost:4000/2019/01/14/my-raspberrypi-workstation.html" rel="alternate" type="text/html" title="My Raspberry Pi Workstation Setup With VNC, hostapd, and dnsmasq" /><published>2019-01-14T00:00:00-05:00</published><updated>2019-01-14T00:00:00-05:00</updated><id>http://localhost:4000/2019/01/14/my-raspberrypi-workstation</id><content type="html" xml:base="http://localhost:4000/2019/01/14/my-raspberrypi-workstation.html">&lt;p&gt;I had three raspberry pis lying around that were all connected to an ethernet switch, and I wanted to setup software on all three of them to play around with. However, I only had one keyboard, one mouse, and one monitor that I could use, which meant that every time I switched which raspberry pi I wanted to use, I would have to reconnect the wires for the keyboard, mouse, and monitor to the raspberry pi I wanted to use. This setup was quite messy, so I wanted a way for me to easily access all three of my raspberry pis while I’m doing projects on them. My first thought was to invest in a &lt;a href=&quot;https://en.wikipedia.org/wiki/KVM_switch&quot;&gt;KVM switch&lt;/a&gt; that supported HDMI (since my raspberry pis only had an HDMI port for a monitor), but the KVM switches that suited my needs seemed to be way out of my budget, which is why I decided to find a cheaper way to solve this problem.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-1-14-my-raspberrypi-workstation/setup.jpg&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I also happened to have a Chromebook lying around, and I realized that maybe there was a way for my Chromebook to take remote control over the three raspberry pis over VNC. So the first thing I did was enable VNC on all of my raspberry pis. This was the easiest step for me to setup this network because VNC is built into the raspbian operating system, so all I had to do was to type in this command:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;sudo raspi-config
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;And then go into the interfacing options and turn on VNC.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-1-14-my-raspberrypi-workstation/raspiconfigvnc.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I also &lt;a href=&quot;../15/installing-linux-in-chromebook.html&quot;&gt;installed an Ubuntu chroot&lt;/a&gt; on my Chromebook and installed a VNC client on that Ubuntu chroot.&lt;/p&gt;
+
+&lt;p&gt;But I ran into another problem at this point. In order for VNC to work, the Chromebook has to be on the same network as the computer it is trying to connect to. How could I allow my Chromebook to be on the same private ethernet network as my raspberry pis? My Chromebook didn’t even have an ethernet port, so how could it connect to my ethernet switch? I briefly considered buying a &lt;a href=&quot;https://www.amazon.com/s/ref=nb_sb_ss_c_1_15?url=search-alias%3Delectronics&amp;amp;field-keywords=usb+to+ethernet+adapter&amp;amp;sprefix=usb+to+ethernet%2Celectronics%2C181&amp;amp;crid=BMH55CBHB81E&quot;&gt;USB to ethernet adapter&lt;/a&gt; so that my Chromebook could access the network, but then I found a free solution (that took a little bit more work on my end). What if I turned one of my raspberry pis into a wireless access point that bridged to my ethernet network so that my Chromebook could connect to it?&lt;/p&gt;
+
+&lt;p&gt;So I went ahead and installed all of the tools that I needed to do this.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;sudo apt install hostapd dnsmasq bridge-utils
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;I went into /etc/dhcpcd.conf to give my raspberry pi a static IP address, which I needed to have for obvious reasons. I also denied wlan0 from being used as an interface. I used this command to restart dhcpcd afterwards.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;sudo service dhcpcd restart
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;My next step was to configure hostapd, the main tool used to turn my raspberry pi into an access point. I created a file called /etc/hostapd/hostapd.conf and added some details about the name of the interface, the SSID, the bridge interface I was planning on using, and the WPA2 key password to the file. Then I edited /etc/default/hostapd to add the location of my configuration file.&lt;/p&gt;
+
+&lt;p&gt;Now I had to configure dnsmasq, which was a tool used as both a DHCP server and a DNS server.&lt;/p&gt;
+
+&lt;p&gt;My final step was to be able to bridge between the wlan0 interface and the eth0 interface. This just took two commands.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;brctl addbr br0
+brctl addif br0 eth0
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Then I restarted my raspberry pi, and everything worked just fine.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-1-14-my-raspberrypi-workstation/network.jpg&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;(Image is not to scale (obviously). Also, please excuse my horrible Microsoft paint skills. I was not born with any artistic capabilities.)&lt;/p&gt;
+
+&lt;p&gt;So, to recap, basically all of my Raspberry Pis are connected to a network switch via ethernet, which is represented with the green lines. My first Raspberry Pi is setup to be a wireless access point that extends this network, and this is done to allow my chromebook, which has an Ubuntu &lt;a href=&quot;https://github.com/dnschneid/crouton#whats-a-chroot&quot;&gt;chroot&lt;/a&gt; on it, to access the network via wifi, which is represented by the four poorly drawn blue curves near the chromebook. Unfortunately, I only had one keyboard, one monitor, and one mouse, which were represented by the purple I/O lines in the diagram. This was a little bit annoying for me because if I wanted to switch which Raspberry Pi is currently being used, I would have to reconnect all of the wires for the keyboard, monitor, and mouse to that Raspberry Pi. Since &lt;a href=&quot;https://en.wikipedia.org/wiki/KVM_switch&quot;&gt;KVM switches&lt;/a&gt; are way too expensive for me to buy (and a little unnecessary), I setup VNC servers on all three of them. My chromebook, which has a VNC client installed in it, is able to access all three Raspberry Pis through the VNC service.&lt;/p&gt;</content><author><name></name></author><summary type="html">I had three raspberry pis lying around that were all connected to an ethernet switch, and I wanted to setup software on all three of them to play around with. However, I only had one keyboard, one mouse, and one monitor that I could use, which meant that every time I switched which raspberry pi I wanted to use, I would have to reconnect the wires for the keyboard, mouse, and monitor to the raspberry pi I wanted to use. This setup was quite messy, so I wanted a way for me to easily access all three of my raspberry pis while I’m doing projects on them. My first thought was to invest in a KVM switch that supported HDMI (since my raspberry pis only had an HDMI port for a monitor), but the KVM switches that suited my needs seemed to be way out of my budget, which is why I decided to find a cheaper way to solve this problem.</summary></entry><entry><title type="html">Access Point That Shows You Memes When You Connect To It</title><link href="http://localhost:4000/2018/12/21/wifi-that-only-shows-memes.html" rel="alternate" type="text/html" title="Access Point That Shows You Memes When You Connect To It" /><published>2018-12-21T00:00:00-05:00</published><updated>2018-12-21T00:00:00-05:00</updated><id>http://localhost:4000/2018/12/21/wifi-that-only-shows-memes</id><content type="html" xml:base="http://localhost:4000/2018/12/21/wifi-that-only-shows-memes.html">&lt;p&gt;Hello everyone! Today I’m going to show you how I built an access point that is able to send memes to anyone who connects to it. The way it works is simple: First the user connects to the access point from the Wifi settings on their device, and once they try connecting to any website, they’ll be shown a meme instead. You can see in the images below how this appears on my phone after it has connected to my wifi.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;width: 60%; height: 60%;&quot; src=&quot;../../../assets/img/2018-12-21-wifi-that-only-shows-memes/availablenetworks.jpg&quot; /&gt;
+&lt;img style=&quot;width: 60%; height: 60%;&quot; src=&quot;../../../assets/img/2018-12-21-wifi-that-only-shows-memes/meme1.jpg&quot; /&gt;
+&lt;img style=&quot;width: 10%: height: 10%;&quot; src=&quot;../../../assets/img/2018-12-21-wifi-that-only-shows-memes/meme2.jpg&quot; /&gt;
+&lt;img style=&quot;width: 5%: height: 5%;&quot; src=&quot;../../../assets/img/2018-12-21-wifi-that-only-shows-memes/meme3.jpg&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As you can see, whenever someone tries to connect to a website after connecting to my wireless access point, they will instead be redirected to a web page that shows random memes. Also, if you refresh the page, a different meme will be randomly chosen.&lt;/p&gt;
+
+&lt;p&gt;The first thing I did to set this up was grab my new &lt;a href=&quot;https://www.raspberrypi.org/&quot;&gt;Raspberry Pi&lt;/a&gt; that I had just bought and install the &lt;a href=&quot;https://www.raspberrypi.org/downloads/raspbian/&quot;&gt;Raspbian OS&lt;/a&gt; using &lt;a href=&quot;https://www.raspberrypi.org/downloads/noobs/&quot;&gt;NOOBS&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;width: 50%; height: 50%; float: right;&quot; src=&quot;../../../assets/img/2018-12-21-wifi-that-only-shows-memes/raspberrypi.jpg&quot; /&gt;
+&lt;img style=&quot;width: 50%; height: 50%;&quot; src=&quot;../../../assets/img/2018-12-21-wifi-that-only-shows-memes/noobs.jpg&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Next, I had to configure my Raspberry Pi to work as an access point. This took me a couple of steps. First, I had to go download all of the tools that I would use.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;sudo apt install hostapd dnsmasq libmicrohttpd-dev
+git clone https://github.com/nodogsplash/nodogsplash.git
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;I also went online and downloaded a bunch of memes that I liked. Then I went into my /etc/dhcpcd.conf file and added the following line to the file:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;denyinterfaces wlan0
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;I also had to setup a static IP address for my Raspberry Pi for obvious reasons. I did this by appending the /etc/network/interfaces file with these lines:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;auto wlan0
+iface wlan0 inet static
+address 192.168.1.1
+netmask 255.255.255.0
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;This allowed me to setup a static IP address of 192.168.1.1. Once I did this, I had to restart dhcpcd using this command:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;sudo service dhcpcd restart
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The next step was to configure hostapd. Hostapd was the program that I was going to use to make my Raspberry Pi turn into an access point. I created a file called /etc/hostapd/hostapd.conf and added these settings to it:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;interface=wlan0 # Use wlan0 interface
+driver=nl80211 # Use this driver (you might have to google which driver is the correct one for your wifi card)
+ctrl_interface=/var/run/hostapd # Location of hostapd program
+ctrl_interface_group=0
+ssid=ClickHereForMemes # SSID that will be broadcasted
+hw_mode=g
+channel=6 # Which channel we are on
+wpa=0 # Disable encryption
+beacon_int=100 # How often we will send out a beacon
+ignore_broadcast_ssid=0 # Don't ignore broadcast requests
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;I had disabled WPA2 encryption because this was a simple project, and I didn’t really care whether my Raspberry Pi got hacked or not. But if you wanted to setup WPA2 encryption, you could do it using this configuration file.&lt;/p&gt;
+
+&lt;p&gt;I had to tell hostapd where to look for the config file when it starts up on boot, so I opened up /etc/default/hostapd, and replaced this line:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;#DAEMON_CONF=&quot;&quot;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;with this line:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;DAEMON_CONF=&quot;/etc/hostapd/hostapd.conf&quot;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Now that our access point is working, I had to go configure dnsmasq. Dnsmasq is used as a lightweight DNS and DHCP server, which makes it perfect for this project. Since I didn’t want to lose the original configuration file, I moved it.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;sudo mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;I then created a new /etc/dnsmasq.conf file and typed this in there:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;interace=wlan0 # Which interface we will use
+listen-address=192.168.1.1 # What address we are listening on (which should be our static IP)
+bind-interfaces # Bind the interfaces
+server=8.8.8.8 # Use Google's DNS server
+domain-needed
+bogus-priv
+dhcp-range=192.168.1.50,192.168.1.150,12h # Give IP addresses in the range of 192.168.1.50-150 with a 12 hour lease time
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Now our access point should be fully setup. Our final step is to setup a captive portal using nodogsplash. This captive portal will work as the website that only shows memes. I had to install nodogslash from the github repository that I cloned earlier.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;cd ~/nodogsplash
+make
+sudo make install
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;I went into the /etc/nodogsplash/nodogsplash.conf file and changed the GatewayInterface&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;GatewayInterface wlan0
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Now we have to actually go and edit the captive portal to display memes instead of displaying a captive portal. The html files for the captive portal are located at /etc/nodogsplash/htdocs/. I edited the splash.html file to look like this:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;html&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;head&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;title&amp;gt;&lt;/span&gt;Random Memes&lt;span class=&quot;nt&quot;&gt;&amp;lt;/title&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/head&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;body&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;img&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;/&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- Note: None of these memes were created by me --&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;script&amp;gt;&lt;/span&gt;
+            &lt;span class=&quot;nx&quot;&gt;files&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;250freetacos.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;2no3du.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;accidentally.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;armordoesntmatch.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;baby.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;backboneofthiscompany.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;becomethevaccumcleaner.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;beforeyougo.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;birdsroom.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;blueshell.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;bombassdick.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;bothlinesoftext.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;cameoutofthepurple.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;cleverargument.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;collectingpokemon.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;computerexpert.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;coughsyrup.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;dawgwall.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;deadinside.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;diarreah.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;formalpictureofbaby.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;freeshipping.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;fuckmatthew.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;genderpaygap.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;gettingreadyforbed.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;godwhy.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;goodbyehighschool.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;goodexamples.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;headphones.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;highonacid.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;hotelblanker.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;howthingsaregoing.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;hulksmash.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;iamconfusion.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;ididntchoosethuglife.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;ihategraveyards.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;imgonnamissyou.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;improviseadaptovercome.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;infinitelectricity.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;intellectualdominance.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;itlookslikeapotato.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;itswednesday.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;justchillingnaked.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;lookingatmemesinbathroom.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;makingdildos.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;marriage.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;monopolyisbetterthanpizza.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;mycutepet.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;myheart.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;nodogsallowed.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;nogoodanswer.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;noitspatrick.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;notacop.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;parallelparking.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;parasites.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;peppapig.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;pokingpeopleatfunerals.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;pretendingtowork.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;problemsolving.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;putmebackintoacoma.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;reallythatsthespermthatwon.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;recordedconversation.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;researchonisis.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;sayingno.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;schrodingersplates.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;sentencewithouta.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;shoppingcarts.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;shortpeoplesuck.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;sleepinginvideogames.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;sneezing.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;solutiontopeopleeatingyourfood.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;soundmorephotosynthesis.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;studentloans.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;stuffynose.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;stupidshit.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;talktorocks.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;taskmanager.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;temporarybuildings.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;thankyou.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;thedouchestorecalled.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;thefemaleisontheright.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;theidiotshouse.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;thesacredtexts.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;timetoretire.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;universityofnorthtexas.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;wheremyloveis.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;whoistheloveofmylife.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;whospresentingnext.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;whyarethewaythatyouare.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;wifeswrath.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;wificonnected.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;yelpforcoworkers.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;yomamasofatshesataxi.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;youdontfloss.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;yourfat.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;yourpov.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;yourstupid.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+            &lt;span class=&quot;nx&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;Math&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;floor&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;Math&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;files&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;length&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+            &lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;image&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;document&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;images&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+            &lt;span class=&quot;nx&quot;&gt;image&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;src&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;img/&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;files&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;/script&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/body&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/html&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;This is essentially a small script that randomly selects one of the memes I’ve downloaded and displays it. I also moved all of the images of the memes I downloaded earlier to /etc/nodogsplash/htdocs/img/.&lt;/p&gt;
+
+&lt;p&gt;There is just one more step. The computer needs to know that it has to start nodogsplash on boot, so I opened the /etc/rc.local file added “nodogsplash” on top of the line that says “exit 0”.&lt;/p&gt;
+
+&lt;p&gt;And that’s it! All I had to do now was to reboot my computer so that all of my settings would be applied. Thanks for reading this!&lt;/p&gt;</content><author><name></name></author><summary type="html">Hello everyone! Today I’m going to show you how I built an access point that is able to send memes to anyone who connects to it. The way it works is simple: First the user connects to the access point from the Wifi settings on their device, and once they try connecting to any website, they’ll be shown a meme instead. You can see in the images below how this appears on my phone after it has connected to my wifi.</summary></entry><entry><title type="html">Basic PNG Image Steganography Tool Built Using Python</title><link href="http://localhost:4000/2018/12/08/png-steganography-in-python.html" rel="alternate" type="text/html" title="Basic PNG Image Steganography Tool Built Using Python" /><published>2018-12-08T00:00:00-05:00</published><updated>2018-12-08T00:00:00-05:00</updated><id>http://localhost:4000/2018/12/08/png-steganography-in-python</id><content type="html" xml:base="http://localhost:4000/2018/12/08/png-steganography-in-python.html">&lt;p&gt;So today, I’m going to show you how I built a simple PNG steganography tool using &lt;a href=&quot;https://python-pillow.org/&quot;&gt;Pillow&lt;/a&gt; and &lt;a href=&quot;https://pypi.org/project/bitarray/&quot;&gt;Bitarray&lt;/a&gt; in Python 3. Here’s an example of how you could encode the message “This will be encoded” into a file called “picture.png”:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Python 3.6.6 (default, Sep 12 2018, 18:26:19) 
+[GCC 8.0.1 20180414 (experimental) [trunk revision 259383]] on linux
+Type &quot;help&quot;, &quot;copyright&quot;, &quot;credits&quot; or &quot;license&quot; for more information.
+&amp;gt;&amp;gt;&amp;gt; import py_hider # The name of my steganography tool
+&amp;gt;&amp;gt;&amp;gt; encoded_img = py_hider.encodePNG('This will be encoded.', 'picture.png') # To encode something in PNG file
+&amp;gt;&amp;gt;&amp;gt; encoded_img.save('encoded.png') # Save the file with the encoded message
+&amp;gt;&amp;gt;&amp;gt; py_hider.decodePNG('encoded.png') # Decode a PNG file with a message embedded into it
+'This will be encoded.'
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Both the regular image and the image with the encoded information look almost exactly the same. You can find all of the code &lt;a href=&quot;https://github.com/nihaal-prasad/PyHider&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;First of all, before I talk about how I coded this program, I need to explain how LSB image steganography works. Most digital images store everything in pixels, and each pixel is made up of red, green, and blue values (aka RGB values). Image steganography, as you probably already know, allows someone to hide a message inside an image so that anyone who sees the image has no clue that there is a hidden message there. I had used the least significant bits to encode my message when I created this program, which exploits the fact that humans cannot see the difference if you change the RGB values of a pixel by a 1 (ex. if you change a pixel RGB values from [123, 11, 57] to [124, 12, 58], humans will not notice a difference).&lt;/p&gt;
+
+&lt;p&gt;Using this technique, a programmer can therefore state that an even number in an RGB value could represent a 0 and an odd number in an RGB could represent a 1. By changing the RGB values accordingly (usually by adding one) so that their divisibility by two correspond to ones and zeros, someone could implement an ascii or utf-8 message into an image without anybody else realizing that there is a message encoded into the image. For more information on how exactly this works, click &lt;a href=&quot;https://en.wikipedia.org/wiki/Bit_numbering#Least_significant_bit_in_digital_steganography&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;Now onto how I programmed this. The first thing I did is download &lt;a href=&quot;https://python-pillow.org/&quot;&gt;Pillow&lt;/a&gt; and &lt;a href=&quot;https://pypi.org/project/bitarray/&quot;&gt;Bitarray&lt;/a&gt; using the “pip3 install &amp;lt;package&amp;gt;” command. Next, I opened up Python and imported everything that I was going to be using. I also initialized a function called encodePNG(), which would obviously be used in order to encode the message.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;import sys
+import bitarray
+from PIL import Image
+
+def encodePNG(plaintext: str, imgFile: str, encoding='utf-8') -&amp;gt; Image:
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The first thing that I needed to do inside the function was to open the image using Pillow so that I could access it.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    # Open the image
+    img = Image.open(imgFile).convert('RGB')
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Next, I took the plaintext, which is a parameter that is currently in string format, and converted it into a bitarray so that I could access it in 1’s and 0’s.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    # Convert the plaintext into a bitarray
+    message = bitarray.bitarray()
+    message.frombytes(plaintext.encode(encoding)) 
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Then I obtained the width and height of the image in pixels, which will be required to create our two for loops.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    # Get the width and height of the image in pixels
+    width, height = img.size
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;I created a list to keep track of the RGB data for the new image (Pillow has a function that can put the data in the RGB list into the image). A counter variable will also be used in order to keep track of how much of the message we have written.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    # Counter for the message
+    counter = 0
+
+    # RGB data for the new image
+    new_img_data = []
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;I start two for loops in order to loop through every single pixel in the image. I also use the current x and y values to get our current RGB values, and store that information in the r, g, and b variables.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    # Loop through each pixel
+    for y in range(0, height):
+        for x in range(0, width):
+            # Get the red, green, and blue values for the pixel
+            r, g, b = img.getpixel((x, y))
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;I then use the least significant bit in the red value to write my message. Recall that an even number represents a zero and an odd number represents a one. I can easily change whether a number is even or odd by adding one to it. This is done in code by first doing r mod 2, which returns the least significant digit, and then adding one to r if it is not the value that I wanted it to be. I also add an else if statement to make sure that if we finish writing the message, then we can put down zeros in the least significant digit to indicate the end of message.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;            # Continue writing our message in the red value if we have not yet finished
+            if(counter &amp;lt; len(message)):
+                if(not message[counter]):
+                    if(r % 2 != 0): r = r + 1
+                elif(message[counter]):
+                    if(r % 2 != 1): r = r + 1
+                counter = counter + 1
+            elif(counter &amp;gt;= len(message)): # If we have finished our message, put down zeros to indicate the end of message
+                if(r % 2 != 0): r = r + 1
+                counter = counter + 1
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;I use the exact same code for the blue and green values.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;            # Continue writing our message in the green value if we have not yet finished
+            if(counter &amp;lt; len(message)):
+                if(not message[counter]):
+                    if(g % 2 != 0): g = g + 1
+                elif(message[counter]):
+                    if(g % 2 != 1): g = g + 1
+                counter = counter + 1
+            elif(counter &amp;gt;= len(message)): # If we have finished our message, put down zeros to indicate the end of message
+                if(g % 2 != 0): g = g + 1
+                counter = counter + 1
+
+            # Continue writing our message in the blue value if we have not yet finished
+            if(counter &amp;lt; len(message)):
+                if(not message[counter]):
+                    if(b % 2 != 0): b = b + 1
+                elif(message[counter]):
+                    if(b % 2 != 1): b = b + 1
+                counter = counter + 1
+            elif(counter &amp;gt;= len(message)): # If we have finished our message, put down zeros to indicate the end of message
+                if(b % 2 != 0): b = b + 1
+                counter = counter + 1
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;At the end of the nested for loop, I appended the new RGB values to the list that I initialized earlier.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;            # Write down the RGB values in the new image
+            new_img_data.append((r, g, b))
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;At the end of the function, I returned the new image.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    # Return the new image
+    new_img = Image.new(img.mode, img.size)
+    new_img.putdata(new_img_data)
+    return new_img
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;I’ve finished the encodePNG() function. Now lets start working on the decodePNG() function. Like our previous function, I start by opening the image. Then I create a counter to identify a NULL character (seven 0’s), which will be used to represent the end of the string. I also create a list of bits to represent the encoded message (the bitarray module has a function that can turn a list of bits into a string). I also need the width and height of the image to create the nested for loop.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;def decodePNG(imgFile: str) -&amp;gt; str:
+    # Open the image
+    img = Image.open(imgFile).convert('RGB')
+
+    # This counter is used to identify a NULL character (seven 0's), which will be used to represent the end of the string
+    counter = 0
+
+    # These are the bits that make up the message
+    bits = []
+
+    # Get the width and height in pixels
+    width, height = img.size
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The first part of the nested for loop is simple. Just find each RGB value, find the remainder after dividing by 2 to figure out whether it’s even or odd, and then append that value to the list of bits.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    # Read each pixel
+    for y in range(0, height):
+        for x in range(0, width):
+            # Get the red, green, and blue values for the pixel
+            r, g, b = img.getpixel((x, y))
+
+            # Add r to the bits list
+            bits.append(r % 2)
+            bits.append(g % 2)
+            bits.append(b % 2) 
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The next part involves checking whether there have been seven consecutive zeros and breaking the for loops if there has been seven consecutive zeros.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;            # Change the counter for the r value
+            if(r % 2 == 0): counter = counter + 1
+            else: counter = 0
+
+            # Change the counter for the g value
+            if(g % 2 == 0): counter = counter + 1
+            else: counter = 0
+
+            # Change the counter for the b value
+            if(b % 2 == 0): counter = counter + 1
+            else: counter = 0
+
+            # Check if seven zeros have been found (our terminating value) and break the inner loop if it has
+            if(counter &amp;gt;= 7): break
+        # Check if seven zeros have been found (our terminating value) and break the outer loop if it has
+        if(counter &amp;gt;= 7): break
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Finally, we are done with this function. All we have to do now is to convert the list of bits to a string and output this string.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    # Convert the message to string format and return it
+    output = bitarray.bitarray(bits).tostring()
+    return output[:len(output) - 1] # Slices the last character because the last character is always a null character (\x00)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;And there you go. That’s how I made a simple PNG steganography tool that works great. If you want to see all of the code, click &lt;a href=&quot;https://github.com/nihaal-prasad/PyHider/blob/master/py_hider.py&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;</content><author><name></name></author><summary type="html">So today, I’m going to show you how I built a simple PNG steganography tool using Pillow and Bitarray in Python 3. Here’s an example of how you could encode the message “This will be encoded” into a file called “picture.png”:</summary></entry><entry><title type="html">How I Made A Small Home Backup Server Using Rsync Over SSH</title><link href="http://localhost:4000/2018/11/25/rsync-backup-server.html" rel="alternate" type="text/html" title="How I Made A Small Home Backup Server Using Rsync Over SSH" /><published>2018-11-25T00:00:00-05:00</published><updated>2018-11-25T00:00:00-05:00</updated><id>http://localhost:4000/2018/11/25/rsync-backup-server</id><content type="html" xml:base="http://localhost:4000/2018/11/25/rsync-backup-server.html">&lt;p&gt;Have you ever been worried about losing your files? I definitely am. A little while back, I was working on a coding project for one of my computer science classes at college, when I realized that if something happened to my laptop, such as getting hit with a virus infection or being dropped, I could easily lose all of my hard work. Imagine how horrible it would be if you lost/damaged your school computer and didn’t have any backups!&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;float: right;&quot; src=&quot;../../../assets/img/2018-11-24-rsync-backup-server/Crying_GIF.gif&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Since I didn’t want to ever have to deal with redoing an assignment, I decided that I would figure out how to make a simple backup server at home so that I could backup all of my files when I’m outside the house. After some research, I found a program called &lt;a href=&quot;https://en.wikipedia.org/wiki/Rsync&quot;&gt;rsync&lt;/a&gt; that could easily sync your files with another computer over SSH. I’m now going to go over what I did to set this up.&lt;/p&gt;
+
+&lt;p&gt;The only thing I needed (aside from the laptop that I was going to backup) was an SSH server. Since I only required enough memory to backup the things that I was doing in college and some other random files that I had on my computer, I didn’t need to buy some expensive server hardware. I had an old cheap &lt;a href=&quot;https://www.cnet.com/products/dell-optiplex-380/specs/&quot;&gt;Dell Optiplex 380 Desktop&lt;/a&gt; sitting in my basement, which only had 2GB of RAM, a 256GB hard drive, and Ubuntu OS installed on it, and it worked just fine for this project (because they didn’t want it, one of my teachers from high school gave it to me as a prize for winning something, and it was just sitting in my basement since). Although I haven’t tried it, someone could also probably do the same thing by setting up the backup server in a &lt;a href=&quot;https://www.raspberrypi.org/&quot;&gt;Raspberry Pi&lt;/a&gt; connected to an external hard drive.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2018-11-24-rsync-backup-server/Dell Optiplex.jpg&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Anyways, the first thing that I did was setup an &lt;a href=&quot;https://en.wikipedia.org/wiki/Secure_Shell&quot;&gt;SSH server&lt;/a&gt; on my desktop computer. Since I was going to be using rsync on top of SSH, it was important that I was able to get this SSH server up and running. I used &lt;a href=&quot;https://en.wikipedia.org/wiki/OpenSSH&quot;&gt;openSSH&lt;/a&gt; because it’s free and open source. To install openssh, I used this command on my Desktop computer:&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ sudo apt-get install openssh-server
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;Once I installed the SSH server, it started running by default. I checked that SSH is working by SSHing into my computer.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ ssh admin@localhost
+admin's password:
+&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;From there, I decided that I wanted to create a new user just for doing backups for security purposes.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ useradd backupuser
+$ passwd backupuser
+Changing password for user backupuser.
+New UNIX password:
+Retype new UNIX password:
+passwd: all authentication tokens updated successfully.
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;The next thing I wanted to do was to generate SSH keys on my laptop (which is NOT the same computer as the one that has the SSH server. This is the computer that I use for my school assignments).&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ ssh-keygen -t rsa
+Generating public/private rsa key pair.
+Enter file in which to save the key (/home/user/.ssh/id_rsa): /home/user/.backups/id_rsa
+Created directory '/home/user/.backups/'.
+Enter passphrase (empty for no passphrase): 
+Enter same passphrase again: 
+Your identification has been saved in /home/user/.backups/id_rsa.
+Your public key has been saved in /home/user/.backups/id_rsa.pub.
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;I then copied the keys from my laptop onto where the SSH server was:&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ ssh-copy-id -i /home/user/.backups/id_rsa.pub backupuser@[internal ip address]
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;Now that the public key was copied, I was able to use passwordless SSH authentication to login to my SSH server. Next, I opened the server’s SSH config file (located at /etc/ssh/sshd_config) using vim to change some settings for the SSH server. I made sure that I denied the admin user from using SSH, which made sure that the backup user was the only user that could use SSH.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;DenyUsers admin
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;I changed the banner to be the text inside the /etc/issue.net file. I also changed the /etc/issue.net file to say “ABSOLUTELY NO TRESPASSING” to anyone who tried to connect to the server.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Banner /etc/issue.net
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;Then I disabled X11 forwarding.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;X11Forwarding no
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;I disabled password authentication (it was no longer necessary after I copied the keys earlier).&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;PasswordAuthentication no
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;I disabled root login because that could become a security risk.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;PermitRootLogin no
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;I also changed the port number so that it would be harder to find (most port scanners will not scan for this port).&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Port 2222
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;Finally, after the SSH server was completely setup, I installed the rsync program on my laptop.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ sudo apt-get install rsync
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;And then I wrote a simple script that would use the rsync program (which is displayed below). I saved the script as “backup.sh” and ran it as root.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Desktop/ backupuser@[internal ip address]:~/Desktop/
+sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Documents/ backupuser@[internal ip address]:~/Documents/
+sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Pictures/ backupuser@[internal ip address]:~/Pictures/
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;It successfully copied all of the files in my Desktop, Documents, and Pictures folders over to the SSH server’s folders. Our backup server has worked!&lt;/p&gt;
+
+&lt;p&gt;There was still a tiny bit more work to do. At the moment, the server would only work if my laptop was on the same network as my server. However, if I moved my laptop to a separate network (such as my college’s WiFi network), it would not work properly. To fix this, I logged onto my router settings and port-forwarded port 2222, which is where my SSH server is listening. I then changed my backup.sh script to use my public ip address instead of my internal ip address, and tried again. It worked!&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2018-11-24-rsync-backup-server/port-forwarding.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;There was another problem. My router currently has a dynamic IP address, meaning that its IP address could change at any moment. As a result, I would have to change the IP address in my script if it changed, which could become a little bit annoying. So I went ahead and created an account at &lt;a href=&quot;https://www.noip.com/&quot;&gt;No-IP&lt;/a&gt;, which is a service that grants you up to five free domain names for someone that has a dynamic IP address (you can buy more domain names if you want, but you get five of them for free).&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2018-11-24-rsync-backup-server/no-ip.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;It was pretty easy to navigate No-IP’s web interface (I promise this wasn’t sponsored). I just used the “quick add” option on the dashboard, setup my hostname and domain name (since I only had a free account, I had to use one of their premade domain names). Then I had to go to my router’s settings and tell my router where the Dynamic Domain Name Server was located so that every time my dynamic IP address changed, my router would alert No-IP to change which IP address the domain name is pointing to.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2018-11-24-rsync-backup-server/dynamic dns.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After setting up my domain in No-IP’s website, I was able to use it to connect to my backup server anywhere in the world by using the domain name.&lt;/p&gt;
+
+&lt;p&gt;There was just one more little thing I had to do. By default, only root is able to send a shutdown signal to the computer over SSH. In contrast, I wanted my backup user to also be able to use the poweroff command so that I could remotely power down my server after I was done with my backups. I went ahead and &lt;a href=&quot;https://askubuntu.com/questions/1190/how-can-i-make-shutdown-not-require-admin-password/1399#1399&quot;&gt;changed the policies in the /usr/share/polkit-1/actions/org.freedesktop.consolekit.policy file&lt;/a&gt;, which gave my backup user permission to use the poweroff command. I also added one extra line in my backup.sh script so that I would automatically shut down the server once I was done with it, making my backup.sh script look like this:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Desktop/ backupuser@[domain name I got from No-IP's website]:~/Desktop/
+sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Documents/ backupuser@[domain name I got from No-IP's website]:~/Documents/
+sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Pictures/ backupuser@[domain name I got from No-IP's website]:~/Pictures/
+ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-IP's website] &quot;systemctl poweroff -i&quot;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Finally, everything was completed. The backup server works quite well so far, and I am quite happy with its output.&lt;/p&gt;</content><author><name></name></author><summary type="html">Have you ever been worried about losing your files? I definitely am. A little while back, I was working on a coding project for one of my computer science classes at college, when I realized that if something happened to my laptop, such as getting hit with a virus infection or being dropped, I could easily lose all of my hard work. Imagine how horrible it would be if you lost/damaged your school computer and didn’t have any backups!</summary></entry><entry><title type="html">Hello World!</title><link href="http://localhost:4000/2018/11/11/hello-world.html" rel="alternate" type="text/html" title="Hello World!" /><published>2018-11-11T00:00:00-05:00</published><updated>2018-11-11T00:00:00-05:00</updated><id>http://localhost:4000/2018/11/11/hello-world</id><content type="html" xml:base="http://localhost:4000/2018/11/11/hello-world.html">&lt;p&gt;Hello world! This is my first blog post.&lt;/p&gt;</content><author><name></name></author><summary type="html">Hello world! This is my first blog post.</summary></entry></feed>
