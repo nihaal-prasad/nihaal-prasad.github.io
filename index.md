@@ -19,4 +19,5 @@ title: Recent Blog Posts
             <hr>
         {%- endfor -%}
     {%- endif -%}
+    <p><h3><a href="posts.html">Other Posts...</a></h3></p>
 </div>
