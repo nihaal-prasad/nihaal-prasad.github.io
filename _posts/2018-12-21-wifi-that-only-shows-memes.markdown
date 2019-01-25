@@ -9,7 +9,6 @@ Hello everyone! Today I'm going to show you how I built an access point that is 
 <img style="width: 60%; height: 60%;" src="../../../assets/img/2018-12-21-wifi-that-only-shows-memes/availablenetworks.jpg" />
 <img style="width: 60%; height: 60%;" src="../../../assets/img/2018-12-21-wifi-that-only-shows-memes/meme1.jpg" />
 <img style="width: 10%: height: 10%;" src="../../../assets/img/2018-12-21-wifi-that-only-shows-memes/meme2.jpg" />
-<img style="width: 5%: height: 5%;" src="../../../assets/img/2018-12-21-wifi-that-only-shows-memes/meme3.jpg" />
 
 As you can see, whenever someone tries to connect to a website after connecting to my wireless access point, they will instead be redirected to a web page that shows random memes. Also, if you refresh the page, a different meme will be randomly chosen.
 

