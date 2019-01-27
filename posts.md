@@ -1,13 +1,9 @@
 ---
-layout: default
-title: Posts
+layout: post
+title: List of Blog Posts
 ---
 
 <div class="posts">
-  {%- if page.title -%}
-    <h1 class="page-heading">List of Blog Posts</h1>
-  {%- endif -%}
-  <hr>
   {%- if site.posts.size > 0 -%}
     <ul class="post-list">
       {%- for post in site.posts -%}

@@ -1,11 +1,9 @@
 ---
-layout: default
+layout: post
 title: Recent Blog Posts
 ---
 
 <div class="home">
-    <h1 class="page-heading">{{ page.title }}</h1>
-    <hr>
     {%- if site.posts.size > 0 -%}
         {%- for post in site.posts limit: 5 -%}
             <h3>

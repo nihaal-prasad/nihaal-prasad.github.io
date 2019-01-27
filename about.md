@@ -1,13 +1,10 @@
 ---
-layout: default
+layout: post
 title: About
 permalink: "/about"
 ---
 
 <div class="about">
-    <h1 class="page-heading">{{ page.title }}</h1>
-    <hr>
-
     <img style="float: left;" src="../../assets/img/image_of_myself.jpg">
 
     <p>
