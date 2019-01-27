@@ -464,14 +464,11 @@ pre {
 
 /*
   Layout
-
   Styles for managing the structural hierarchy of the site.
   Hydeout features the large colored sidebar from Hyde that houses the
   site name, intro, and "footer" content. Sidebar is on top of content on
   mobile and expands into sidebar on larger width displays.
-
   Sidebar CSS assumes HTML looks like this for post pages:
-
     body
     > #sidebar
       > header (primary sidebar content -- i.e. title)
@@ -480,7 +477,6 @@ pre {
     > .container
       > h1 (non-home page)
       > .content
-
   Basic approach is to color in body, make sidebar background transparent,
   and then fill in the .container or .content elements depending on how far
   we want the sidebar or header to stretch.
@@ -501,13 +497,8 @@ body {
     font-family: "Abril Fatface", serif;
     font-weight: normal;
     font-size: 1.25rem;
-    color: rgba(255, 255, 255, 0.75);
     margin-top: 0;
     margin-bottom: 0.5rem; }
-    #sidebar .site-title a {
-      color: inherit; }
-      #sidebar .site-title a:hover {
-        color: #ffffff; }
     #sidebar .site-title .back-arrow {
       margin-right: 0.5rem; }
 
@@ -531,11 +522,11 @@ body {
   display: none; }
 
 .container > header {
-  background: transparent;
   color: white;
+  background: transparent;
   margin: -1.5rem 2rem 2rem; }
   .container > header h1, .container > header h2 {
-    color: white; }
+    color: inherit; }
     .container > header h1:last-child, .container > header h2:last-child {
       margin-bottom: 0; }
 
@@ -545,8 +536,7 @@ body {
 .home #sidebar {
   text-align: center; }
   .home #sidebar .site-title {
-    font-size: 3.25rem;
-    color: #ffffff; }
+    font-size: 3.25rem; }
   .home #sidebar header ~ *, .home #sidebar p.lead {
     display: block; }
   .home #sidebar header ~ nav {
@@ -577,8 +567,6 @@ body {
 
   #sidebar .site-title {
     font-size: 3.25rem; }
-    #sidebar .site-title a {
-      color: #ffffff; }
     #sidebar .site-title .back-arrow {
       display: none; }
   #sidebar p.lead, #sidebar header ~ * {
@@ -595,7 +583,7 @@ body {
     padding: 4rem 4rem 0;
     height: 100vh; }
     .container > header {
-      color: inherit;
+      color: #001b44;
       margin: 0; }
       .container > header h1, .container > header h2 {
         color: inherit; }
@@ -608,17 +596,22 @@ body {
   Sidebar links + nav
 ----------------------------------------------------------- */
 #sidebar a {
-  color: #fff; }
+  color: white; }
   #sidebar a svg {
     fill: rgba(255, 255, 255, 0.85); }
   #sidebar a:hover svg, #sidebar a:focus svg, #sidebar a.active svg {
-    fill: #fff; }
+    fill: rgba(255, 255, 255, 0.85); }
   #sidebar a:hover, #sidebar a:focus {
     text-decoration: underline; }
     #sidebar a:hover.icon, #sidebar a:focus.icon {
       text-decoration: none; }
   #sidebar a.active {
     font-weight: bold; }
+
+#sidebar .site-title {
+  color: white; }
+  #sidebar .site-title a {
+    color: inherit; }
 
 #sidebar nav {
   display: flex; }
@@ -647,7 +640,6 @@ body {
 
 /* -----------------------------------------------------------
   Sticky sidebar
-
   Set $sidebar-stick variable to affix sidebar contents to the
   bottom of the sidebar in tablets and up.
 ----------------------------------------------------------- */
@@ -656,7 +648,6 @@ body {
     align-items: flex-end; } }
 /* -----------------------------------------------------------
   Reverse layout
-
   Flip the orientation of the page by placing the `#sidebar`
   on the right.
 ----------------------------------------------------------- */
