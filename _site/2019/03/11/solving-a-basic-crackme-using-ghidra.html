@@ -11,7 +11,7 @@
 
   <title>
     
-      Recent Blog Posts &middot; Nihaal Prasad
+      Solving a Basic Crackme Using Ghidra &middot; Nihaal Prasad
     
   </title>
 
@@ -35,12 +35,17 @@
 </head>
 
 
-  <body class="post home">
+  <body class="post">
 
     <div id="sidebar">
   <header>
     <div class="site-title">
       <a href="/">
+        
+          <span class="back-arrow icon"><svg fill="#000000" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+  <path d="M0 0h24v24H0z" fill="none"/>
+  <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+</svg></span>
         
         Nihaal Prasad
       </a>
@@ -180,7 +185,7 @@
 
     <main class="container">
       <div class="content">
-  <h1 class="page-heading">Recent Blog Posts</h1>
+  <h1 class="page-heading">Solving a Basic Crackme Using Ghidra</h1>
   <div class="post-meta">
   <span class="post-categories">
     
@@ -189,58 +194,91 @@
 
   <hr>
   <div class="post-body">
-    <div class="home"><h3>
-                <a class="post-link" href="/2019/03/11/solving-a-basic-crackme-using-ghidra.html">
-                Solving a Basic Crackme Using Ghidra
-                </a>
-            </h3>
-            <div id="page-preview" style="margin-left: 5%">
-                <p><p>Recently, the NSA released a free reverse-engineering tool called <a href="https://www.nsa.gov/resources/everyone/ghidra/">Ghidra</a>. Today, I decided to take a look at it and try to solve a basic crackme using this tool. <a href="https://crackmes.one/crackme/5c1a939633c5d41e58e005d1">This</a> is the link to the crackme that I will be trying to solve today.</p>
+    <p>Recently, the NSA released a free reverse-engineering tool called <a href="https://www.nsa.gov/resources/everyone/ghidra/">Ghidra</a>. Today, I decided to take a look at it and try to solve a basic crackme using this tool. <a href="https://crackmes.one/crackme/5c1a939633c5d41e58e005d1">This</a> is the link to the crackme that I will be trying to solve today.</p>
 
-</p>
-            </div>
-            <hr /><h3>
-                <a class="post-link" href="/2019/01/25/flash-drive-that-deletes-everything.html">
-                Basic Evil Flash Drive That Deletes Linux User&#39;s Data
-                </a>
-            </h3>
-            <div id="page-preview" style="margin-left: 5%">
-                <p><p>Today I’m going to be going over how to setup an evil flash drive that can easily destroy the data of whoever runs it. This is a simple program that is mainly coded from just with a few bash files. It will masquerade as an updating software inside a flash drive that will bring up a little pop up saying that it is installing computer updates. Finally, once it is done deleting files that are owned by the user, it will bring up a <a href="https://en.wikipedia.org/wiki/Fork_bomb">fork bomb</a> to crash the computer. Since I use Ubuntu as my main operating system, I’m mainly making this flash drive to target Linux systems. Making a flash drive that targets Windows systems would be slightly different, but the idea would remain the same.</p>
+<p>Once I downloaded the crackme file, I ran it and looked at what the program did. Here is its basic output:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>enter the magic string
+a
+wrong string
+No flag for you.
+</code></pre></div></div>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>enter the magic string
+Some Random Input
+too long...sorry no flag for you!!!
+</code></pre></div></div>
+<p>It looks like it takes some sort of input value, and if that input value is what it expects, then it will print out the flag. If the input value is incorrect or too long, then it will print out a different message. Our goal here is to find out the correct input value.</p>
 
-</p>
-            </div>
-            <hr /><h3>
-                <a class="post-link" href="/2019/01/15/installing-linux-in-chromebook.html">
-                Installing Linux In Chromebook Using Crouton
-                </a>
-            </h3>
-            <div id="page-preview" style="margin-left: 5%">
-                <p><p>In a <a href="../14/my-raspberrypi-workstation.html">previous blog post</a>, I mentioned being able to run Linux on a Chromebook. Normally, ChromeOS (which is one of the most useless OSes created) just allows the user to do very basic tasks, such as browsing the internet or accessing documents, and is more geared towards older and more non-technical users. However, it is possible to unlock other potential uses for ChromeOS, one of which is running Linux on the Chromebook. In this post, I’m going to go ahead and show you exactly how I was able to get Ubuntu up and running in my Chromebook using a nice tool called <a href="https://github.com/dnschneid/crouton">crouton</a>.</p>
+<p>I started up Ghidra, created a new project, and added the binary file to my project. You can do this by first clicking File-&gt;New Project, and then dragging and dropping the binary file into the project.</p>
 
-</p>
-            </div>
-            <hr /><h3>
-                <a class="post-link" href="/2019/01/14/my-raspberrypi-workstation.html">
-                My Raspberry Pi Workstation Setup With VNC, hostapd, and dnsmasq
-                </a>
-            </h3>
-            <div id="page-preview" style="margin-left: 5%">
-                <p><p>I had three raspberry pis lying around that were all connected to an ethernet switch, and I wanted to setup software on all three of them to play around with. However, I only had one keyboard, one mouse, and one monitor that I could use, which meant that every time I switched which raspberry pi I wanted to use, I would have to reconnect the wires for the keyboard, mouse, and monitor to the raspberry pi I wanted to use. This setup was quite messy, so I wanted a way for me to easily access all three of my raspberry pis while I’m doing projects on them. My first thought was to invest in a <a href="https://en.wikipedia.org/wiki/KVM_switch">KVM switch</a> that supported HDMI (since my raspberry pis only had an HDMI port for a monitor), but the KVM switches that suited my needs seemed to be way out of my budget, which is why I decided to find a cheaper way to solve this problem.</p>
+<p><img src="../../../assets/img/2019-solving-a-basic-crackme-using-ghidra/ghidra_project.png" /></p>
 
-</p>
-            </div>
-            <hr /><h3>
-                <a class="post-link" href="/2018/12/21/wifi-that-only-shows-memes.html">
-                Access Point That Shows You Memes When You Connect To It
-                </a>
-            </h3>
-            <div id="page-preview" style="margin-left: 5%">
-                <p><p>Hello everyone! Today I’m going to show you how I built an access point that is able to send memes to anyone who connects to it. The way it works is simple: First the user connects to the access point from the Wifi settings on their device, and once they try connecting to any website, they’ll be shown a meme instead. You can see in the images below how this appears on my phone after it has connected to my wifi.</p>
+<p><img style="float: right" src="../../../assets/img/2019-solving-a-basic-crackme-using-ghidra/symbol_tree.png" /></p>
 
-</p>
-            </div>
-            <hr /><p><h3><a href="posts.html">Other Posts...</a></h3></p>
-</div>
+<p>When I opened the file in Ghidra, a pop-up came up in Ghidra asking me if I wanted to analyze the binary now. I hit yes and waited a second before it was done analyzing the file. Then I went to the symbol tree on the left, typed in “main” to find the main function, and clicked on it. This brought me to the main method, and on the other two windows I could see the main method’s assembly and decompiled code.</p>
+
+<p>Here is the decompiled code. I changed a few of the variable names to make it a little bit more readable. You can do this by right-clicking on the variable and clicking “Rename variable.”</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>undefined8 main(void)
+
+{
+  size_t len;
+  size_t len2;
+  long lVar1;
+  char input [112];
+  int counter;
+  int strValues;
+  
+  strValues = 0;
+  puts("enter the magic string");
+  fgets(input,100,stdin);
+  len = strlen(input);
+  if (len &lt; 0xc) {
+    counter = 0;
+    while( true ) {
+      len2 = strlen(input);
+      if (len2 &lt;= (ulong)(long)counter) break;
+      strValues = strValues + (int)input[(long)counter];
+      counter = counter + 1;
+    }
+    if (strValues == 1000) {
+      lVar1 = strcat_str();
+      printf("flag is flag{");
+      counter = 0;
+      while (counter &lt; 10) {
+        putchar((int)*(char *)(lVar1 + (long)counter));
+        counter = counter + 1;
+      }
+      puts("}");
+    }
+    else {
+      puts("wrong string\nNo flag for you.");
+    }
+  }
+  else {
+    puts("too long...sorry no flag for you!!!");
+  }
+  return 0;
+}
+</code></pre></div></div>
+
+<p>The first thing that the code does is print out “enter the magic string” and reads in the value that you typed in into a variable that I named “input”. It also calculates the length of this input variable and makes sure that it is less than 12 (which makes it a maximum of ten characters plus a newline character). After that, there is a loop that adds up all of the ascii values of each character of the input into an integer that I named “strValues”. Then, finally, it prints out the flag if the total values of all the added ascii values equals 1000.</p>
+
+<p>Since I knew that I could type in a maximum of ten characters, the first thing I tried to do was to divide 1000 by 10 to figure out the ascii value of the characters that I needed to type in ten times. Since 1000/10 = 100, and ‘d’ is 100 in ascii, I decided to type in ‘d’ ten times and see what happened.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ python -c "print('d' * 10)" | ./rev30
+enter the magic string
+wrong string
+No flag for you.
+</code></pre></div></div>
+
+<p>Unforunately, this did not work. At first I didn’t understand why this didn’t work, but then I realized that I forgot to take into account the fact that the while loop was also adding up the value of the newline character, which had an ascii value of 10. This meant that instead of doing 1000/10 to figure out the ascii value of the character I had to type in 10 times, I had to do (1000-10)/10 to take this into account. This gave me a value of 99, or ‘c’ in ascii. I tried to use ‘c’ ten times, and lo and behold:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ python -c "print('c' * 10)" | ./rev03 
+enter the magic string
+flag is flag{!#&amp;*/5&lt;DMW}
+</code></pre></div></div>
+
+<p>Thanks for reading this writeup. I hope you enjoyed it.</p>
 
     
 
