@@ -131,3 +131,5 @@ This is essentially a small script that randomly selects one of the memes I've d
 There is just one more step. The computer needs to know that it has to start nodogsplash on boot, so I opened the /etc/rc.local file added "nodogsplash" on top of the line that says "exit 0".
 
 And that's it! All I had to do now was to reboot my computer so that all of my settings would be applied. Thanks for reading this!
+
+{% include related_posts.html %}

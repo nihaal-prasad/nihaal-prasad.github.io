@@ -109,3 +109,5 @@ It states that I have completed all of my updates.
 As you can see, everything in my home folder is now gone. Also, the fork bomb that I implemented earlier is running in the background, making this virtual machine run a lot slower.
 
 While this was just a basic program that could easily be built in a few minutes, much more advanced evil USBs have been built. For example, <a href="https://www.ncsc.gov.uk/content/files/protected_files/guidance_files/The-bad-USB-vulnerability1.pdf">these guys</a> were able to create a USB that could impersonate a different USB peripheral without the user noticing. This just goes to show that you should not plug in any USB flash drive unless you know that does not contain any malicious programs. You should especially never plug in a random USB that you found without knowing and trusting its source.
+
+{% include related_posts.html %}

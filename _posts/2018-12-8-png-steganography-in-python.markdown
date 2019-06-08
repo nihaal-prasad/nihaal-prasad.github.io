@@ -194,3 +194,5 @@ Finally, we are done with this function. All we have to do now is to convert the
 ```
 
 And there you go. That's how I made a simple PNG steganography tool that works great. If you want to see all of the code, click <a href="https://github.com/nihaal-prasad/PyHider/blob/master/py_hider.py">here</a>.
+
+{% include related_posts.html %}

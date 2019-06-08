@@ -25,3 +25,5 @@ It will take a few minutes to completely install the OS, and will also ask you t
 <img src="../../../assets/img/2019-1-15-installing-linux-in-chromebook/linux.jpg">
 
 You should now be able to use Ctrl+Shift+Alt+Forward and Ctrl+Shift+Alt+Backward (Forwards and backwards keys are found at the upper left corner) to move back and forth between OSes.
+
+{% include related_posts.html %}

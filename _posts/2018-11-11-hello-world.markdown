@@ -5,3 +5,5 @@ date: 2018-11-11
 ---
 
 Hello world! This is my first blog post.
+
+{% include related_posts.html %}

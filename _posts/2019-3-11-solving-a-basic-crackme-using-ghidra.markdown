@@ -94,3 +94,5 @@ flag is flag{!#&*/5<DMW}
 ```
 
 Thanks for reading this writeup. I hope you enjoyed it.
+
+{% include related_posts.html %}

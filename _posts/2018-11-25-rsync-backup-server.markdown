@@ -108,3 +108,5 @@ ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-
 ```
 
 Finally, everything was completed. The backup server works quite well so far, and I am quite happy with its output.
+
+{% include related_posts.html %}

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2019-06-08T11:15:32-04:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Solving a Basic Crackme Using Ghidra</title><link href="http://localhost:4000/2019/03/11/solving-a-basic-crackme-using-ghidra.html" rel="alternate" type="text/html" title="Solving a Basic Crackme Using Ghidra" /><published>2019-03-11T00:00:00-04:00</published><updated>2019-03-11T00:00:00-04:00</updated><id>http://localhost:4000/2019/03/11/solving-a-basic-crackme-using-ghidra</id><content type="html" xml:base="http://localhost:4000/2019/03/11/solving-a-basic-crackme-using-ghidra.html">&lt;p&gt;Recently, the NSA released a free reverse-engineering tool called &lt;a href=&quot;https://www.nsa.gov/resources/everyone/ghidra/&quot;&gt;Ghidra&lt;/a&gt;. Today, I decided to take a look at it and try to solve a basic crackme using this tool. &lt;a href=&quot;https://crackmes.one/crackme/5c1a939633c5d41e58e005d1&quot;&gt;This&lt;/a&gt; is the link to the crackme that I will be trying to solve today.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2019-06-08T16:30:53-04:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Solving a Basic Crackme Using Ghidra</title><link href="http://localhost:4000/2019/03/11/solving-a-basic-crackme-using-ghidra.html" rel="alternate" type="text/html" title="Solving a Basic Crackme Using Ghidra" /><published>2019-03-11T00:00:00-04:00</published><updated>2019-03-11T00:00:00-04:00</updated><id>http://localhost:4000/2019/03/11/solving-a-basic-crackme-using-ghidra</id><content type="html" xml:base="http://localhost:4000/2019/03/11/solving-a-basic-crackme-using-ghidra.html">&lt;p&gt;Recently, the NSA released a free reverse-engineering tool called &lt;a href=&quot;https://www.nsa.gov/resources/everyone/ghidra/&quot;&gt;Ghidra&lt;/a&gt;. Today, I decided to take a look at it and try to solve a basic crackme using this tool. &lt;a href=&quot;https://crackmes.one/crackme/5c1a939633c5d41e58e005d1&quot;&gt;This&lt;/a&gt; is the link to the crackme that I will be trying to solve today.&lt;/p&gt;
 
 &lt;p&gt;Once I downloaded the crackme file, I ran it and looked at what the program did. Here is its basic output:&lt;/p&gt;
 &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;enter the magic string
@@ -82,7 +82,32 @@ enter the magic string
 flag is flag{!#&amp;amp;*/5&amp;lt;DMW}
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
-&lt;p&gt;Thanks for reading this writeup. I hope you enjoyed it.&lt;/p&gt;</content><author><name></name></author><summary type="html">Recently, the NSA released a free reverse-engineering tool called Ghidra. Today, I decided to take a look at it and try to solve a basic crackme using this tool. This is the link to the crackme that I will be trying to solve today.</summary></entry><entry><title type="html">Basic Evil Flash Drive That Deletes Linux User’s Data</title><link href="http://localhost:4000/2019/01/25/flash-drive-that-deletes-everything.html" rel="alternate" type="text/html" title="Basic Evil Flash Drive That Deletes Linux User's Data" /><published>2019-01-25T00:00:00-05:00</published><updated>2019-01-25T00:00:00-05:00</updated><id>http://localhost:4000/2019/01/25/flash-drive-that-deletes-everything</id><content type="html" xml:base="http://localhost:4000/2019/01/25/flash-drive-that-deletes-everything.html">&lt;p&gt;Today I’m going to be going over how to setup an evil flash drive that can easily destroy the data of whoever runs it. This is a simple program that is mainly coded from just with a few bash files. It will masquerade as an updating software inside a flash drive that will bring up a little pop up saying that it is installing computer updates. Finally, once it is done deleting files that are owned by the user, it will bring up a &lt;a href=&quot;https://en.wikipedia.org/wiki/Fork_bomb&quot;&gt;fork bomb&lt;/a&gt; to crash the computer. Since I use Ubuntu as my main operating system, I’m mainly making this flash drive to target Linux systems. Making a flash drive that targets Windows systems would be slightly different, but the idea would remain the same.&lt;/p&gt;
+&lt;p&gt;Thanks for reading this writeup. I hope you enjoyed it.&lt;/p&gt;
+
+&lt;section class=&quot;related&quot;&gt;
+  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
+  &lt;ul class=&quot;post-list&quot;&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/25/flash-drive-that-deletes-everything.html&quot;&gt;
+          Basic Evil Flash Drive That Deletes Linux User's Data
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/15/installing-linux-in-chromebook.html&quot;&gt;
+          Installing Linux In Chromebook Using Crouton
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2018/12/21/wifi-that-only-shows-memes.html&quot;&gt;
+          Access Point That Shows You Memes When You Connect To It
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+  &lt;/ul&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Recently, the NSA released a free reverse-engineering tool called Ghidra. Today, I decided to take a look at it and try to solve a basic crackme using this tool. This is the link to the crackme that I will be trying to solve today.</summary></entry><entry><title type="html">Basic Evil Flash Drive That Deletes Linux User’s Data</title><link href="http://localhost:4000/2019/01/25/flash-drive-that-deletes-everything.html" rel="alternate" type="text/html" title="Basic Evil Flash Drive That Deletes Linux User's Data" /><published>2019-01-25T00:00:00-05:00</published><updated>2019-01-25T00:00:00-05:00</updated><id>http://localhost:4000/2019/01/25/flash-drive-that-deletes-everything</id><content type="html" xml:base="http://localhost:4000/2019/01/25/flash-drive-that-deletes-everything.html">&lt;p&gt;Today I’m going to be going over how to setup an evil flash drive that can easily destroy the data of whoever runs it. This is a simple program that is mainly coded from just with a few bash files. It will masquerade as an updating software inside a flash drive that will bring up a little pop up saying that it is installing computer updates. Finally, once it is done deleting files that are owned by the user, it will bring up a &lt;a href=&quot;https://en.wikipedia.org/wiki/Fork_bomb&quot;&gt;fork bomb&lt;/a&gt; to crash the computer. Since I use Ubuntu as my main operating system, I’m mainly making this flash drive to target Linux systems. Making a flash drive that targets Windows systems would be slightly different, but the idea would remain the same.&lt;/p&gt;
 
 &lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto; width: 25%; height: 25%;&quot; src=&quot;../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/updates.png&quot; /&gt;&lt;/p&gt;
 
@@ -177,7 +202,32 @@ call foo
 
 &lt;p&gt;As you can see, everything in my home folder is now gone. Also, the fork bomb that I implemented earlier is running in the background, making this virtual machine run a lot slower.&lt;/p&gt;
 
-&lt;p&gt;While this was just a basic program that could easily be built in a few minutes, much more advanced evil USBs have been built. For example, &lt;a href=&quot;https://www.ncsc.gov.uk/content/files/protected_files/guidance_files/The-bad-USB-vulnerability1.pdf&quot;&gt;these guys&lt;/a&gt; were able to create a USB that could impersonate a different USB peripheral without the user noticing. This just goes to show that you should not plug in any USB flash drive unless you know that does not contain any malicious programs. You should especially never plug in a random USB that you found without knowing and trusting its source.&lt;/p&gt;</content><author><name></name></author><summary type="html">Today I’m going to be going over how to setup an evil flash drive that can easily destroy the data of whoever runs it. This is a simple program that is mainly coded from just with a few bash files. It will masquerade as an updating software inside a flash drive that will bring up a little pop up saying that it is installing computer updates. Finally, once it is done deleting files that are owned by the user, it will bring up a fork bomb to crash the computer. Since I use Ubuntu as my main operating system, I’m mainly making this flash drive to target Linux systems. Making a flash drive that targets Windows systems would be slightly different, but the idea would remain the same.</summary></entry><entry><title type="html">Installing Linux In Chromebook Using Crouton</title><link href="http://localhost:4000/2019/01/15/installing-linux-in-chromebook.html" rel="alternate" type="text/html" title="Installing Linux In Chromebook Using Crouton" /><published>2019-01-15T00:00:00-05:00</published><updated>2019-01-15T00:00:00-05:00</updated><id>http://localhost:4000/2019/01/15/installing-linux-in-chromebook</id><content type="html" xml:base="http://localhost:4000/2019/01/15/installing-linux-in-chromebook.html">&lt;p&gt;In a &lt;a href=&quot;../14/my-raspberrypi-workstation.html&quot;&gt;previous blog post&lt;/a&gt;, I mentioned being able to run Linux on a Chromebook. Normally, ChromeOS (which is one of the most useless OSes created) just allows the user to do very basic tasks, such as browsing the internet or accessing documents, and is more geared towards older and more non-technical users. However, it is possible to unlock other potential uses for ChromeOS, one of which is running Linux on the Chromebook. In this post, I’m going to go ahead and show you exactly how I was able to get Ubuntu up and running in my Chromebook using a nice tool called &lt;a href=&quot;https://github.com/dnschneid/crouton&quot;&gt;crouton&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;While this was just a basic program that could easily be built in a few minutes, much more advanced evil USBs have been built. For example, &lt;a href=&quot;https://www.ncsc.gov.uk/content/files/protected_files/guidance_files/The-bad-USB-vulnerability1.pdf&quot;&gt;these guys&lt;/a&gt; were able to create a USB that could impersonate a different USB peripheral without the user noticing. This just goes to show that you should not plug in any USB flash drive unless you know that does not contain any malicious programs. You should especially never plug in a random USB that you found without knowing and trusting its source.&lt;/p&gt;
+
+&lt;section class=&quot;related&quot;&gt;
+  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
+  &lt;ul class=&quot;post-list&quot;&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
+          Solving a Basic Crackme Using Ghidra
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/15/installing-linux-in-chromebook.html&quot;&gt;
+          Installing Linux In Chromebook Using Crouton
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2018/12/21/wifi-that-only-shows-memes.html&quot;&gt;
+          Access Point That Shows You Memes When You Connect To It
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+  &lt;/ul&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Today I’m going to be going over how to setup an evil flash drive that can easily destroy the data of whoever runs it. This is a simple program that is mainly coded from just with a few bash files. It will masquerade as an updating software inside a flash drive that will bring up a little pop up saying that it is installing computer updates. Finally, once it is done deleting files that are owned by the user, it will bring up a fork bomb to crash the computer. Since I use Ubuntu as my main operating system, I’m mainly making this flash drive to target Linux systems. Making a flash drive that targets Windows systems would be slightly different, but the idea would remain the same.</summary></entry><entry><title type="html">Installing Linux In Chromebook Using Crouton</title><link href="http://localhost:4000/2019/01/15/installing-linux-in-chromebook.html" rel="alternate" type="text/html" title="Installing Linux In Chromebook Using Crouton" /><published>2019-01-15T00:00:00-05:00</published><updated>2019-01-15T00:00:00-05:00</updated><id>http://localhost:4000/2019/01/15/installing-linux-in-chromebook</id><content type="html" xml:base="http://localhost:4000/2019/01/15/installing-linux-in-chromebook.html">&lt;p&gt;In a &lt;a href=&quot;../14/my-raspberrypi-workstation.html&quot;&gt;previous blog post&lt;/a&gt;, I mentioned being able to run Linux on a Chromebook. Normally, ChromeOS (which is one of the most useless OSes created) just allows the user to do very basic tasks, such as browsing the internet or accessing documents, and is more geared towards older and more non-technical users. However, it is possible to unlock other potential uses for ChromeOS, one of which is running Linux on the Chromebook. In this post, I’m going to go ahead and show you exactly how I was able to get Ubuntu up and running in my Chromebook using a nice tool called &lt;a href=&quot;https://github.com/dnschneid/crouton&quot;&gt;crouton&lt;/a&gt;.&lt;/p&gt;
 
 &lt;p&gt;The first step is to boot the Chromebook in recovery mode. This is done by pressing and holding the escape and refresh keys while pressing the power button at the same time. Once recovery mode opens up, press Ctrl-D to switch to developer mode. It will take a little while for the Chromebook to finish switching to developer mode, but once it is done, you will see a screen that looks like this:&lt;/p&gt;
 
@@ -196,7 +246,32 @@ call foo
 
 &lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-1-15-installing-linux-in-chromebook/linux.jpg&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;You should now be able to use Ctrl+Shift+Alt+Forward and Ctrl+Shift+Alt+Backward (Forwards and backwards keys are found at the upper left corner) to move back and forth between OSes.&lt;/p&gt;</content><author><name></name></author><summary type="html">In a previous blog post, I mentioned being able to run Linux on a Chromebook. Normally, ChromeOS (which is one of the most useless OSes created) just allows the user to do very basic tasks, such as browsing the internet or accessing documents, and is more geared towards older and more non-technical users. However, it is possible to unlock other potential uses for ChromeOS, one of which is running Linux on the Chromebook. In this post, I’m going to go ahead and show you exactly how I was able to get Ubuntu up and running in my Chromebook using a nice tool called crouton.</summary></entry><entry><title type="html">Access Point That Shows You Memes When You Connect To It</title><link href="http://localhost:4000/2018/12/21/wifi-that-only-shows-memes.html" rel="alternate" type="text/html" title="Access Point That Shows You Memes When You Connect To It" /><published>2018-12-21T00:00:00-05:00</published><updated>2018-12-21T00:00:00-05:00</updated><id>http://localhost:4000/2018/12/21/wifi-that-only-shows-memes</id><content type="html" xml:base="http://localhost:4000/2018/12/21/wifi-that-only-shows-memes.html">&lt;p&gt;Hello everyone! Today I’m going to show you how I built an access point that is able to send memes to anyone who connects to it. The way it works is simple: First the user connects to the access point from the Wifi settings on their device, and once they try connecting to any website, they’ll be shown a meme instead. You can see in the images below how this appears on my phone after it has connected to my wifi.&lt;/p&gt;
+&lt;p&gt;You should now be able to use Ctrl+Shift+Alt+Forward and Ctrl+Shift+Alt+Backward (Forwards and backwards keys are found at the upper left corner) to move back and forth between OSes.&lt;/p&gt;
+
+&lt;section class=&quot;related&quot;&gt;
+  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
+  &lt;ul class=&quot;post-list&quot;&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
+          Solving a Basic Crackme Using Ghidra
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/25/flash-drive-that-deletes-everything.html&quot;&gt;
+          Basic Evil Flash Drive That Deletes Linux User's Data
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2018/12/21/wifi-that-only-shows-memes.html&quot;&gt;
+          Access Point That Shows You Memes When You Connect To It
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+  &lt;/ul&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">In a previous blog post, I mentioned being able to run Linux on a Chromebook. Normally, ChromeOS (which is one of the most useless OSes created) just allows the user to do very basic tasks, such as browsing the internet or accessing documents, and is more geared towards older and more non-technical users. However, it is possible to unlock other potential uses for ChromeOS, one of which is running Linux on the Chromebook. In this post, I’m going to go ahead and show you exactly how I was able to get Ubuntu up and running in my Chromebook using a nice tool called crouton.</summary></entry><entry><title type="html">Access Point That Shows You Memes When You Connect To It</title><link href="http://localhost:4000/2018/12/21/wifi-that-only-shows-memes.html" rel="alternate" type="text/html" title="Access Point That Shows You Memes When You Connect To It" /><published>2018-12-21T00:00:00-05:00</published><updated>2018-12-21T00:00:00-05:00</updated><id>http://localhost:4000/2018/12/21/wifi-that-only-shows-memes</id><content type="html" xml:base="http://localhost:4000/2018/12/21/wifi-that-only-shows-memes.html">&lt;p&gt;Hello everyone! Today I’m going to show you how I built an access point that is able to send memes to anyone who connects to it. The way it works is simple: First the user connects to the access point from the Wifi settings on their device, and once they try connecting to any website, they’ll be shown a meme instead. You can see in the images below how this appears on my phone after it has connected to my wifi.&lt;/p&gt;
 
 &lt;p&gt;&lt;img style=&quot;width: 60%; height: 60%;&quot; src=&quot;../../../assets/img/2018-12-21-wifi-that-only-shows-memes/availablenetworks.jpg&quot; /&gt;
 &lt;img style=&quot;width: 60%; height: 60%;&quot; src=&quot;../../../assets/img/2018-12-21-wifi-that-only-shows-memes/meme1.jpg&quot; /&gt;
@@ -310,7 +385,32 @@ sudo make install
 
 &lt;p&gt;There is just one more step. The computer needs to know that it has to start nodogsplash on boot, so I opened the /etc/rc.local file added “nodogsplash” on top of the line that says “exit 0”.&lt;/p&gt;
 
-&lt;p&gt;And that’s it! All I had to do now was to reboot my computer so that all of my settings would be applied. Thanks for reading this!&lt;/p&gt;</content><author><name></name></author><summary type="html">Hello everyone! Today I’m going to show you how I built an access point that is able to send memes to anyone who connects to it. The way it works is simple: First the user connects to the access point from the Wifi settings on their device, and once they try connecting to any website, they’ll be shown a meme instead. You can see in the images below how this appears on my phone after it has connected to my wifi.</summary></entry><entry><title type="html">Basic PNG Image Steganography Tool Built Using Python</title><link href="http://localhost:4000/2018/12/08/png-steganography-in-python.html" rel="alternate" type="text/html" title="Basic PNG Image Steganography Tool Built Using Python" /><published>2018-12-08T00:00:00-05:00</published><updated>2018-12-08T00:00:00-05:00</updated><id>http://localhost:4000/2018/12/08/png-steganography-in-python</id><content type="html" xml:base="http://localhost:4000/2018/12/08/png-steganography-in-python.html">&lt;p&gt;So today, I’m going to show you how I built a simple PNG steganography tool using &lt;a href=&quot;https://python-pillow.org/&quot;&gt;Pillow&lt;/a&gt; and &lt;a href=&quot;https://pypi.org/project/bitarray/&quot;&gt;Bitarray&lt;/a&gt; in Python 3. Here’s an example of how you could encode the message “This will be encoded” into a file called “picture.png”:&lt;/p&gt;
+&lt;p&gt;And that’s it! All I had to do now was to reboot my computer so that all of my settings would be applied. Thanks for reading this!&lt;/p&gt;
+
+&lt;section class=&quot;related&quot;&gt;
+  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
+  &lt;ul class=&quot;post-list&quot;&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
+          Solving a Basic Crackme Using Ghidra
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/25/flash-drive-that-deletes-everything.html&quot;&gt;
+          Basic Evil Flash Drive That Deletes Linux User's Data
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/15/installing-linux-in-chromebook.html&quot;&gt;
+          Installing Linux In Chromebook Using Crouton
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+  &lt;/ul&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Hello everyone! Today I’m going to show you how I built an access point that is able to send memes to anyone who connects to it. The way it works is simple: First the user connects to the access point from the Wifi settings on their device, and once they try connecting to any website, they’ll be shown a meme instead. You can see in the images below how this appears on my phone after it has connected to my wifi.</summary></entry><entry><title type="html">Basic PNG Image Steganography Tool Built Using Python</title><link href="http://localhost:4000/2018/12/08/png-steganography-in-python.html" rel="alternate" type="text/html" title="Basic PNG Image Steganography Tool Built Using Python" /><published>2018-12-08T00:00:00-05:00</published><updated>2018-12-08T00:00:00-05:00</updated><id>http://localhost:4000/2018/12/08/png-steganography-in-python</id><content type="html" xml:base="http://localhost:4000/2018/12/08/png-steganography-in-python.html">&lt;p&gt;So today, I’m going to show you how I built a simple PNG steganography tool using &lt;a href=&quot;https://python-pillow.org/&quot;&gt;Pillow&lt;/a&gt; and &lt;a href=&quot;https://pypi.org/project/bitarray/&quot;&gt;Bitarray&lt;/a&gt; in Python 3. Here’s an example of how you could encode the message “This will be encoded” into a file called “picture.png”:&lt;/p&gt;
 
 &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Python 3.6.6 (default, Sep 12 2018, 18:26:19) 
 [GCC 8.0.1 20180414 (experimental) [trunk revision 259383]] on linux
@@ -484,7 +584,32 @@ def encodePNG(plaintext: str, imgFile: str, encoding='utf-8') -&amp;gt; Image:
     return output[:len(output) - 1] # Slices the last character because the last character is always a null character (\x00)
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
-&lt;p&gt;And there you go. That’s how I made a simple PNG steganography tool that works great. If you want to see all of the code, click &lt;a href=&quot;https://github.com/nihaal-prasad/PyHider/blob/master/py_hider.py&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;</content><author><name></name></author><summary type="html">So today, I’m going to show you how I built a simple PNG steganography tool using Pillow and Bitarray in Python 3. Here’s an example of how you could encode the message “This will be encoded” into a file called “picture.png”:</summary></entry><entry><title type="html">How I Made A Small Home Backup Server Using Rsync Over SSH</title><link href="http://localhost:4000/2018/11/25/rsync-backup-server.html" rel="alternate" type="text/html" title="How I Made A Small Home Backup Server Using Rsync Over SSH" /><published>2018-11-25T00:00:00-05:00</published><updated>2018-11-25T00:00:00-05:00</updated><id>http://localhost:4000/2018/11/25/rsync-backup-server</id><content type="html" xml:base="http://localhost:4000/2018/11/25/rsync-backup-server.html">&lt;p&gt;Have you ever been worried about losing your files? I definitely am. A little while back, I was working on a coding project for one of my computer science classes at college, when I realized that if something happened to my laptop, such as getting hit with a virus infection or being dropped, I could easily lose all of my hard work. Imagine how horrible it would be if you lost/damaged your school computer and didn’t have any backups!&lt;/p&gt;
+&lt;p&gt;And there you go. That’s how I made a simple PNG steganography tool that works great. If you want to see all of the code, click &lt;a href=&quot;https://github.com/nihaal-prasad/PyHider/blob/master/py_hider.py&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
+
+&lt;section class=&quot;related&quot;&gt;
+  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
+  &lt;ul class=&quot;post-list&quot;&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
+          Solving a Basic Crackme Using Ghidra
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/25/flash-drive-that-deletes-everything.html&quot;&gt;
+          Basic Evil Flash Drive That Deletes Linux User's Data
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/15/installing-linux-in-chromebook.html&quot;&gt;
+          Installing Linux In Chromebook Using Crouton
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+  &lt;/ul&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">So today, I’m going to show you how I built a simple PNG steganography tool using Pillow and Bitarray in Python 3. Here’s an example of how you could encode the message “This will be encoded” into a file called “picture.png”:</summary></entry><entry><title type="html">How I Made A Small Home Backup Server Using Rsync Over SSH</title><link href="http://localhost:4000/2018/11/25/rsync-backup-server.html" rel="alternate" type="text/html" title="How I Made A Small Home Backup Server Using Rsync Over SSH" /><published>2018-11-25T00:00:00-05:00</published><updated>2018-11-25T00:00:00-05:00</updated><id>http://localhost:4000/2018/11/25/rsync-backup-server</id><content type="html" xml:base="http://localhost:4000/2018/11/25/rsync-backup-server.html">&lt;p&gt;Have you ever been worried about losing your files? I definitely am. A little while back, I was working on a coding project for one of my computer science classes at college, when I realized that if something happened to my laptop, such as getting hit with a virus infection or being dropped, I could easily lose all of my hard work. Imagine how horrible it would be if you lost/damaged your school computer and didn’t have any backups!&lt;/p&gt;
 
 &lt;p&gt;&lt;img style=&quot;float: right;&quot; src=&quot;../../../assets/img/2018-11-24-rsync-backup-server/Crying_GIF.gif&quot; /&gt;&lt;/p&gt;
 
@@ -573,4 +698,54 @@ sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/
 ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-IP's website] &quot;systemctl poweroff -i&quot;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
-&lt;p&gt;Finally, everything was completed. The backup server works quite well so far, and I am quite happy with its output.&lt;/p&gt;</content><author><name></name></author><summary type="html">Have you ever been worried about losing your files? I definitely am. A little while back, I was working on a coding project for one of my computer science classes at college, when I realized that if something happened to my laptop, such as getting hit with a virus infection or being dropped, I could easily lose all of my hard work. Imagine how horrible it would be if you lost/damaged your school computer and didn’t have any backups!</summary></entry><entry><title type="html">Hello World!</title><link href="http://localhost:4000/2018/11/11/hello-world.html" rel="alternate" type="text/html" title="Hello World!" /><published>2018-11-11T00:00:00-05:00</published><updated>2018-11-11T00:00:00-05:00</updated><id>http://localhost:4000/2018/11/11/hello-world</id><content type="html" xml:base="http://localhost:4000/2018/11/11/hello-world.html">&lt;p&gt;Hello world! This is my first blog post.&lt;/p&gt;</content><author><name></name></author><summary type="html">Hello world! This is my first blog post.</summary></entry></feed>
+&lt;p&gt;Finally, everything was completed. The backup server works quite well so far, and I am quite happy with its output.&lt;/p&gt;
+
+&lt;section class=&quot;related&quot;&gt;
+  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
+  &lt;ul class=&quot;post-list&quot;&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
+          Solving a Basic Crackme Using Ghidra
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/25/flash-drive-that-deletes-everything.html&quot;&gt;
+          Basic Evil Flash Drive That Deletes Linux User's Data
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/15/installing-linux-in-chromebook.html&quot;&gt;
+          Installing Linux In Chromebook Using Crouton
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+  &lt;/ul&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Have you ever been worried about losing your files? I definitely am. A little while back, I was working on a coding project for one of my computer science classes at college, when I realized that if something happened to my laptop, such as getting hit with a virus infection or being dropped, I could easily lose all of my hard work. Imagine how horrible it would be if you lost/damaged your school computer and didn’t have any backups!</summary></entry><entry><title type="html">Hello World!</title><link href="http://localhost:4000/2018/11/11/hello-world.html" rel="alternate" type="text/html" title="Hello World!" /><published>2018-11-11T00:00:00-05:00</published><updated>2018-11-11T00:00:00-05:00</updated><id>http://localhost:4000/2018/11/11/hello-world</id><content type="html" xml:base="http://localhost:4000/2018/11/11/hello-world.html">&lt;p&gt;Hello world! This is my first blog post.&lt;/p&gt;
+
+&lt;section class=&quot;related&quot;&gt;
+  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
+  &lt;ul class=&quot;post-list&quot;&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
+          Solving a Basic Crackme Using Ghidra
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/25/flash-drive-that-deletes-everything.html&quot;&gt;
+          Basic Evil Flash Drive That Deletes Linux User's Data
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/15/installing-linux-in-chromebook.html&quot;&gt;
+          Installing Linux In Chromebook Using Crouton
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+  &lt;/ul&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Hello world! This is my first blog post.</summary></entry></feed>
