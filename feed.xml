@@ -1,4 +1,74 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2019-06-08T16:30:53-04:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Solving a Basic Crackme Using Ghidra</title><link href="http://localhost:4000/2019/03/11/solving-a-basic-crackme-using-ghidra.html" rel="alternate" type="text/html" title="Solving a Basic Crackme Using Ghidra" /><published>2019-03-11T00:00:00-04:00</published><updated>2019-03-11T00:00:00-04:00</updated><id>http://localhost:4000/2019/03/11/solving-a-basic-crackme-using-ghidra</id><content type="html" xml:base="http://localhost:4000/2019/03/11/solving-a-basic-crackme-using-ghidra.html">&lt;p&gt;Recently, the NSA released a free reverse-engineering tool called &lt;a href=&quot;https://www.nsa.gov/resources/everyone/ghidra/&quot;&gt;Ghidra&lt;/a&gt;. Today, I decided to take a look at it and try to solve a basic crackme using this tool. &lt;a href=&quot;https://crackmes.one/crackme/5c1a939633c5d41e58e005d1&quot;&gt;This&lt;/a&gt; is the link to the crackme that I will be trying to solve today.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2019-06-15T12:17:44-04:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Network-wide Ad Blocking Using Pi-hole</title><link href="http://localhost:4000/2019/06/15/pi-hole-ad-blocker.html" rel="alternate" type="text/html" title="Network-wide Ad Blocking Using Pi-hole" /><published>2019-06-15T00:00:00-04:00</published><updated>2019-06-15T00:00:00-04:00</updated><id>http://localhost:4000/2019/06/15/pi-hole-ad-blocker</id><content type="html" xml:base="http://localhost:4000/2019/06/15/pi-hole-ad-blocker.html">&lt;p&gt;As someone who loves using Raspberry Pis, I thought that it would be a fun project to setup an ad blocking DNS server on my network using &lt;a href=&quot;https://pi-hole.net/&quot;&gt;Pi-hole&lt;/a&gt;. Pi-hole, for those who do not know, is a DNS server that automatically tries to detect and block domains that have known advertisements. The way that it works is that normally, if your computer encounters a domain name without knowing its IP address, it will send a query to a DNS server, which will tell the computer what the corresponding IP address is (or forward it to another DNS server if it does not know). Pi-hole uses blacklists of domains to make sure that if you send a DNS request to it, it prevent you from accessing those domains.&lt;/p&gt;
+
+&lt;p&gt;So lets get right into how I did this. The first thing I did was that I SSH’ed into my raspberry pi and typed in the below command to start installing Pi-hole.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;curl -sSL https://install.pi-hole.net | bash
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/installing.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After that, I had to select the upstream DNS provider, which is who my raspberry pi would forward DNS requests to if the DNS query is not on the blacklist. I like to use &lt;a href=&quot;https://www.quad9.net/&quot;&gt;Quad9’s DNS server&lt;/a&gt; as opposed to Google’s DNS server (or any other popular DNS server) because Quad9 uses threat intelligence in order to block malware and other threats.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/quad9.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Pi-hole also asked me if I wanted to change the third-party lists that they use or if I wanted to change which protocol they used. I kept the default values.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/lists.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/protocols.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I kept my current network settings.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/ip.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I kept the default values for everything else.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/webadmin.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/lighttpd.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/logging.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/privacy.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/complete.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Once everything was done on my raspberry pi’s side, I had to go into my router settings to change the DNS server settings so that they pointed to my new DNS server. I used Quad9’s DNS server as my backup secondary DNS server in case my raspberry pi failed for whatever reason.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/dnssettings.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I also went ahead and changed my current raspberry pi’s IP address to be a static IP address that the DHCP server could not change.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/staticip.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Finally, everything was finished. I could now login to my Pi-hole’s web admin page and see it all running.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/webpage.png&quot; /&gt;&lt;/p&gt;
+
+&lt;section class=&quot;related&quot;&gt;
+  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
+  &lt;ul class=&quot;post-list&quot;&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
+          Solving a Basic Crackme Using Ghidra
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/25/flash-drive-that-deletes-everything.html&quot;&gt;
+          Basic Evil Flash Drive That Deletes Linux User's Data
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/15/installing-linux-in-chromebook.html&quot;&gt;
+          Installing Linux In Chromebook Using Crouton
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+  &lt;/ul&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">As someone who loves using Raspberry Pis, I thought that it would be a fun project to setup an ad blocking DNS server on my network using Pi-hole. Pi-hole, for those who do not know, is a DNS server that automatically tries to detect and block domains that have known advertisements. The way that it works is that normally, if your computer encounters a domain name without knowing its IP address, it will send a query to a DNS server, which will tell the computer what the corresponding IP address is (or forward it to another DNS server if it does not know). Pi-hole uses blacklists of domains to make sure that if you send a DNS request to it, it prevent you from accessing those domains.</summary></entry><entry><title type="html">Solving a Basic Crackme Using Ghidra</title><link href="http://localhost:4000/2019/03/11/solving-a-basic-crackme-using-ghidra.html" rel="alternate" type="text/html" title="Solving a Basic Crackme Using Ghidra" /><published>2019-03-11T00:00:00-04:00</published><updated>2019-03-11T00:00:00-04:00</updated><id>http://localhost:4000/2019/03/11/solving-a-basic-crackme-using-ghidra</id><content type="html" xml:base="http://localhost:4000/2019/03/11/solving-a-basic-crackme-using-ghidra.html">&lt;p&gt;Recently, the NSA released a free reverse-engineering tool called &lt;a href=&quot;https://www.nsa.gov/resources/everyone/ghidra/&quot;&gt;Ghidra&lt;/a&gt;. Today, I decided to take a look at it and try to solve a basic crackme using this tool. &lt;a href=&quot;https://crackmes.one/crackme/5c1a939633c5d41e58e005d1&quot;&gt;This&lt;/a&gt; is the link to the crackme that I will be trying to solve today.&lt;/p&gt;
 
 &lt;p&gt;Once I downloaded the crackme file, I ran it and looked at what the program did. Here is its basic output:&lt;/p&gt;
 &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;enter the magic string
@@ -89,6 +159,12 @@ flag is flag{!#&amp;amp;*/5&amp;lt;DMW}
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
+          Network-wide Ad Blocking Using Pi-hole
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/01/25/flash-drive-that-deletes-everything.html&quot;&gt;
           Basic Evil Flash Drive That Deletes Linux User's Data
         &lt;/a&gt;
@@ -97,12 +173,6 @@ flag is flag{!#&amp;amp;*/5&amp;lt;DMW}
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/01/15/installing-linux-in-chromebook.html&quot;&gt;
           Installing Linux In Chromebook Using Crouton
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2018/12/21/wifi-that-only-shows-memes.html&quot;&gt;
-          Access Point That Shows You Memes When You Connect To It
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -209,6 +279,12 @@ call foo
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
+          Network-wide Ad Blocking Using Pi-hole
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
           Solving a Basic Crackme Using Ghidra
         &lt;/a&gt;
@@ -220,14 +296,8 @@ call foo
         &lt;/a&gt;
       &lt;/li&gt;
     
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2018/12/21/wifi-that-only-shows-memes.html&quot;&gt;
-          Access Point That Shows You Memes When You Connect To It
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
   &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">Today I’m going to be going over how to setup an evil flash drive that can easily destroy the data of whoever runs it. This is a simple program that is mainly coded from just with a few bash files. It will masquerade as an updating software inside a flash drive that will bring up a little pop up saying that it is installing computer updates. Finally, once it is done deleting files that are owned by the user, it will bring up a fork bomb to crash the computer. Since I use Ubuntu as my main operating system, I’m mainly making this flash drive to target Linux systems. Making a flash drive that targets Windows systems would be slightly different, but the idea would remain the same.</summary></entry><entry><title type="html">Installing Linux In Chromebook Using Crouton</title><link href="http://localhost:4000/2019/01/15/installing-linux-in-chromebook.html" rel="alternate" type="text/html" title="Installing Linux In Chromebook Using Crouton" /><published>2019-01-15T00:00:00-05:00</published><updated>2019-01-15T00:00:00-05:00</updated><id>http://localhost:4000/2019/01/15/installing-linux-in-chromebook</id><content type="html" xml:base="http://localhost:4000/2019/01/15/installing-linux-in-chromebook.html">&lt;p&gt;In a &lt;a href=&quot;../14/my-raspberrypi-workstation.html&quot;&gt;previous blog post&lt;/a&gt;, I mentioned being able to run Linux on a Chromebook. Normally, ChromeOS (which is one of the most useless OSes created) just allows the user to do very basic tasks, such as browsing the internet or accessing documents, and is more geared towards older and more non-technical users. However, it is possible to unlock other potential uses for ChromeOS, one of which is running Linux on the Chromebook. In this post, I’m going to go ahead and show you exactly how I was able to get Ubuntu up and running in my Chromebook using a nice tool called &lt;a href=&quot;https://github.com/dnschneid/crouton&quot;&gt;crouton&lt;/a&gt;.&lt;/p&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Today I’m going to be going over how to setup an evil flash drive that can easily destroy the data of whoever runs it. This is a simple program that is mainly coded from just with a few bash files. It will masquerade as an updating software inside a flash drive that will bring up a little pop up saying that it is installing computer updates. Finally, once it is done deleting files that are owned by the user, it will bring up a fork bomb to crash the computer. Since I use Ubuntu as my main operating system, I’m mainly making this flash drive to target Linux systems. Making a flash drive that targets Windows systems would be slightly different, but the idea would remain the same.</summary></entry><entry><title type="html">Installing Linux In Chromebook Using Crouton</title><link href="http://localhost:4000/2019/01/15/installing-linux-in-chromebook.html" rel="alternate" type="text/html" title="Installing Linux In Chromebook Using Crouton" /><published>2019-01-15T00:00:00-05:00</published><updated>2019-01-15T00:00:00-05:00</updated><id>http://localhost:4000/2019/01/15/installing-linux-in-chromebook</id><content type="html" xml:base="http://localhost:4000/2019/01/15/installing-linux-in-chromebook.html">&lt;p&gt;I was recently able to get my hands on a Chromebook for free. Normally, ChromeOS (which is one of the most useless OSes created) just allows the user to do very basic tasks, such as browsing the internet or accessing documents, and is more geared towards older and more non-technical users. However, it is possible to unlock other potential uses for ChromeOS, one of which is running Linux on the Chromebook. In this post, I’m going to go ahead and show you exactly how I was able to get Ubuntu up and running in my Chromebook using a nice tool called &lt;a href=&quot;https://github.com/dnschneid/crouton&quot;&gt;crouton&lt;/a&gt;.&lt;/p&gt;
 
 &lt;p&gt;The first step is to boot the Chromebook in recovery mode. This is done by pressing and holding the escape and refresh keys while pressing the power button at the same time. Once recovery mode opens up, press Ctrl-D to switch to developer mode. It will take a little while for the Chromebook to finish switching to developer mode, but once it is done, you will see a screen that looks like this:&lt;/p&gt;
 
@@ -246,11 +316,17 @@ call foo
 
 &lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-1-15-installing-linux-in-chromebook/linux.jpg&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;You should now be able to use Ctrl+Shift+Alt+Forward and Ctrl+Shift+Alt+Backward (Forwards and backwards keys are found at the upper left corner) to move back and forth between OSes.&lt;/p&gt;
+&lt;p&gt;You should now be able to use Ctrl+Shift+Alt+Forward and Ctrl+Shift+Alt+Backward (Forwards and backwards keys are found at the upper left corner) to move back and forth between OSes. Thankfully, now we can make use of this device and do more interesting things with it.&lt;/p&gt;
 
 &lt;section class=&quot;related&quot;&gt;
   &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
   &lt;ul class=&quot;post-list&quot;&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
+          Network-wide Ad Blocking Using Pi-hole
+        &lt;/a&gt;
+      &lt;/li&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
@@ -264,14 +340,8 @@ call foo
         &lt;/a&gt;
       &lt;/li&gt;
     
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2018/12/21/wifi-that-only-shows-memes.html&quot;&gt;
-          Access Point That Shows You Memes When You Connect To It
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
   &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">In a previous blog post, I mentioned being able to run Linux on a Chromebook. Normally, ChromeOS (which is one of the most useless OSes created) just allows the user to do very basic tasks, such as browsing the internet or accessing documents, and is more geared towards older and more non-technical users. However, it is possible to unlock other potential uses for ChromeOS, one of which is running Linux on the Chromebook. In this post, I’m going to go ahead and show you exactly how I was able to get Ubuntu up and running in my Chromebook using a nice tool called crouton.</summary></entry><entry><title type="html">Access Point That Shows You Memes When You Connect To It</title><link href="http://localhost:4000/2018/12/21/wifi-that-only-shows-memes.html" rel="alternate" type="text/html" title="Access Point That Shows You Memes When You Connect To It" /><published>2018-12-21T00:00:00-05:00</published><updated>2018-12-21T00:00:00-05:00</updated><id>http://localhost:4000/2018/12/21/wifi-that-only-shows-memes</id><content type="html" xml:base="http://localhost:4000/2018/12/21/wifi-that-only-shows-memes.html">&lt;p&gt;Hello everyone! Today I’m going to show you how I built an access point that is able to send memes to anyone who connects to it. The way it works is simple: First the user connects to the access point from the Wifi settings on their device, and once they try connecting to any website, they’ll be shown a meme instead. You can see in the images below how this appears on my phone after it has connected to my wifi.&lt;/p&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">I was recently able to get my hands on a Chromebook for free. Normally, ChromeOS (which is one of the most useless OSes created) just allows the user to do very basic tasks, such as browsing the internet or accessing documents, and is more geared towards older and more non-technical users. However, it is possible to unlock other potential uses for ChromeOS, one of which is running Linux on the Chromebook. In this post, I’m going to go ahead and show you exactly how I was able to get Ubuntu up and running in my Chromebook using a nice tool called crouton.</summary></entry><entry><title type="html">Access Point That Shows You Memes When You Connect To It</title><link href="http://localhost:4000/2018/12/21/wifi-that-only-shows-memes.html" rel="alternate" type="text/html" title="Access Point That Shows You Memes When You Connect To It" /><published>2018-12-21T00:00:00-05:00</published><updated>2018-12-21T00:00:00-05:00</updated><id>http://localhost:4000/2018/12/21/wifi-that-only-shows-memes</id><content type="html" xml:base="http://localhost:4000/2018/12/21/wifi-that-only-shows-memes.html">&lt;p&gt;Hello everyone! Today I’m going to show you how I built an access point that is able to send memes to anyone who connects to it. The way it works is simple: First the user connects to the access point from the Wifi settings on their device, and once they try connecting to any website, they’ll be shown a meme instead. You can see in the images below how this appears on my phone after it has connected to my wifi.&lt;/p&gt;
 
 &lt;p&gt;&lt;img style=&quot;width: 60%; height: 60%;&quot; src=&quot;../../../assets/img/2018-12-21-wifi-that-only-shows-memes/availablenetworks.jpg&quot; /&gt;
 &lt;img style=&quot;width: 60%; height: 60%;&quot; src=&quot;../../../assets/img/2018-12-21-wifi-that-only-shows-memes/meme1.jpg&quot; /&gt;
@@ -392,6 +462,12 @@ sudo make install
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
+          Network-wide Ad Blocking Using Pi-hole
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
           Solving a Basic Crackme Using Ghidra
         &lt;/a&gt;
@@ -400,12 +476,6 @@ sudo make install
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/01/25/flash-drive-that-deletes-everything.html&quot;&gt;
           Basic Evil Flash Drive That Deletes Linux User's Data
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/01/15/installing-linux-in-chromebook.html&quot;&gt;
-          Installing Linux In Chromebook Using Crouton
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -591,6 +661,12 @@ def encodePNG(plaintext: str, imgFile: str, encoding='utf-8') -&amp;gt; Image:
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
+          Network-wide Ad Blocking Using Pi-hole
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
           Solving a Basic Crackme Using Ghidra
         &lt;/a&gt;
@@ -599,12 +675,6 @@ def encodePNG(plaintext: str, imgFile: str, encoding='utf-8') -&amp;gt; Image:
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/01/25/flash-drive-that-deletes-everything.html&quot;&gt;
           Basic Evil Flash Drive That Deletes Linux User's Data
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/01/15/installing-linux-in-chromebook.html&quot;&gt;
-          Installing Linux In Chromebook Using Crouton
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -705,6 +775,12 @@ ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
+          Network-wide Ad Blocking Using Pi-hole
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
           Solving a Basic Crackme Using Ghidra
         &lt;/a&gt;
@@ -713,12 +789,6 @@ ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/01/25/flash-drive-that-deletes-everything.html&quot;&gt;
           Basic Evil Flash Drive That Deletes Linux User's Data
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/01/15/installing-linux-in-chromebook.html&quot;&gt;
-          Installing Linux In Chromebook Using Crouton
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -730,6 +800,12 @@ ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
+          Network-wide Ad Blocking Using Pi-hole
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
           Solving a Basic Crackme Using Ghidra
         &lt;/a&gt;
@@ -738,12 +814,6 @@ ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/01/25/flash-drive-that-deletes-everything.html&quot;&gt;
           Basic Evil Flash Drive That Deletes Linux User's Data
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/01/15/installing-linux-in-chromebook.html&quot;&gt;
-          Installing Linux In Chromebook Using Crouton
         &lt;/a&gt;
       &lt;/li&gt;
     
