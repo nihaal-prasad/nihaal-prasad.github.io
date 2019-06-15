@@ -4,7 +4,7 @@ title: "Installing Linux In Chromebook Using Crouton"
 date: 2019-1-15
 ---
 
-In a <a href="../14/my-raspberrypi-workstation.html">previous blog post</a>, I mentioned being able to run Linux on a Chromebook. Normally, ChromeOS (which is one of the most useless OSes created) just allows the user to do very basic tasks, such as browsing the internet or accessing documents, and is more geared towards older and more non-technical users. However, it is possible to unlock other potential uses for ChromeOS, one of which is running Linux on the Chromebook. In this post, I'm going to go ahead and show you exactly how I was able to get Ubuntu up and running in my Chromebook using a nice tool called <a href="https://github.com/dnschneid/crouton">crouton</a>.
+I was recently able to get my hands on a Chromebook for free. Normally, ChromeOS (which is one of the most useless OSes created) just allows the user to do very basic tasks, such as browsing the internet or accessing documents, and is more geared towards older and more non-technical users. However, it is possible to unlock other potential uses for ChromeOS, one of which is running Linux on the Chromebook. In this post, I'm going to go ahead and show you exactly how I was able to get Ubuntu up and running in my Chromebook using a nice tool called <a href="https://github.com/dnschneid/crouton">crouton</a>.
 
 The first step is to boot the Chromebook in recovery mode. This is done by pressing and holding the escape and refresh keys while pressing the power button at the same time. Once recovery mode opens up, press Ctrl-D to switch to developer mode. It will take a little while for the Chromebook to finish switching to developer mode, but once it is done, you will see a screen that looks like this:
 
@@ -24,6 +24,6 @@ It will take a few minutes to completely install the OS, and will also ask you t
 
 <img src="../../../assets/img/2019-1-15-installing-linux-in-chromebook/linux.jpg">
 
-You should now be able to use Ctrl+Shift+Alt+Forward and Ctrl+Shift+Alt+Backward (Forwards and backwards keys are found at the upper left corner) to move back and forth between OSes.
+You should now be able to use Ctrl+Shift+Alt+Forward and Ctrl+Shift+Alt+Backward (Forwards and backwards keys are found at the upper left corner) to move back and forth between OSes. Thankfully, now we can make use of this device and do more interesting things with it.
 
 {% include related_posts.html %}
