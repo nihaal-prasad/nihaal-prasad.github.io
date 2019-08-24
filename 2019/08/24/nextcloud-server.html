@@ -11,7 +11,7 @@
 
   <title>
     
-      How I Made A Small Home Backup Server Using Rsync Over SSH &middot; Nihaal Prasad
+      Creating a Nextcloud Server &middot; Nihaal Prasad
     
   </title>
 
@@ -184,7 +184,7 @@
 
     <main class="container">
       <div class="content">
-  <h1 class="page-heading">How I Made A Small Home Backup Server Using Rsync Over SSH</h1>
+  <h1 class="page-heading">Creating a Nextcloud Server</h1>
   <div class="post-meta">
   <span class="post-categories">
     
@@ -193,96 +193,37 @@
 
   <hr>
   <div class="post-body">
-    <p>Have you ever been worried about losing your files? I definitely am. A little while back, I was working on a coding project for one of my computer science classes at college, when I realized that if something happened to my laptop, such as getting hit with a virus infection or being dropped, I could easily lose all of my hard work. Imagine how horrible it would be if you lost/damaged your school computer and didn’t have any backups!</p>
+    <p>Today, I’m going to be going over how I built a Nextcloud Server on my home network. <a href="https://nextcloud.com/">Nextcloud</a> is a program that provides basic file-sharing services, but what makes it different from other file-sharing software (like Google Drive or Dropbox) is the fact that it is open-source and hosted on your own devices. Since all of the software is open-source and you own all of the hardware, you know exactly where your data is going, which prevents a company like Google from peering into your files.</p>
 
-<p><img style="float: right;" src="../../../assets/img/2018-11-24-rsync-backup-server/Crying_GIF.gif" /></p>
+<p>I first started the process by installing a fresh version of Ubuntu on my Desktop. I then ran the command shown below to download the Nextcloud package.</p>
 
-<p>Since I didn’t want to ever have to deal with redoing an assignment, I decided that I would figure out how to make a simple backup server at home so that I could backup all of my files when I’m outside the house. After some research, I found a program called <a href="https://en.wikipedia.org/wiki/Rsync">rsync</a> that could easily sync your files with another computer over SSH. I’m now going to go over what I did to set this up.</p>
-
-<p>The only thing I needed (aside from the laptop that I was going to backup) was an SSH server. Since I only required enough memory to backup the things that I was doing in college and some other random files that I had on my computer, I didn’t need to buy some expensive server hardware. I had an old cheap <a href="https://www.cnet.com/products/dell-optiplex-380/specs/">Dell Optiplex 380 Desktop</a> sitting in my basement, which only had 2GB of RAM, a 256GB hard drive, and Ubuntu OS installed on it, and it worked just fine for this project (because they didn’t want it, one of my teachers from high school gave it to me as a prize for winning something, and it was just sitting in my basement since). Although I haven’t tried it, someone could also probably do the same thing by setting up the backup server in a <a href="https://www.raspberrypi.org/">Raspberry Pi</a> connected to an external hard drive.</p>
-
-<p><img style="margin-left: auto; margin-right: auto;" src="../../../assets/img/2018-11-24-rsync-backup-server/Dell Optiplex.jpg" /></p>
-
-<p>Anyways, the first thing that I did was setup an <a href="https://en.wikipedia.org/wiki/Secure_Shell">SSH server</a> on my desktop computer. Since I was going to be using rsync on top of SSH, it was important that I was able to get this SSH server up and running. I used <a href="https://en.wikipedia.org/wiki/OpenSSH">openSSH</a> because it’s free and open source. To install openssh, I used this command on my Desktop computer:</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ sudo apt-get install openssh-server
-</code></pre></div></div>
-<p>Once I installed the SSH server, it started running by default. I checked that SSH is working by SSHing into my computer.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ ssh admin@localhost
-admin's password:
-&gt;
-</code></pre></div></div>
-<p>From there, I decided that I wanted to create a new user just for doing backups for security purposes.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ useradd backupuser
-$ passwd backupuser
-Changing password for user backupuser.
-New UNIX password:
-Retype new UNIX password:
-passwd: all authentication tokens updated successfully.
-</code></pre></div></div>
-<p>The next thing I wanted to do was to generate SSH keys on my laptop (which is NOT the same computer as the one that has the SSH server. This is the computer that I use for my school assignments).</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ ssh-keygen -t rsa
-Generating public/private rsa key pair.
-Enter file in which to save the key (/home/user/.ssh/id_rsa): /home/user/.backups/id_rsa
-Created directory '/home/user/.backups/'.
-Enter passphrase (empty for no passphrase): 
-Enter same passphrase again: 
-Your identification has been saved in /home/user/.backups/id_rsa.
-Your public key has been saved in /home/user/.backups/id_rsa.pub.
-</code></pre></div></div>
-<p>I then copied the keys from my laptop onto where the SSH server was:</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ ssh-copy-id -i /home/user/.backups/id_rsa.pub backupuser@[internal ip address]
-</code></pre></div></div>
-<p>Now that the public key was copied, I was able to use passwordless SSH authentication to login to my SSH server. Next, I opened the server’s SSH config file (located at /etc/ssh/sshd_config) using vim to change some settings for the SSH server. I made sure that I denied the admin user from using SSH, which made sure that the backup user was the only user that could use SSH.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>DenyUsers admin
-</code></pre></div></div>
-<p>I changed the banner to be the text inside the /etc/issue.net file. I also changed the /etc/issue.net file to say “ABSOLUTELY NO TRESPASSING” to anyone who tried to connect to the server.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Banner /etc/issue.net
-</code></pre></div></div>
-<p>Then I disabled X11 forwarding.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>X11Forwarding no
-</code></pre></div></div>
-<p>I disabled password authentication (it was no longer necessary after I copied the keys earlier).</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>PasswordAuthentication no
-</code></pre></div></div>
-<p>I disabled root login because that could become a security risk.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>PermitRootLogin no
-</code></pre></div></div>
-<p>I also changed the port number so that it would be harder to find (most port scanners will not scan for this port).</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Port 2222
-</code></pre></div></div>
-<p>Finally, after the SSH server was completely setup, I installed the rsync program on my laptop.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ sudo apt-get install rsync
-</code></pre></div></div>
-<p>And then I wrote a simple script that would use the rsync program (which is displayed below). I saved the script as “backup.sh” and ran it as root.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Desktop/ backupuser@[internal ip address]:~/Desktop/
-sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Documents/ backupuser@[internal ip address]:~/Documents/
-sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Pictures/ backupuser@[internal ip address]:~/Pictures/
-</code></pre></div></div>
-<p>It successfully copied all of the files in my Desktop, Documents, and Pictures folders over to the SSH server’s folders. Our backup server has worked!</p>
-
-<p>There was still a tiny bit more work to do. At the moment, the server would only work if my laptop was on the same network as my server. However, if I moved my laptop to a separate network (such as my college’s WiFi network), it would not work properly. To fix this, I logged onto my router settings and port-forwarded port 2222, which is where my SSH server is listening. I then changed my backup.sh script to use my public ip address instead of my internal ip address, and tried again. It worked!</p>
-
-<p><img style="margin-left: auto; margin-right: auto;" src="../../../assets/img/2018-11-24-rsync-backup-server/port-forwarding.png" /></p>
-
-<p>There was another problem. My router currently has a dynamic IP address, meaning that its IP address could change at any moment. As a result, I would have to change the IP address in my script if it changed, which could become a little bit annoying. So I went ahead and created an account at <a href="https://www.noip.com/">No-IP</a>, which is a service that grants you up to five free domain names for someone that has a dynamic IP address (you can buy more domain names if you want, but you get five of them for free).</p>
-
-<p><img style="margin-left: auto; margin-right: auto;" src="../../../assets/img/2018-11-24-rsync-backup-server/no-ip.png" /></p>
-
-<p>It was pretty easy to navigate No-IP’s web interface (I promise this wasn’t sponsored). I just used the “quick add” option on the dashboard, setup my hostname and domain name (since I only had a free account, I had to use one of their premade domain names). Then I had to go to my router’s settings and tell my router where the Dynamic Domain Name Server was located so that every time my dynamic IP address changed, my router would alert No-IP to change which IP address the domain name is pointing to.</p>
-
-<p><img style="margin-left: auto; margin-right: auto;" src="../../../assets/img/2018-11-24-rsync-backup-server/dynamic dns.png" /></p>
-
-<p>After setting up my domain in No-IP’s website, I was able to use it to connect to my backup server anywhere in the world by using the domain name.</p>
-
-<p>There was just one more little thing I had to do. By default, only root is able to send a shutdown signal to the computer over SSH. In contrast, I wanted my backup user to also be able to use the poweroff command so that I could remotely power down my server after I was done with my backups. I went ahead and <a href="https://askubuntu.com/questions/1190/how-can-i-make-shutdown-not-require-admin-password/1399#1399">changed the policies in the /usr/share/polkit-1/actions/org.freedesktop.consolekit.policy file</a>, which gave my backup user permission to use the poweroff command. I also added one extra line in my backup.sh script so that I would automatically shut down the server once I was done with it, making my backup.sh script look like this:</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Desktop/ backupuser@[domain name I got from No-IP's website]:~/Desktop/
-sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Documents/ backupuser@[domain name I got from No-IP's website]:~/Documents/
-sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Pictures/ backupuser@[domain name I got from No-IP's website]:~/Pictures/
-ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-IP's website] "systemctl poweroff -i"
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ sudo snap install nextcloud
 </code></pre></div></div>
 
-<p>Finally, everything was completed. The backup server works quite well so far, and I am quite happy with its output.</p>
+<p>From there, I created a login account for my Nextcloud web interface.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ sudo nextcloud.manual-install [username] [password]
+</code></pre></div></div>
+
+<p>It is also necessary to add IP addresses/domain names to the trusted_domains array. I simply did this once to add my private IP address to the array, but if there were more IP addresses/domain names associated with my server, I would have to use the below command multiple times to add all of them.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ sudo nextcloud.occ config:system:set trusted_domains 1 --value=[insert IP or domain name here]
+</code></pre></div></div>
+
+<p>If I were to expose this to the internet, I would have used a certificate authority to generate an SSL certificate for me so that the identity of my server would be validated in my web browser. However, since I am just going to be using this service on my home network, I just generated a self-signed certificate. Note that doing this will make a warning appear whenever someone connects to the web interface.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ sudo nextcloud.enable-https self-signed
+</code></pre></div></div>
+
+<p>I also enabled a firewall and opened the necessary ports.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ sudo ufw allow 80,443/tcp
+$ sudo ufw enable
+</code></pre></div></div>
+
+<p>That’s it! Once all of that was completed, I was able to access the web interface by typing in my server’s IP address in the web browser. After typing in the username and password I set earlier, I was able to upload/download files to my file server.</p>
+
+<p><img src="../../../assets/img/2019-8-24-nextcloud-server/nextcloud_interface.png" /></p>
 
 <section class="related">
   <h3 style="color: black">Related Posts</h3>
