@@ -1,19 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2019-11-27T13:11:36-05:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Creating a Code Grapher Tool</title><link href="http://localhost:4000/2019/11/27/creating-a-code-grapher-tool.html" rel="alternate" type="text/html" title="Creating a Code Grapher Tool" /><published>2019-11-27T00:00:00-05:00</published><updated>2019-11-27T00:00:00-05:00</updated><id>http://localhost:4000/2019/11/27/creating-a-code-grapher-tool</id><content type="html" xml:base="http://localhost:4000/2019/11/27/creating-a-code-grapher-tool.html">&lt;p&gt;A little while ago, I was working on some reverse-engineering CTF problems. I was trying to figure out what a particular function was doing by giving it a particular input, stepping over the function, reading its output, and then repeating those three steps over and over again with different input values so that I could try to guess what the function was trying to do. I then realized that I could easily automate that process using a script, which is where the idea for &lt;a href=&quot;https://github.com/nihaal-prasad/Code-Grapher&quot;&gt;this simple tool&lt;/a&gt; came from.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2019-11-27T13:26:06-05:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Creating a Code Grapher Tool</title><link href="http://localhost:4000/2019/11/27/creating-code-grapher-tool.html" rel="alternate" type="text/html" title="Creating a Code Grapher Tool" /><published>2019-11-27T00:00:00-05:00</published><updated>2019-11-27T00:00:00-05:00</updated><id>http://localhost:4000/2019/11/27/creating-code-grapher-tool</id><content type="html" xml:base="http://localhost:4000/2019/11/27/creating-code-grapher-tool.html">&lt;p&gt;A little while ago, I was working on some reverse-engineering CTF problems. I was trying to figure out what a particular function was doing by giving it a particular input, stepping over the function, reading its output, and then repeating those three steps over and over again with different input values so that I could try to guess what the function was trying to do. I then realized that I could easily automate that process using a script, which is where the idea for &lt;a href=&quot;https://github.com/nihaal-prasad/Code-Grapher&quot;&gt;this simple tool&lt;/a&gt; came from.&lt;/p&gt;
 
 &lt;p&gt;To give you an example of how this works, suppose you wanted to reverse engineer the following function:&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;#include&amp;lt;stdio.h&amp;gt;
-#include&amp;lt;stdlib.h&amp;gt;
-
-int magic(int x) {
-    return x*x;
-}
-
-int main() {
-    int x = magic(3);
-    printf(&quot;%d\n&quot;, x);
-}
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;And also suppose that this is the output of objdump:&lt;/p&gt;
 &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;0000000000001135 &amp;lt;magic&amp;gt;:
     1135:	55                   	push   %rbp
     1136:	48 89 e5             	mov    %rsp,%rbp
@@ -172,7 +159,7 @@ optional arguments:
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/11/27/creating-a-code-grapher-tool.html&quot;&gt;
+        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
           Creating a Code Grapher Tool
         &lt;/a&gt;
       &lt;/li&gt;
@@ -281,7 +268,7 @@ flag is flag{!#&amp;amp;*/5&amp;lt;DMW}
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/11/27/creating-a-code-grapher-tool.html&quot;&gt;
+        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
           Creating a Code Grapher Tool
         &lt;/a&gt;
       &lt;/li&gt;
@@ -401,7 +388,7 @@ call foo
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/11/27/creating-a-code-grapher-tool.html&quot;&gt;
+        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
           Creating a Code Grapher Tool
         &lt;/a&gt;
       &lt;/li&gt;
@@ -445,7 +432,7 @@ call foo
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/11/27/creating-a-code-grapher-tool.html&quot;&gt;
+        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
           Creating a Code Grapher Tool
         &lt;/a&gt;
       &lt;/li&gt;
@@ -584,7 +571,7 @@ sudo make install
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/11/27/creating-a-code-grapher-tool.html&quot;&gt;
+        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
           Creating a Code Grapher Tool
         &lt;/a&gt;
       &lt;/li&gt;
@@ -783,7 +770,7 @@ def encodePNG(plaintext: str, imgFile: str, encoding='utf-8') -&amp;gt; Image:
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/11/27/creating-a-code-grapher-tool.html&quot;&gt;
+        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
           Creating a Code Grapher Tool
         &lt;/a&gt;
       &lt;/li&gt;
@@ -897,7 +884,7 @@ ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/11/27/creating-a-code-grapher-tool.html&quot;&gt;
+        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
           Creating a Code Grapher Tool
         &lt;/a&gt;
       &lt;/li&gt;
@@ -922,7 +909,7 @@ ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/11/27/creating-a-code-grapher-tool.html&quot;&gt;
+        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
           Creating a Code Grapher Tool
         &lt;/a&gt;
       &lt;/li&gt;
