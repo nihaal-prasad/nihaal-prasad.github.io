@@ -1,59 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2019-08-24T13:48:18-04:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Creating a Nextcloud Server</title><link href="http://localhost:4000/2019/08/24/nextcloud-server.html" rel="alternate" type="text/html" title="Creating a Nextcloud Server" /><published>2019-08-24T00:00:00-04:00</published><updated>2019-08-24T00:00:00-04:00</updated><id>http://localhost:4000/2019/08/24/nextcloud-server</id><content type="html" xml:base="http://localhost:4000/2019/08/24/nextcloud-server.html">&lt;p&gt;Today, I’m going to be going over how I built a Nextcloud Server on my home network. &lt;a href=&quot;https://nextcloud.com/&quot;&gt;Nextcloud&lt;/a&gt; is a program that provides basic file-sharing services, but what makes it different from other file-sharing software (like Google Drive or Dropbox) is the fact that it is open-source and hosted on your own devices. Since all of the software is open-source and you own all of the hardware, you know exactly where your data is going, which prevents a company like Google from peering into your files.&lt;/p&gt;
-
-&lt;p&gt;I first started the process by installing a fresh version of Ubuntu on my Desktop. I then ran the command shown below to download the Nextcloud package.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ sudo snap install nextcloud
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;From there, I created a login account for my Nextcloud web interface.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ sudo nextcloud.manual-install [username] [password]
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;It is also necessary to add IP addresses/domain names to the trusted_domains array. I simply did this once to add my private IP address to the array, but if there were more IP addresses/domain names associated with my server, I would have to use the below command multiple times to add all of them.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ sudo nextcloud.occ config:system:set trusted_domains 1 --value=[insert IP or domain name here]
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;If I were to expose this to the internet, I would have used a certificate authority to generate an SSL certificate for me so that the identity of my server would be validated in my web browser. However, since I am just going to be using this service on my home network, I just generated a self-signed certificate. Note that doing this will make a warning appear whenever someone connects to the web interface.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ sudo nextcloud.enable-https self-signed
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;I also enabled a firewall and opened the necessary ports.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ sudo ufw allow 80,443/tcp
-$ sudo ufw enable
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;That’s it! Once all of that was completed, I was able to access the web interface by typing in my server’s IP address in the web browser. After typing in the username and password I set earlier, I was able to upload/download files to my file server.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-8-24-nextcloud-server/nextcloud_interface.png&quot; /&gt;&lt;/p&gt;
-
-&lt;section class=&quot;related&quot;&gt;
-  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
-  &lt;ul class=&quot;post-list&quot;&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
-          Network-wide Ad Blocking Using Pi-hole
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
-          Solving a Basic Crackme Using Ghidra
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/01/25/flash-drive-that-deletes-everything.html&quot;&gt;
-          Basic Evil Flash Drive That Deletes Linux User's Data
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-  &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I’m going to be going over how I built a Nextcloud Server on my home network. Nextcloud is a program that provides basic file-sharing services, but what makes it different from other file-sharing software (like Google Drive or Dropbox) is the fact that it is open-source and hosted on your own devices. Since all of the software is open-source and you own all of the hardware, you know exactly where your data is going, which prevents a company like Google from peering into your files.</summary></entry><entry><title type="html">Network-wide Ad Blocking Using Pi-hole</title><link href="http://localhost:4000/2019/06/15/pi-hole-ad-blocker.html" rel="alternate" type="text/html" title="Network-wide Ad Blocking Using Pi-hole" /><published>2019-06-15T00:00:00-04:00</published><updated>2019-06-15T00:00:00-04:00</updated><id>http://localhost:4000/2019/06/15/pi-hole-ad-blocker</id><content type="html" xml:base="http://localhost:4000/2019/06/15/pi-hole-ad-blocker.html">&lt;p&gt;As someone who loves using Raspberry Pis, I thought that it would be a fun project to setup an ad blocking DNS server on my network using &lt;a href=&quot;https://pi-hole.net/&quot;&gt;Pi-hole&lt;/a&gt;. Pi-hole, for those who do not know, is a DNS server that automatically tries to detect and block domains that have known advertisements. The way that it works is that normally, if your computer encounters a domain name without knowing its IP address, it will send a query to a DNS server, which will tell the computer what the corresponding IP address is (or forward it to another DNS server if it does not know). Pi-hole uses blacklists of domains to make sure that if you send a DNS request to it, it prevent you from accessing those domains.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2019-11-27T12:34:23-05:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Network-wide Ad Blocking Using Pi-hole</title><link href="http://localhost:4000/2019/06/15/pi-hole-ad-blocker.html" rel="alternate" type="text/html" title="Network-wide Ad Blocking Using Pi-hole" /><published>2019-06-15T00:00:00-04:00</published><updated>2019-06-15T00:00:00-04:00</updated><id>http://localhost:4000/2019/06/15/pi-hole-ad-blocker</id><content type="html" xml:base="http://localhost:4000/2019/06/15/pi-hole-ad-blocker.html">&lt;p&gt;As someone who loves using Raspberry Pis, I thought that it would be a fun project to setup an ad blocking DNS server on my network using &lt;a href=&quot;https://pi-hole.net/&quot;&gt;Pi-hole&lt;/a&gt;. Pi-hole, for those who do not know, is a DNS server that automatically tries to detect and block domains that have known advertisements. The way that it works is that normally, if your computer encounters a domain name without knowing its IP address, it will send a query to a DNS server, which will tell the computer what the corresponding IP address is (or forward it to another DNS server if it does not know). Pi-hole uses blacklists of domains to make sure that if you send a DNS request to it, it prevent you from accessing those domains.&lt;/p&gt;
 
 &lt;p&gt;So lets get right into how I did this. The first thing I did was that I SSH’ed into my raspberry pi and typed in the below command to start installing Pi-hole.&lt;/p&gt;
 
@@ -105,12 +50,6 @@ $ sudo ufw enable
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/08/24/nextcloud-server.html&quot;&gt;
-          Creating a Nextcloud Server
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
           Solving a Basic Crackme Using Ghidra
         &lt;/a&gt;
@@ -119,6 +58,12 @@ $ sudo ufw enable
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/01/25/flash-drive-that-deletes-everything.html&quot;&gt;
           Basic Evil Flash Drive That Deletes Linux User's Data
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/15/installing-linux-in-chromebook.html&quot;&gt;
+          Installing Linux In Chromebook Using Crouton
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -214,12 +159,6 @@ flag is flag{!#&amp;amp;*/5&amp;lt;DMW}
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/08/24/nextcloud-server.html&quot;&gt;
-          Creating a Nextcloud Server
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
           Network-wide Ad Blocking Using Pi-hole
         &lt;/a&gt;
@@ -228,6 +167,12 @@ flag is flag{!#&amp;amp;*/5&amp;lt;DMW}
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/01/25/flash-drive-that-deletes-everything.html&quot;&gt;
           Basic Evil Flash Drive That Deletes Linux User's Data
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/15/installing-linux-in-chromebook.html&quot;&gt;
+          Installing Linux In Chromebook Using Crouton
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -334,12 +279,6 @@ call foo
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/08/24/nextcloud-server.html&quot;&gt;
-          Creating a Nextcloud Server
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
           Network-wide Ad Blocking Using Pi-hole
         &lt;/a&gt;
@@ -348,6 +287,12 @@ call foo
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
           Solving a Basic Crackme Using Ghidra
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/15/installing-linux-in-chromebook.html&quot;&gt;
+          Installing Linux In Chromebook Using Crouton
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -378,12 +323,6 @@ call foo
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/08/24/nextcloud-server.html&quot;&gt;
-          Creating a Nextcloud Server
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
           Network-wide Ad Blocking Using Pi-hole
         &lt;/a&gt;
@@ -392,6 +331,12 @@ call foo
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
           Solving a Basic Crackme Using Ghidra
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/25/flash-drive-that-deletes-everything.html&quot;&gt;
+          Basic Evil Flash Drive That Deletes Linux User's Data
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -517,12 +462,6 @@ sudo make install
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/08/24/nextcloud-server.html&quot;&gt;
-          Creating a Nextcloud Server
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
           Network-wide Ad Blocking Using Pi-hole
         &lt;/a&gt;
@@ -531,6 +470,12 @@ sudo make install
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
           Solving a Basic Crackme Using Ghidra
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/25/flash-drive-that-deletes-everything.html&quot;&gt;
+          Basic Evil Flash Drive That Deletes Linux User's Data
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -716,12 +661,6 @@ def encodePNG(plaintext: str, imgFile: str, encoding='utf-8') -&amp;gt; Image:
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/08/24/nextcloud-server.html&quot;&gt;
-          Creating a Nextcloud Server
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
           Network-wide Ad Blocking Using Pi-hole
         &lt;/a&gt;
@@ -730,6 +669,12 @@ def encodePNG(plaintext: str, imgFile: str, encoding='utf-8') -&amp;gt; Image:
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
           Solving a Basic Crackme Using Ghidra
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/25/flash-drive-that-deletes-everything.html&quot;&gt;
+          Basic Evil Flash Drive That Deletes Linux User's Data
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -830,12 +775,6 @@ ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/08/24/nextcloud-server.html&quot;&gt;
-          Creating a Nextcloud Server
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
           Network-wide Ad Blocking Using Pi-hole
         &lt;/a&gt;
@@ -844,6 +783,12 @@ ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
           Solving a Basic Crackme Using Ghidra
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/25/flash-drive-that-deletes-everything.html&quot;&gt;
+          Basic Evil Flash Drive That Deletes Linux User's Data
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -855,12 +800,6 @@ ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/08/24/nextcloud-server.html&quot;&gt;
-          Creating a Nextcloud Server
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
           Network-wide Ad Blocking Using Pi-hole
         &lt;/a&gt;
@@ -869,6 +808,12 @@ ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
           Solving a Basic Crackme Using Ghidra
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/01/25/flash-drive-that-deletes-everything.html&quot;&gt;
+          Basic Evil Flash Drive That Deletes Linux User's Data
         &lt;/a&gt;
       &lt;/li&gt;
     
