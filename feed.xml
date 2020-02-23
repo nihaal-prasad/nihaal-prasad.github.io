@@ -1,4 +1,71 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-02-06T20:09:56-05:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Useful OSCP Notes</title><link href="http://localhost:4000/2020/02/06/useful-oscp-notes.html" rel="alternate" type="text/html" title="Useful OSCP Notes" /><published>2020-02-06T00:00:00-05:00</published><updated>2020-02-06T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/06/useful-oscp-notes</id><content type="html" xml:base="http://localhost:4000/2020/02/06/useful-oscp-notes.html">&lt;p&gt;I have been studying for the OSCP for a little less than two months. I was studying 5-7 hours per day during my winter break, and I’ve learned a lot since I began. At the time of writing this blog post, my exam is in a week, and I just wanted to put down some of my notes that I’ve been using into a blog post. These notes mainly contain commands that I have been using throughout the PWK labs.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-02-22T19:16:37-05:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Cracking D4RKFL0W’s Crackme-4</title><link href="http://localhost:4000/2020/02/21/cracking-d4rkfl0w-crackme-4.html" rel="alternate" type="text/html" title="Cracking D4RKFL0W's Crackme-4" /><published>2020-02-21T00:00:00-05:00</published><updated>2020-02-21T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/21/cracking-d4rkfl0w-crackme-4</id><content type="html" xml:base="http://localhost:4000/2020/02/21/cracking-d4rkfl0w-crackme-4.html">&lt;p&gt;Today, I will be going over how I cracked &lt;a href=&quot;https://crackmes.one/crackme/5e0fa43b33c5d419aa01351e&quot;&gt;this crackme&lt;/a&gt;. When I first executed the program, it started off by asking me to enter some password, so it is clear that our goal here is to figure out what this password is.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-21-cracking-d4rkfl0w-crackme-4/execution.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I opened up this binary in radare2 and saw that the main function was calling another function called prompt().&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-21-cracking-d4rkfl0w-crackme-4/main.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I stepped into this function and saw that this function would print out “Please enter the password:” and read a line of input. There was another interesting function called Vault::checkPassword() being called near the end of the function.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-21-cracking-d4rkfl0w-crackme-4/prompt.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I stepped into Vault::checkPassword(). It seems as though this function calls another function called PasswordGen::buildPassword(), which probably builds the password, and then calls PasswordGen::checkPassword(), which is the function that we care about the most. If the password looks good, then it will print out a message stating that it is the correct password.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-21-cracking-d4rkfl0w-crackme-4/checkPasswordVault.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Inside of Vault::checkPassword(), there are function calls to c3(), c0(), c1(), c2(), c4(), c8(), c5(), c6(), and c7(). Each of these function calls generate and return one of the characters for the password, and the correct index of each character is indicated by the number coming after c (i.e., c3() returns the 3rd character of the password, c0() returns the 0th character of the password, etc.). After each function call, the corresponding character for the user’s input is checked against the character that was generated, and if the input does not equal the character, the program exits.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-21-cracking-d4rkfl0w-crackme-4/checkPasswordGen.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I set a breakpoint right after c3() executes, and I recorded the value of rax, which was 3a.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-21-cracking-d4rkfl0w-crackme-4/c3.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I repeated this by setting breakpoints right after the other function calls to c0(), c1(), c2(), c4(), c8(), c5(), c6(), and c7(), and I continued to record the values of rax. These were the results:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;c3(): rax = 0x3a
+c0(): rax = 0x55
+c1(): rax = 0x36
+c2(): rax = 0x2d
+c4(): rax = 0x59
+c8(): rax = 0x2b
+c5(): rax = 0x4c
+c6(): rax = 0x2e
+c7(): rax = 0x22
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;I had recreated all of the correct values for the password. Now all I had to do was to reorder the password values so that the 0th value comes first and the 8th value comes last and send the input using the below command.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;python -c &quot;print('\x55\x36\x2d\x3a\x59\x4c\x2e\x22\x2b')&quot; | ./Crackme-4
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-21-cracking-d4rkfl0w-crackme-4/correct.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;section class=&quot;related&quot;&gt;
+  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
+  &lt;ul class=&quot;post-list&quot;&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
+          Useful OSCP Notes
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
+          Creating a Code Grapher Tool
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
+          Network-wide Ad Blocking Using Pi-hole
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+  &lt;/ul&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I will be going over how I cracked this crackme. When I first executed the program, it started off by asking me to enter some password, so it is clear that our goal here is to figure out what this password is.</summary></entry><entry><title type="html">Useful OSCP Notes</title><link href="http://localhost:4000/2020/02/06/useful-oscp-notes.html" rel="alternate" type="text/html" title="Useful OSCP Notes" /><published>2020-02-06T00:00:00-05:00</published><updated>2020-02-06T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/06/useful-oscp-notes</id><content type="html" xml:base="http://localhost:4000/2020/02/06/useful-oscp-notes.html">&lt;p&gt;I have been studying for the OSCP for a little less than two months. I was studying 5-7 hours per day during my winter break, and I’ve learned a lot since I began. At the time of writing this blog post, my exam is in a week, and I just wanted to put down some of my notes that I’ve been using into a blog post. These notes mainly contain commands that I have been using throughout the PWK labs.&lt;/p&gt;
 
 &lt;h3 id=&quot;nmap&quot;&gt;Nmap&lt;/h3&gt;
 &lt;p&gt;Ping Scan:
@@ -506,7 +573,32 @@ exploit
 
 &lt;p&gt;6.) After you create the payload, sometimes you may have to execute some extra code before running the payload, in which case, you can use /usr/share/metasploit-framework/tools/exploit/nasm_shell.rb to quickly write assembly code. You may also want to put a NOP sled at the beginning of your code if there is space.&lt;/p&gt;
 
-&lt;p&gt;7.) Setup a reverse shell listener. Create your final exploit and run it.&lt;/p&gt;</content><author><name></name></author><summary type="html">I have been studying for the OSCP for a little less than two months. I was studying 5-7 hours per day during my winter break, and I’ve learned a lot since I began. At the time of writing this blog post, my exam is in a week, and I just wanted to put down some of my notes that I’ve been using into a blog post. These notes mainly contain commands that I have been using throughout the PWK labs.</summary></entry><entry><title type="html">Creating a Code Grapher Tool</title><link href="http://localhost:4000/2019/11/27/creating-code-grapher-tool.html" rel="alternate" type="text/html" title="Creating a Code Grapher Tool" /><published>2019-11-27T00:00:00-05:00</published><updated>2019-11-27T00:00:00-05:00</updated><id>http://localhost:4000/2019/11/27/creating-code-grapher-tool</id><content type="html" xml:base="http://localhost:4000/2019/11/27/creating-code-grapher-tool.html">&lt;p&gt;A little while ago, I was working on some reverse-engineering CTF problems. I was trying to figure out what a particular function was doing by giving it a particular input, stepping over the function, reading its output, and then repeating those three steps over and over again with different input values so that I could try to guess what the function was trying to do. I then realized that I could easily automate that process using a script, which is where the idea for &lt;a href=&quot;https://github.com/nihaal-prasad/Code-Grapher&quot;&gt;this simple tool&lt;/a&gt; came from.&lt;/p&gt;
+&lt;p&gt;7.) Setup a reverse shell listener. Create your final exploit and run it.&lt;/p&gt;
+
+&lt;section class=&quot;related&quot;&gt;
+  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
+  &lt;ul class=&quot;post-list&quot;&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
+          Cracking D4RKFL0W's Crackme-4
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
+          Creating a Code Grapher Tool
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
+          Network-wide Ad Blocking Using Pi-hole
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+  &lt;/ul&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">I have been studying for the OSCP for a little less than two months. I was studying 5-7 hours per day during my winter break, and I’ve learned a lot since I began. At the time of writing this blog post, my exam is in a week, and I just wanted to put down some of my notes that I’ve been using into a blog post. These notes mainly contain commands that I have been using throughout the PWK labs.</summary></entry><entry><title type="html">Creating a Code Grapher Tool</title><link href="http://localhost:4000/2019/11/27/creating-code-grapher-tool.html" rel="alternate" type="text/html" title="Creating a Code Grapher Tool" /><published>2019-11-27T00:00:00-05:00</published><updated>2019-11-27T00:00:00-05:00</updated><id>http://localhost:4000/2019/11/27/creating-code-grapher-tool</id><content type="html" xml:base="http://localhost:4000/2019/11/27/creating-code-grapher-tool.html">&lt;p&gt;A little while ago, I was working on some reverse-engineering CTF problems. I was trying to figure out what a particular function was doing by giving it a particular input, stepping over the function, reading its output, and then repeating those three steps over and over again with different input values so that I could try to guess what the function was trying to do. I then realized that I could easily automate that process using a script, which is where the idea for &lt;a href=&quot;https://github.com/nihaal-prasad/Code-Grapher&quot;&gt;this simple tool&lt;/a&gt; came from.&lt;/p&gt;
 
 &lt;p&gt;To give you an example of how this works, suppose you wanted to reverse engineer the following function:&lt;/p&gt;
 &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;0000000000001135 &amp;lt;magic&amp;gt;:
@@ -667,6 +759,12 @@ optional arguments:
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
+          Cracking D4RKFL0W's Crackme-4
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
           Useful OSCP Notes
         &lt;/a&gt;
@@ -675,12 +773,6 @@ optional arguments:
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
           Creating a Code Grapher Tool
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/03/11/solving-a-basic-crackme-using-ghidra.html&quot;&gt;
-          Solving a Basic Crackme Using Ghidra
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -776,6 +868,12 @@ flag is flag{!#&amp;amp;*/5&amp;lt;DMW}
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
+          Cracking D4RKFL0W's Crackme-4
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
           Useful OSCP Notes
         &lt;/a&gt;
@@ -784,12 +882,6 @@ flag is flag{!#&amp;amp;*/5&amp;lt;DMW}
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
           Creating a Code Grapher Tool
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
-          Network-wide Ad Blocking Using Pi-hole
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -896,6 +988,12 @@ call foo
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
+          Cracking D4RKFL0W's Crackme-4
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
           Useful OSCP Notes
         &lt;/a&gt;
@@ -904,12 +1002,6 @@ call foo
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
           Creating a Code Grapher Tool
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
-          Network-wide Ad Blocking Using Pi-hole
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -940,6 +1032,12 @@ call foo
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
+          Cracking D4RKFL0W's Crackme-4
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
           Useful OSCP Notes
         &lt;/a&gt;
@@ -948,12 +1046,6 @@ call foo
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
           Creating a Code Grapher Tool
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
-          Network-wide Ad Blocking Using Pi-hole
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1079,6 +1171,12 @@ sudo make install
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
+          Cracking D4RKFL0W's Crackme-4
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
           Useful OSCP Notes
         &lt;/a&gt;
@@ -1087,12 +1185,6 @@ sudo make install
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
           Creating a Code Grapher Tool
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
-          Network-wide Ad Blocking Using Pi-hole
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1278,6 +1370,12 @@ def encodePNG(plaintext: str, imgFile: str, encoding='utf-8') -&amp;gt; Image:
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
+          Cracking D4RKFL0W's Crackme-4
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
           Useful OSCP Notes
         &lt;/a&gt;
@@ -1286,12 +1384,6 @@ def encodePNG(plaintext: str, imgFile: str, encoding='utf-8') -&amp;gt; Image:
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
           Creating a Code Grapher Tool
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
-          Network-wide Ad Blocking Using Pi-hole
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1392,29 +1484,10 @@ ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
-          Useful OSCP Notes
+        &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
+          Cracking D4RKFL0W's Crackme-4
         &lt;/a&gt;
       &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
-          Creating a Code Grapher Tool
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
-          Network-wide Ad Blocking Using Pi-hole
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-  &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">Have you ever been worried about losing your files? I definitely am. A little while back, I was working on a coding project for one of my computer science classes at college, when I realized that if something happened to my laptop, such as getting hit with a virus infection or being dropped, I could easily lose all of my hard work. Imagine how horrible it would be if you lost/damaged your school computer and didn’t have any backups!</summary></entry><entry><title type="html">Hello World!</title><link href="http://localhost:4000/2018/11/11/hello-world.html" rel="alternate" type="text/html" title="Hello World!" /><published>2018-11-11T00:00:00-05:00</published><updated>2018-11-11T00:00:00-05:00</updated><id>http://localhost:4000/2018/11/11/hello-world</id><content type="html" xml:base="http://localhost:4000/2018/11/11/hello-world.html">&lt;p&gt;Hello world! This is my first blog post.&lt;/p&gt;
-
-&lt;section class=&quot;related&quot;&gt;
-  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
-  &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
@@ -1428,11 +1501,5 @@ ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-
         &lt;/a&gt;
       &lt;/li&gt;
     
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
-          Network-wide Ad Blocking Using Pi-hole
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
   &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">Hello world! This is my first blog post.</summary></entry></feed>
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Have you ever been worried about losing your files? I definitely am. A little while back, I was working on a coding project for one of my computer science classes at college, when I realized that if something happened to my laptop, such as getting hit with a virus infection or being dropped, I could easily lose all of my hard work. Imagine how horrible it would be if you lost/damaged your school computer and didn’t have any backups!</summary></entry></feed>
