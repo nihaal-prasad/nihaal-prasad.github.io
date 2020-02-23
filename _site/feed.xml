@@ -1,4 +1,47 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-02-22T19:16:37-05:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Cracking D4RKFL0W’s Crackme-4</title><link href="http://localhost:4000/2020/02/21/cracking-d4rkfl0w-crackme-4.html" rel="alternate" type="text/html" title="Cracking D4RKFL0W's Crackme-4" /><published>2020-02-21T00:00:00-05:00</published><updated>2020-02-21T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/21/cracking-d4rkfl0w-crackme-4</id><content type="html" xml:base="http://localhost:4000/2020/02/21/cracking-d4rkfl0w-crackme-4.html">&lt;p&gt;Today, I will be going over how I cracked &lt;a href=&quot;https://crackmes.one/crackme/5e0fa43b33c5d419aa01351e&quot;&gt;this crackme&lt;/a&gt;. When I first executed the program, it started off by asking me to enter some password, so it is clear that our goal here is to figure out what this password is.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-02-22T20:02:25-05:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Reversing the buildString CTF challenge</title><link href="http://localhost:4000/2020/02/22/reversing-buildString-program.html" rel="alternate" type="text/html" title="Reversing the buildString CTF challenge" /><published>2020-02-22T00:00:00-05:00</published><updated>2020-02-22T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/22/reversing-buildString-program</id><content type="html" xml:base="http://localhost:4000/2020/02/22/reversing-buildString-program.html">&lt;p&gt;Earlier today, I had gone to VMI’s 2020 Cyberfusion CTF with my college’s CTF team (we won first place!), and I’m going to show how I solved one of their reverse engineering challenges. I was given a binary file called &lt;a href=&quot;../../../assets/other/2020-2-22-reversing-buildString-program/buildString&quot;&gt;buildString&lt;/a&gt;, and upon executing the file, I was greeted with the following output.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-22-reversing-buildString-program/output.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I used r2ghidra to decompile the main function, and it is clear that there is a lot going on here.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-22-reversing-buildString-program/main.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Essentially, the program is trying to generate a string using a strange algorithm that obfuscates what the string is. It took longer then I want to admit to figure out what I was supposed to do, but I eventually found out that the most important part to reversing this binary lies in the end of the main function, where another function called finalAssembly() is being called.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-22-reversing-buildString-program/main_end.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I set a breakpoint at this function and took a look around. There are two function calls at the very beginning that are, presumably, being used to generate the string. I stepped over the two function calls and printed out the value of rdi, which happened to be “ZmxhZ3tFQHp5X1AzM3p5X2xlbW9uc3EzM3p5fQ==”.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-22-reversing-buildString-program/finalAssembly.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After base64 decoding this value, I obtained the flag.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-22-reversing-buildString-program/flag.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;section class=&quot;related&quot;&gt;
+  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
+  &lt;ul class=&quot;post-list&quot;&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
+          Cracking D4RKFL0W's Crackme-4
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
+          Useful OSCP Notes
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
+          Creating a Code Grapher Tool
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+  &lt;/ul&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Earlier today, I had gone to VMI’s 2020 Cyberfusion CTF with my college’s CTF team (we won first place!), and I’m going to show how I solved one of their reverse engineering challenges. I was given a binary file called buildString, and upon executing the file, I was greeted with the following output.</summary></entry><entry><title type="html">Cracking D4RKFL0W’s Crackme-4</title><link href="http://localhost:4000/2020/02/21/cracking-d4rkfl0w-crackme-4.html" rel="alternate" type="text/html" title="Cracking D4RKFL0W's Crackme-4" /><published>2020-02-21T00:00:00-05:00</published><updated>2020-02-21T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/21/cracking-d4rkfl0w-crackme-4</id><content type="html" xml:base="http://localhost:4000/2020/02/21/cracking-d4rkfl0w-crackme-4.html">&lt;p&gt;Today, I will be going over how I cracked &lt;a href=&quot;https://crackmes.one/crackme/5e0fa43b33c5d419aa01351e&quot;&gt;this crackme&lt;/a&gt;. When I first executed the program, it started off by asking me to enter some password, so it is clear that our goal here is to figure out what this password is.&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-21-cracking-d4rkfl0w-crackme-4/execution.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
 
@@ -47,6 +90,12 @@ c7(): rax = 0x22
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
+          Reversing the buildString CTF challenge
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
           Useful OSCP Notes
         &lt;/a&gt;
@@ -55,12 +104,6 @@ c7(): rax = 0x22
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
           Creating a Code Grapher Tool
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
-          Network-wide Ad Blocking Using Pi-hole
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -580,6 +623,12 @@ exploit
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
+          Reversing the buildString CTF challenge
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
           Cracking D4RKFL0W's Crackme-4
         &lt;/a&gt;
@@ -588,12 +637,6 @@ exploit
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
           Creating a Code Grapher Tool
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/06/15/pi-hole-ad-blocker.html&quot;&gt;
-          Network-wide Ad Blocking Using Pi-hole
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -759,6 +802,12 @@ optional arguments:
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
+          Reversing the buildString CTF challenge
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
           Cracking D4RKFL0W's Crackme-4
         &lt;/a&gt;
@@ -767,12 +816,6 @@ optional arguments:
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
           Useful OSCP Notes
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
-          Creating a Code Grapher Tool
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -868,6 +911,12 @@ flag is flag{!#&amp;amp;*/5&amp;lt;DMW}
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
+          Reversing the buildString CTF challenge
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
           Cracking D4RKFL0W's Crackme-4
         &lt;/a&gt;
@@ -876,12 +925,6 @@ flag is flag{!#&amp;amp;*/5&amp;lt;DMW}
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
           Useful OSCP Notes
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
-          Creating a Code Grapher Tool
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -988,6 +1031,12 @@ call foo
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
+          Reversing the buildString CTF challenge
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
           Cracking D4RKFL0W's Crackme-4
         &lt;/a&gt;
@@ -996,12 +1045,6 @@ call foo
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
           Useful OSCP Notes
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
-          Creating a Code Grapher Tool
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1032,6 +1075,12 @@ call foo
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
+          Reversing the buildString CTF challenge
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
           Cracking D4RKFL0W's Crackme-4
         &lt;/a&gt;
@@ -1040,12 +1089,6 @@ call foo
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
           Useful OSCP Notes
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
-          Creating a Code Grapher Tool
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1171,6 +1214,12 @@ sudo make install
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
+          Reversing the buildString CTF challenge
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
           Cracking D4RKFL0W's Crackme-4
         &lt;/a&gt;
@@ -1179,12 +1228,6 @@ sudo make install
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
           Useful OSCP Notes
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
-          Creating a Code Grapher Tool
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1370,118 +1413,10 @@ def encodePNG(plaintext: str, imgFile: str, encoding='utf-8') -&amp;gt; Image:
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
-          Cracking D4RKFL0W's Crackme-4
+        &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
+          Reversing the buildString CTF challenge
         &lt;/a&gt;
       &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
-          Useful OSCP Notes
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
-          Creating a Code Grapher Tool
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-  &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">So today, I’m going to show you how I built a simple PNG steganography tool using Pillow and Bitarray in Python 3. Here’s an example of how you could encode the message “This will be encoded” into a file called “picture.png”:</summary></entry><entry><title type="html">How I Made A Small Home Backup Server Using Rsync Over SSH</title><link href="http://localhost:4000/2018/11/25/rsync-backup-server.html" rel="alternate" type="text/html" title="How I Made A Small Home Backup Server Using Rsync Over SSH" /><published>2018-11-25T00:00:00-05:00</published><updated>2018-11-25T00:00:00-05:00</updated><id>http://localhost:4000/2018/11/25/rsync-backup-server</id><content type="html" xml:base="http://localhost:4000/2018/11/25/rsync-backup-server.html">&lt;p&gt;Have you ever been worried about losing your files? I definitely am. A little while back, I was working on a coding project for one of my computer science classes at college, when I realized that if something happened to my laptop, such as getting hit with a virus infection or being dropped, I could easily lose all of my hard work. Imagine how horrible it would be if you lost/damaged your school computer and didn’t have any backups!&lt;/p&gt;
-
-&lt;p&gt;&lt;img style=&quot;float: right;&quot; src=&quot;../../../assets/img/2018-11-24-rsync-backup-server/Crying_GIF.gif&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;Since I didn’t want to ever have to deal with redoing an assignment, I decided that I would figure out how to make a simple backup server at home so that I could backup all of my files when I’m outside the house. After some research, I found a program called &lt;a href=&quot;https://en.wikipedia.org/wiki/Rsync&quot;&gt;rsync&lt;/a&gt; that could easily sync your files with another computer over SSH. I’m now going to go over what I did to set this up.&lt;/p&gt;
-
-&lt;p&gt;The only thing I needed (aside from the laptop that I was going to backup) was an SSH server. Since I only required enough memory to backup the things that I was doing in college and some other random files that I had on my computer, I didn’t need to buy some expensive server hardware. I had an old cheap &lt;a href=&quot;https://www.cnet.com/products/dell-optiplex-380/specs/&quot;&gt;Dell Optiplex 380 Desktop&lt;/a&gt; sitting in my basement, which only had 2GB of RAM, a 256GB hard drive, and Ubuntu OS installed on it, and it worked just fine for this project (because they didn’t want it, one of my teachers from high school gave it to me as a prize for winning something, and it was just sitting in my basement since). Although I haven’t tried it, someone could also probably do the same thing by setting up the backup server in a &lt;a href=&quot;https://www.raspberrypi.org/&quot;&gt;Raspberry Pi&lt;/a&gt; connected to an external hard drive.&lt;/p&gt;
-
-&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2018-11-24-rsync-backup-server/Dell Optiplex.jpg&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;Anyways, the first thing that I did was setup an &lt;a href=&quot;https://en.wikipedia.org/wiki/Secure_Shell&quot;&gt;SSH server&lt;/a&gt; on my desktop computer. Since I was going to be using rsync on top of SSH, it was important that I was able to get this SSH server up and running. I used &lt;a href=&quot;https://en.wikipedia.org/wiki/OpenSSH&quot;&gt;openSSH&lt;/a&gt; because it’s free and open source. To install openssh, I used this command on my Desktop computer:&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ sudo apt-get install openssh-server
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;Once I installed the SSH server, it started running by default. I checked that SSH is working by SSHing into my computer.&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ ssh admin@localhost
-admin's password:
-&amp;gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;From there, I decided that I wanted to create a new user just for doing backups for security purposes.&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ useradd backupuser
-$ passwd backupuser
-Changing password for user backupuser.
-New UNIX password:
-Retype new UNIX password:
-passwd: all authentication tokens updated successfully.
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;The next thing I wanted to do was to generate SSH keys on my laptop (which is NOT the same computer as the one that has the SSH server. This is the computer that I use for my school assignments).&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ ssh-keygen -t rsa
-Generating public/private rsa key pair.
-Enter file in which to save the key (/home/user/.ssh/id_rsa): /home/user/.backups/id_rsa
-Created directory '/home/user/.backups/'.
-Enter passphrase (empty for no passphrase): 
-Enter same passphrase again: 
-Your identification has been saved in /home/user/.backups/id_rsa.
-Your public key has been saved in /home/user/.backups/id_rsa.pub.
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;I then copied the keys from my laptop onto where the SSH server was:&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ ssh-copy-id -i /home/user/.backups/id_rsa.pub backupuser@[internal ip address]
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;Now that the public key was copied, I was able to use passwordless SSH authentication to login to my SSH server. Next, I opened the server’s SSH config file (located at /etc/ssh/sshd_config) using vim to change some settings for the SSH server. I made sure that I denied the admin user from using SSH, which made sure that the backup user was the only user that could use SSH.&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;DenyUsers admin
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;I changed the banner to be the text inside the /etc/issue.net file. I also changed the /etc/issue.net file to say “ABSOLUTELY NO TRESPASSING” to anyone who tried to connect to the server.&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Banner /etc/issue.net
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;Then I disabled X11 forwarding.&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;X11Forwarding no
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;I disabled password authentication (it was no longer necessary after I copied the keys earlier).&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;PasswordAuthentication no
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;I disabled root login because that could become a security risk.&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;PermitRootLogin no
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;I also changed the port number so that it would be harder to find (most port scanners will not scan for this port).&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Port 2222
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;Finally, after the SSH server was completely setup, I installed the rsync program on my laptop.&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ sudo apt-get install rsync
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;And then I wrote a simple script that would use the rsync program (which is displayed below). I saved the script as “backup.sh” and ran it as root.&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Desktop/ backupuser@[internal ip address]:~/Desktop/
-sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Documents/ backupuser@[internal ip address]:~/Documents/
-sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Pictures/ backupuser@[internal ip address]:~/Pictures/
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;It successfully copied all of the files in my Desktop, Documents, and Pictures folders over to the SSH server’s folders. Our backup server has worked!&lt;/p&gt;
-
-&lt;p&gt;There was still a tiny bit more work to do. At the moment, the server would only work if my laptop was on the same network as my server. However, if I moved my laptop to a separate network (such as my college’s WiFi network), it would not work properly. To fix this, I logged onto my router settings and port-forwarded port 2222, which is where my SSH server is listening. I then changed my backup.sh script to use my public ip address instead of my internal ip address, and tried again. It worked!&lt;/p&gt;
-
-&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2018-11-24-rsync-backup-server/port-forwarding.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;There was another problem. My router currently has a dynamic IP address, meaning that its IP address could change at any moment. As a result, I would have to change the IP address in my script if it changed, which could become a little bit annoying. So I went ahead and created an account at &lt;a href=&quot;https://www.noip.com/&quot;&gt;No-IP&lt;/a&gt;, which is a service that grants you up to five free domain names for someone that has a dynamic IP address (you can buy more domain names if you want, but you get five of them for free).&lt;/p&gt;
-
-&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2018-11-24-rsync-backup-server/no-ip.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;It was pretty easy to navigate No-IP’s web interface (I promise this wasn’t sponsored). I just used the “quick add” option on the dashboard, setup my hostname and domain name (since I only had a free account, I had to use one of their premade domain names). Then I had to go to my router’s settings and tell my router where the Dynamic Domain Name Server was located so that every time my dynamic IP address changed, my router would alert No-IP to change which IP address the domain name is pointing to.&lt;/p&gt;
-
-&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2018-11-24-rsync-backup-server/dynamic dns.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;After setting up my domain in No-IP’s website, I was able to use it to connect to my backup server anywhere in the world by using the domain name.&lt;/p&gt;
-
-&lt;p&gt;There was just one more little thing I had to do. By default, only root is able to send a shutdown signal to the computer over SSH. In contrast, I wanted my backup user to also be able to use the poweroff command so that I could remotely power down my server after I was done with my backups. I went ahead and &lt;a href=&quot;https://askubuntu.com/questions/1190/how-can-i-make-shutdown-not-require-admin-password/1399#1399&quot;&gt;changed the policies in the /usr/share/polkit-1/actions/org.freedesktop.consolekit.policy file&lt;/a&gt;, which gave my backup user permission to use the poweroff command. I also added one extra line in my backup.sh script so that I would automatically shut down the server once I was done with it, making my backup.sh script look like this:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Desktop/ backupuser@[domain name I got from No-IP's website]:~/Desktop/
-sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Documents/ backupuser@[domain name I got from No-IP's website]:~/Documents/
-sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Pictures/ backupuser@[domain name I got from No-IP's website]:~/Pictures/
-ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-IP's website] &quot;systemctl poweroff -i&quot;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Finally, everything was completed. The backup server works quite well so far, and I am quite happy with its output.&lt;/p&gt;
-
-&lt;section class=&quot;related&quot;&gt;
-  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
-  &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
@@ -1495,11 +1430,5 @@ ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-
         &lt;/a&gt;
       &lt;/li&gt;
     
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
-          Creating a Code Grapher Tool
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
   &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">Have you ever been worried about losing your files? I definitely am. A little while back, I was working on a coding project for one of my computer science classes at college, when I realized that if something happened to my laptop, such as getting hit with a virus infection or being dropped, I could easily lose all of my hard work. Imagine how horrible it would be if you lost/damaged your school computer and didn’t have any backups!</summary></entry></feed>
+&lt;/section&gt;</content><author><name></name></author><summary type="html">So today, I’m going to show you how I built a simple PNG steganography tool using Pillow and Bitarray in Python 3. Here’s an example of how you could encode the message “This will be encoded” into a file called “picture.png”:</summary></entry></feed>
