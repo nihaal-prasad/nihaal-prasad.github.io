@@ -11,7 +11,7 @@
 
   <title>
     
-      Solving a Basic Crackme Using Ghidra &middot; Nihaal Prasad
+      Cracking Silva97's login-cipher &middot; Nihaal Prasad
     
   </title>
 
@@ -184,7 +184,7 @@
 
     <main class="container">
       <div class="content">
-  <h1 class="page-heading">Solving a Basic Crackme Using Ghidra</h1>
+  <h1 class="page-heading">Cracking Silva97's login-cipher</h1>
   <div class="post-meta">
   <span class="post-categories">
     
@@ -193,101 +193,45 @@
 
   <hr>
   <div class="post-body">
-    <p>Recently, the NSA released a free reverse-engineering tool called <a href="https://www.nsa.gov/resources/everyone/ghidra/">Ghidra</a>. Today, I decided to take a look at it and try to solve a basic crackme using this tool. <a href="https://crackmes.one/crackme/5c1a939633c5d41e58e005d1">This</a> is the link to the crackme that I will be trying to solve today.</p>
+    <p>Today, I am going to show you how I reverse engineered <a href="https://crackmes.one/crackme/5db0ef9f33c5d46f00e2c729">this binary</a> and cracked the password.  First, when we run the program, we can see that the program is asking us to input a password. If we input the incorrect password, the program says, “Wrong!”</p>
 
-<p>Once I downloaded the crackme file, I ran it and looked at what the program did. Here is its basic output:</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>enter the magic string
-a
-wrong string
-No flag for you.
-</code></pre></div></div>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>enter the magic string
-Some Random Input
-too long...sorry no flag for you!!!
-</code></pre></div></div>
-<p>It looks like it takes some sort of input value, and if that input value is what it expects, then it will print out the flag. If the input value is incorrect or too long, then it will print out a different message. Our goal here is to find out the correct input value.</p>
+<p><img src="../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/output.png" style="margin-left: auto; margin-right: auto;" /></p>
 
-<p>I started up Ghidra, created a new project, and added the binary file to my project. You can do this by first clicking File-&gt;New Project, and then dragging and dropping the binary file into the project.</p>
+<p>This is what the main function looks like in Ghidra. Note that I renamed some variables/functions so that the code can be easier to read.</p>
 
-<p><img src="../../../assets/img/2019-solving-a-basic-crackme-using-ghidra/ghidra_project.png" /></p>
+<p><img src="../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/main.png" style="margin-left: auto; margin-right: auto;" /></p>
 
-<p><img style="float: right" src="../../../assets/img/2019-solving-a-basic-crackme-using-ghidra/symbol_tree.png" /></p>
+<p>There’s some interesting stuff happening here. First of all, the print() function will take an encrypted string, decrypt it, and print it out. The encryption appears to be some sort of modified caesar cipher, but I’m not going to go too in depth into this function because it does not matter. The important thing to note is that the line that says</p>
 
-<p>When I opened the file in Ghidra, a pop-up came up in Ghidra asking me if I wanted to analyze the binary now. I hit yes and waited a second before it was done analyzing the file. Then I went to the symbol tree on the left, typed in “main” to find the main function, and clicked on it. This brought me to the main method, and on the other two windows I could see the main method’s assembly and decompiled code.</p>
+<p><code class="highlighter-rouge">uVar1 = check_input(input,"fhz4yhx|~g=5");"</code></p>
 
-<p>Here is the decompiled code. I changed a few of the variable names to make it a little bit more readable. You can do this by right-clicking on the variable and clicking “Rename variable.”</p>
+<p>will check whether the given input is correct or not. If the input is correct, the check_input() function will return 0, else, it will return 1 (this can be figured out by stepping over the function in a debugger using an input value that we know is incorrect). Clearly, our goal here is to figure out what input value makes the check_input() function return 0.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>undefined8 main(void)
+<p><img src="../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/check_input.png" style="margin-left: auto; margin-right: auto;" /></p>
 
-{
-  size_t len;
-  size_t len2;
-  long lVar1;
-  char input [112];
-  int counter;
-  int strValues;
-  
-  strValues = 0;
-  puts("enter the magic string");
-  fgets(input,100,stdin);
-  len = strlen(input);
-  if (len &lt; 0xc) {
-    counter = 0;
-    while( true ) {
-      len2 = strlen(input);
-      if (len2 &lt;= (ulong)(long)counter) break;
-      strValues = strValues + (int)input[(long)counter];
-      counter = counter + 1;
-    }
-    if (strValues == 1000) {
-      lVar1 = strcat_str();
-      printf("flag is flag{");
-      counter = 0;
-      while (counter &lt; 10) {
-        putchar((int)*(char *)(lVar1 + (long)counter));
-        counter = counter + 1;
-      }
-      puts("}");
-    }
-    else {
-      puts("wrong string\nNo flag for you.");
-    }
-  }
-  else {
-    puts("too long...sorry no flag for you!!!");
-  }
-  return 0;
-}
+<p>The second parameter to the check_input() function contains the correct input, but in an encrypted form. The gen_character() function will decrypt the input and return a single character, and successive calls to gen_character() using 0 as the input will return the next decrypted character. The while loop in the middle of the code will check whether each input character is equal to the decrypted character that gen_character() returned. Since we now know where the correct input is being decrypted in the code, all we have to do is set a breakpoint right after the gen_character() function is executed and look at it’s return value.</p>
+
+<p><img src="../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/first_value.png" style="margin-left: auto; margin-right: auto;" /></p>
+
+<p>I used radare2 to step over the first call to the gen_character() function. The decrypted character is 0x63, which is returned in rax. Next, I set rip equal to the second call to the gen_character() function using “dr rip = 0x55f90fc16409”, and I stepped over that line of code to figure out what the next decrypted character is. This also ended being 0x63.</p>
+
+<p><img src="../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/next_value.png" style="margin-left: auto; margin-right: auto;" /></p>
+
+<p>I once again set rip to the gen_character() function and stepped over that line of code to figure out the next decrypted character, and I repeated these steps until I figured out what all of the decrypted characters were, which are shown below:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0x63, 0x63, 0x73, 0x2d, 0x70, 0x61, 0x73, 0x73, 0x77, 0x64, 0x34, 0x34, 0x00
 </code></pre></div></div>
 
-<p>The first thing that the code does is print out “enter the magic string” and reads in the value that you typed in into a variable that I named “input”. It also calculates the length of this input variable and makes sure that it is less than 12 (which makes it a maximum of ten characters plus a newline character). After that, there is a loop that adds up all of the ascii values of each character of the input into an integer that I named “strValues”. Then, finally, it prints out the flag if the total values of all the added ascii values equals 1000.</p>
+<p>I assumed 0x00 indicated that this was the end of the string and stopped after seeing it. I sent over these values to the program using python, and I was able to crack the puzzle.</p>
 
-<p>Since I knew that I could type in a maximum of ten characters, the first thing I tried to do was to divide 1000 by 10 to figure out the ascii value of the characters that I needed to type in ten times. Since 1000/10 = 100, and ‘d’ is 100 in ascii, I decided to type in ‘d’ ten times and see what happened.</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ python -c "print('d' * 10)" | ./rev30
-enter the magic string
-wrong string
-No flag for you.
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python -c "print('\x63\x63\x73\x2d\x70\x61\x73\x73\x77\x64\x34\x34')" | ./login
 </code></pre></div></div>
 
-<p>Unforunately, this did not work. At first I didn’t understand why this didn’t work, but then I realized that I forgot to take into account the fact that the while loop was also adding up the value of the newline character, which had an ascii value of 10. This meant that instead of doing 1000/10 to figure out the ascii value of the character I had to type in 10 times, I had to do (1000-10)/10 to take this into account. This gave me a value of 99, or ‘c’ in ascii. I tried to use ‘c’ ten times, and lo and behold:</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ python -c "print('c' * 10)" | ./rev03 
-enter the magic string
-flag is flag{!#&amp;*/5&lt;DMW}
-</code></pre></div></div>
-
-<p>Thanks for reading this writeup. I hope you enjoyed it.</p>
+<p><img src="../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/cracked.png" style="margin-left: auto; margin-right: auto;" /></p>
 
 <section class="related">
   <h3 style="color: black">Related Posts</h3>
   <ul class="post-list">
-    
-      <li style="color: black; font-size: 9;">
-        <a href="/2020/02/27/cracking-Silva97-login-cipher.html">
-          Cracking Silva97's login-cipher
-        </a>
-      </li>
     
       <li style="color: black; font-size: 9;">
         <a href="/2020/02/22/reversing-buildString-program.html">
@@ -298,6 +242,12 @@ flag is flag{!#&amp;*/5&lt;DMW}
       <li style="color: black; font-size: 9;">
         <a href="/2020/02/21/cracking-d4rkfl0w-crackme-4.html">
           Cracking D4RKFL0W's Crackme-4
+        </a>
+      </li>
+    
+      <li style="color: black; font-size: 9;">
+        <a href="/2020/02/06/useful-oscp-notes.html">
+          Useful OSCP Notes
         </a>
       </li>
     

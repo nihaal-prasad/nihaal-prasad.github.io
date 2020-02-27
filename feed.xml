@@ -1,4 +1,63 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-02-22T20:02:25-05:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Reversing the buildString CTF challenge</title><link href="http://localhost:4000/2020/02/22/reversing-buildString-program.html" rel="alternate" type="text/html" title="Reversing the buildString CTF challenge" /><published>2020-02-22T00:00:00-05:00</published><updated>2020-02-22T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/22/reversing-buildString-program</id><content type="html" xml:base="http://localhost:4000/2020/02/22/reversing-buildString-program.html">&lt;p&gt;Earlier today, I had gone to VMI’s 2020 Cyberfusion CTF with my college’s CTF team (we won first place!), and I’m going to show how I solved one of their reverse engineering challenges. I was given a binary file called &lt;a href=&quot;../../../assets/other/2020-2-22-reversing-buildString-program/buildString&quot;&gt;buildString&lt;/a&gt;, and upon executing the file, I was greeted with the following output.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-02-27T11:12:22-05:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Cracking Silva97’s login-cipher</title><link href="http://localhost:4000/2020/02/27/cracking-Silva97-login-cipher.html" rel="alternate" type="text/html" title="Cracking Silva97's login-cipher" /><published>2020-02-27T00:00:00-05:00</published><updated>2020-02-27T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/27/cracking-Silva97-login-cipher</id><content type="html" xml:base="http://localhost:4000/2020/02/27/cracking-Silva97-login-cipher.html">&lt;p&gt;Today, I am going to show you how I reverse engineered &lt;a href=&quot;https://crackmes.one/crackme/5db0ef9f33c5d46f00e2c729&quot;&gt;this binary&lt;/a&gt; and cracked the password.  First, when we run the program, we can see that the program is asking us to input a password. If we input the incorrect password, the program says, “Wrong!”&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/output.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;This is what the main function looks like in Ghidra. Note that I renamed some variables/functions so that the code can be easier to read.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/main.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;There’s some interesting stuff happening here. First of all, the print() function will take an encrypted string, decrypt it, and print it out. The encryption appears to be some sort of modified caesar cipher, but I’m not going to go too in depth into this function because it does not matter. The important thing to note is that the line that says&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;uVar1 = check_input(input,&quot;fhz4yhx|~g=5&quot;);&quot;&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;will check whether the given input is correct or not. If the input is correct, the check_input() function will return 0, else, it will return 1 (this can be figured out by stepping over the function in a debugger using an input value that we know is incorrect). Clearly, our goal here is to figure out what input value makes the check_input() function return 0.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/check_input.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The second parameter to the check_input() function contains the correct input, but in an encrypted form. The gen_character() function will decrypt the input and return a single character, and successive calls to gen_character() using 0 as the input will return the next decrypted character. The while loop in the middle of the code will check whether each input character is equal to the decrypted character that gen_character() returned. Since we now know where the correct input is being decrypted in the code, all we have to do is set a breakpoint right after the gen_character() function is executed and look at it’s return value.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/first_value.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I used radare2 to step over the first call to the gen_character() function. The decrypted character is 0x63, which is returned in rax. Next, I set rip equal to the second call to the gen_character() function using “dr rip = 0x55f90fc16409”, and I stepped over that line of code to figure out what the next decrypted character is. This also ended being 0x63.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/next_value.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I once again set rip to the gen_character() function and stepped over that line of code to figure out the next decrypted character, and I repeated these steps until I figured out what all of the decrypted characters were, which are shown below:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;0x63, 0x63, 0x73, 0x2d, 0x70, 0x61, 0x73, 0x73, 0x77, 0x64, 0x34, 0x34, 0x00
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;I assumed 0x00 indicated that this was the end of the string and stopped after seeing it. I sent over these values to the program using python, and I was able to crack the puzzle.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;python -c &quot;print('\x63\x63\x73\x2d\x70\x61\x73\x73\x77\x64\x34\x34')&quot; | ./login
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/cracked.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;section class=&quot;related&quot;&gt;
+  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
+  &lt;ul class=&quot;post-list&quot;&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
+          Reversing the buildString CTF challenge
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
+          Cracking D4RKFL0W's Crackme-4
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
+          Useful OSCP Notes
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+  &lt;/ul&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I am going to show you how I reverse engineered this binary and cracked the password. First, when we run the program, we can see that the program is asking us to input a password. If we input the incorrect password, the program says, “Wrong!”</summary></entry><entry><title type="html">Reversing the buildString CTF challenge</title><link href="http://localhost:4000/2020/02/22/reversing-buildString-program.html" rel="alternate" type="text/html" title="Reversing the buildString CTF challenge" /><published>2020-02-22T00:00:00-05:00</published><updated>2020-02-22T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/22/reversing-buildString-program</id><content type="html" xml:base="http://localhost:4000/2020/02/22/reversing-buildString-program.html">&lt;p&gt;Earlier today, I had gone to VMI’s 2020 Cyberfusion CTF with my college’s CTF team (we won first place!), and I’m going to show how I solved one of their reverse engineering challenges. I was given a binary file called &lt;a href=&quot;../../../assets/other/2020-2-22-reversing-buildString-program/buildString&quot;&gt;buildString&lt;/a&gt;, and upon executing the file, I was greeted with the following output.&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-22-reversing-buildString-program/output.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
 
@@ -23,6 +82,12 @@
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
+          Cracking Silva97's login-cipher
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
           Cracking D4RKFL0W's Crackme-4
         &lt;/a&gt;
@@ -31,12 +96,6 @@
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
           Useful OSCP Notes
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
-          Creating a Code Grapher Tool
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -90,6 +149,12 @@ c7(): rax = 0x22
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
+          Cracking Silva97's login-cipher
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
           Reversing the buildString CTF challenge
         &lt;/a&gt;
@@ -98,12 +163,6 @@ c7(): rax = 0x22
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
           Useful OSCP Notes
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
-          Creating a Code Grapher Tool
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -623,6 +682,12 @@ exploit
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
+          Cracking Silva97's login-cipher
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
           Reversing the buildString CTF challenge
         &lt;/a&gt;
@@ -631,12 +696,6 @@ exploit
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
           Cracking D4RKFL0W's Crackme-4
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2019/11/27/creating-code-grapher-tool.html&quot;&gt;
-          Creating a Code Grapher Tool
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -802,6 +861,12 @@ optional arguments:
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
+          Cracking Silva97's login-cipher
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
           Reversing the buildString CTF challenge
         &lt;/a&gt;
@@ -810,12 +875,6 @@ optional arguments:
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
           Cracking D4RKFL0W's Crackme-4
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
-          Useful OSCP Notes
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -911,6 +970,12 @@ flag is flag{!#&amp;amp;*/5&amp;lt;DMW}
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
+          Cracking Silva97's login-cipher
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
           Reversing the buildString CTF challenge
         &lt;/a&gt;
@@ -919,12 +984,6 @@ flag is flag{!#&amp;amp;*/5&amp;lt;DMW}
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
           Cracking D4RKFL0W's Crackme-4
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
-          Useful OSCP Notes
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1031,6 +1090,12 @@ call foo
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
+          Cracking Silva97's login-cipher
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
           Reversing the buildString CTF challenge
         &lt;/a&gt;
@@ -1039,12 +1104,6 @@ call foo
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
           Cracking D4RKFL0W's Crackme-4
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
-          Useful OSCP Notes
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1075,6 +1134,12 @@ call foo
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
+          Cracking Silva97's login-cipher
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
           Reversing the buildString CTF challenge
         &lt;/a&gt;
@@ -1083,12 +1148,6 @@ call foo
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
           Cracking D4RKFL0W's Crackme-4
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
-          Useful OSCP Notes
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1214,203 +1273,10 @@ sudo make install
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
-          Reversing the buildString CTF challenge
+        &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
+          Cracking Silva97's login-cipher
         &lt;/a&gt;
       &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
-          Cracking D4RKFL0W's Crackme-4
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
-          Useful OSCP Notes
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-  &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">Hello everyone! Today I’m going to show you how I built an access point that is able to send memes to anyone who connects to it. The way it works is simple: First the user connects to the access point from the Wifi settings on their device, and once they try connecting to any website, they’ll be shown a meme instead. You can see in the images below how this appears on my phone after it has connected to my wifi.</summary></entry><entry><title type="html">Basic PNG Image Steganography Tool Built Using Python</title><link href="http://localhost:4000/2018/12/08/png-steganography-in-python.html" rel="alternate" type="text/html" title="Basic PNG Image Steganography Tool Built Using Python" /><published>2018-12-08T00:00:00-05:00</published><updated>2018-12-08T00:00:00-05:00</updated><id>http://localhost:4000/2018/12/08/png-steganography-in-python</id><content type="html" xml:base="http://localhost:4000/2018/12/08/png-steganography-in-python.html">&lt;p&gt;So today, I’m going to show you how I built a simple PNG steganography tool using &lt;a href=&quot;https://python-pillow.org/&quot;&gt;Pillow&lt;/a&gt; and &lt;a href=&quot;https://pypi.org/project/bitarray/&quot;&gt;Bitarray&lt;/a&gt; in Python 3. Here’s an example of how you could encode the message “This will be encoded” into a file called “picture.png”:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Python 3.6.6 (default, Sep 12 2018, 18:26:19) 
-[GCC 8.0.1 20180414 (experimental) [trunk revision 259383]] on linux
-Type &quot;help&quot;, &quot;copyright&quot;, &quot;credits&quot; or &quot;license&quot; for more information.
-&amp;gt;&amp;gt;&amp;gt; import py_hider # The name of my steganography tool
-&amp;gt;&amp;gt;&amp;gt; encoded_img = py_hider.encodePNG('This will be encoded.', 'picture.png') # To encode something in PNG file
-&amp;gt;&amp;gt;&amp;gt; encoded_img.save('encoded.png') # Save the file with the encoded message
-&amp;gt;&amp;gt;&amp;gt; py_hider.decodePNG('encoded.png') # Decode a PNG file with a message embedded into it
-'This will be encoded.'
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Both the regular image and the image with the encoded information look almost exactly the same. You can find all of the code &lt;a href=&quot;https://github.com/nihaal-prasad/PyHider&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
-
-&lt;p&gt;First of all, before I talk about how I coded this program, I need to explain how LSB image steganography works. Most digital images store everything in pixels, and each pixel is made up of red, green, and blue values (aka RGB values). Image steganography, as you probably already know, allows someone to hide a message inside an image so that anyone who sees the image has no clue that there is a hidden message there. I had used the least significant bits to encode my message when I created this program, which exploits the fact that humans cannot see the difference if you change the RGB values of a pixel by a 1 (ex. if you change a pixel RGB values from [123, 11, 57] to [124, 12, 58], humans will not notice a difference).&lt;/p&gt;
-
-&lt;p&gt;Using this technique, a programmer can therefore state that an even number in an RGB value could represent a 0 and an odd number in an RGB could represent a 1. By changing the RGB values accordingly (usually by adding one) so that their divisibility by two correspond to ones and zeros, someone could implement an ascii or utf-8 message into an image without anybody else realizing that there is a message encoded into the image. For more information on how exactly this works, click &lt;a href=&quot;https://en.wikipedia.org/wiki/Bit_numbering#Least_significant_bit_in_digital_steganography&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
-
-&lt;p&gt;Now onto how I programmed this. The first thing I did is download &lt;a href=&quot;https://python-pillow.org/&quot;&gt;Pillow&lt;/a&gt; and &lt;a href=&quot;https://pypi.org/project/bitarray/&quot;&gt;Bitarray&lt;/a&gt; using the “pip3 install &amp;lt;package&amp;gt;” command. Next, I opened up Python and imported everything that I was going to be using. I also initialized a function called encodePNG(), which would obviously be used in order to encode the message.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;import sys
-import bitarray
-from PIL import Image
-
-def encodePNG(plaintext: str, imgFile: str, encoding='utf-8') -&amp;gt; Image:
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;The first thing that I needed to do inside the function was to open the image using Pillow so that I could access it.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    # Open the image
-    img = Image.open(imgFile).convert('RGB')
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Next, I took the plaintext, which is a parameter that is currently in string format, and converted it into a bitarray so that I could access it in 1’s and 0’s.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    # Convert the plaintext into a bitarray
-    message = bitarray.bitarray()
-    message.frombytes(plaintext.encode(encoding)) 
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Then I obtained the width and height of the image in pixels, which will be required to create our two for loops.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    # Get the width and height of the image in pixels
-    width, height = img.size
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;I created a list to keep track of the RGB data for the new image (Pillow has a function that can put the data in the RGB list into the image). A counter variable will also be used in order to keep track of how much of the message we have written.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    # Counter for the message
-    counter = 0
-
-    # RGB data for the new image
-    new_img_data = []
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;I start two for loops in order to loop through every single pixel in the image. I also use the current x and y values to get our current RGB values, and store that information in the r, g, and b variables.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    # Loop through each pixel
-    for y in range(0, height):
-        for x in range(0, width):
-            # Get the red, green, and blue values for the pixel
-            r, g, b = img.getpixel((x, y))
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;I then use the least significant bit in the red value to write my message. Recall that an even number represents a zero and an odd number represents a one. I can easily change whether a number is even or odd by adding one to it. This is done in code by first doing r mod 2, which returns the least significant digit, and then adding one to r if it is not the value that I wanted it to be. I also add an else if statement to make sure that if we finish writing the message, then we can put down zeros in the least significant digit to indicate the end of message.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;            # Continue writing our message in the red value if we have not yet finished
-            if(counter &amp;lt; len(message)):
-                if(not message[counter]):
-                    if(r % 2 != 0): r = r + 1
-                elif(message[counter]):
-                    if(r % 2 != 1): r = r + 1
-                counter = counter + 1
-            elif(counter &amp;gt;= len(message)): # If we have finished our message, put down zeros to indicate the end of message
-                if(r % 2 != 0): r = r + 1
-                counter = counter + 1
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;I use the exact same code for the blue and green values.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;            # Continue writing our message in the green value if we have not yet finished
-            if(counter &amp;lt; len(message)):
-                if(not message[counter]):
-                    if(g % 2 != 0): g = g + 1
-                elif(message[counter]):
-                    if(g % 2 != 1): g = g + 1
-                counter = counter + 1
-            elif(counter &amp;gt;= len(message)): # If we have finished our message, put down zeros to indicate the end of message
-                if(g % 2 != 0): g = g + 1
-                counter = counter + 1
-
-            # Continue writing our message in the blue value if we have not yet finished
-            if(counter &amp;lt; len(message)):
-                if(not message[counter]):
-                    if(b % 2 != 0): b = b + 1
-                elif(message[counter]):
-                    if(b % 2 != 1): b = b + 1
-                counter = counter + 1
-            elif(counter &amp;gt;= len(message)): # If we have finished our message, put down zeros to indicate the end of message
-                if(b % 2 != 0): b = b + 1
-                counter = counter + 1
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;At the end of the nested for loop, I appended the new RGB values to the list that I initialized earlier.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;            # Write down the RGB values in the new image
-            new_img_data.append((r, g, b))
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;At the end of the function, I returned the new image.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    # Return the new image
-    new_img = Image.new(img.mode, img.size)
-    new_img.putdata(new_img_data)
-    return new_img
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;I’ve finished the encodePNG() function. Now lets start working on the decodePNG() function. Like our previous function, I start by opening the image. Then I create a counter to identify a NULL character (seven 0’s), which will be used to represent the end of the string. I also create a list of bits to represent the encoded message (the bitarray module has a function that can turn a list of bits into a string). I also need the width and height of the image to create the nested for loop.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;def decodePNG(imgFile: str) -&amp;gt; str:
-    # Open the image
-    img = Image.open(imgFile).convert('RGB')
-
-    # This counter is used to identify a NULL character (seven 0's), which will be used to represent the end of the string
-    counter = 0
-
-    # These are the bits that make up the message
-    bits = []
-
-    # Get the width and height in pixels
-    width, height = img.size
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;The first part of the nested for loop is simple. Just find each RGB value, find the remainder after dividing by 2 to figure out whether it’s even or odd, and then append that value to the list of bits.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    # Read each pixel
-    for y in range(0, height):
-        for x in range(0, width):
-            # Get the red, green, and blue values for the pixel
-            r, g, b = img.getpixel((x, y))
-
-            # Add r to the bits list
-            bits.append(r % 2)
-            bits.append(g % 2)
-            bits.append(b % 2) 
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;The next part involves checking whether there have been seven consecutive zeros and breaking the for loops if there has been seven consecutive zeros.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;            # Change the counter for the r value
-            if(r % 2 == 0): counter = counter + 1
-            else: counter = 0
-
-            # Change the counter for the g value
-            if(g % 2 == 0): counter = counter + 1
-            else: counter = 0
-
-            # Change the counter for the b value
-            if(b % 2 == 0): counter = counter + 1
-            else: counter = 0
-
-            # Check if seven zeros have been found (our terminating value) and break the inner loop if it has
-            if(counter &amp;gt;= 7): break
-        # Check if seven zeros have been found (our terminating value) and break the outer loop if it has
-        if(counter &amp;gt;= 7): break
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Finally, we are done with this function. All we have to do now is to convert the list of bits to a string and output this string.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    # Convert the message to string format and return it
-    output = bitarray.bitarray(bits).tostring()
-    return output[:len(output) - 1] # Slices the last character because the last character is always a null character (\x00)
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;And there you go. That’s how I made a simple PNG steganography tool that works great. If you want to see all of the code, click &lt;a href=&quot;https://github.com/nihaal-prasad/PyHider/blob/master/py_hider.py&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
-
-&lt;section class=&quot;related&quot;&gt;
-  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
-  &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
@@ -1424,11 +1290,5 @@ def encodePNG(plaintext: str, imgFile: str, encoding='utf-8') -&amp;gt; Image:
         &lt;/a&gt;
       &lt;/li&gt;
     
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
-          Useful OSCP Notes
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
   &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">So today, I’m going to show you how I built a simple PNG steganography tool using Pillow and Bitarray in Python 3. Here’s an example of how you could encode the message “This will be encoded” into a file called “picture.png”:</summary></entry></feed>
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Hello everyone! Today I’m going to show you how I built an access point that is able to send memes to anyone who connects to it. The way it works is simple: First the user connects to the access point from the Wifi settings on their device, and once they try connecting to any website, they’ll be shown a meme instead. You can see in the images below how this appears on my phone after it has connected to my wifi.</summary></entry></feed>
