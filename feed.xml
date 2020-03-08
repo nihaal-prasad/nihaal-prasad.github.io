@@ -1,63 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-03-08T13:26:18-04:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Cracking Silva97’s login-cipher</title><link href="http://localhost:4000/2020/02/27/cracking-Silva97-login-cipher.html" rel="alternate" type="text/html" title="Cracking Silva97's login-cipher" /><published>2020-02-27T00:00:00-05:00</published><updated>2020-02-27T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/27/cracking-Silva97-login-cipher</id><content type="html" xml:base="http://localhost:4000/2020/02/27/cracking-Silva97-login-cipher.html">&lt;p&gt;Today, I am going to show you how I reverse engineered &lt;a href=&quot;https://crackmes.one/crackme/5db0ef9f33c5d46f00e2c729&quot;&gt;this binary&lt;/a&gt; and cracked the password.  First, when we run the program, we can see that the program is asking us to input a password. If we input the incorrect password, the program says, “Wrong!”&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/output.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;This is what the main function looks like in Ghidra. Note that I renamed some variables/functions so that the code can be easier to read.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/main.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;There’s some interesting stuff happening here. First of all, the print() function will take an encrypted string, decrypt it, and print it out. The encryption appears to be some sort of modified caesar cipher, but I’m not going to go too in depth into this function because it does not matter. The important thing to note is that the line that says&lt;/p&gt;
-
-&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;uVar1 = check_input(input,&quot;fhz4yhx|~g=5&quot;);&quot;&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;will check whether the given input is correct or not. If the input is correct, the check_input() function will return 0, else, it will return 1 (this can be figured out by stepping over the function in a debugger using an input value that we know is incorrect). Clearly, our goal here is to figure out what input value makes the check_input() function return 0.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/check_input.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;The second parameter to the check_input() function contains the correct input, but in an encrypted form. The gen_character() function will decrypt the input and return a single character, and successive calls to gen_character() using 0 as the input will return the next decrypted character. The while loop in the middle of the code will check whether each input character is equal to the decrypted character that gen_character() returned. Since we now know where the correct input is being decrypted in the code, all we have to do is set a breakpoint right after the gen_character() function is executed and look at it’s return value.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/first_value.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;I used radare2 to step over the first call to the gen_character() function. The decrypted character is 0x63, which is returned in rax. Next, I set rip equal to the second call to the gen_character() function using “dr rip = 0x55f90fc16409”, and I stepped over that line of code to figure out what the next decrypted character is. This also ended being 0x63.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/next_value.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;I once again set rip to the gen_character() function and stepped over that line of code to figure out the next decrypted character, and I repeated these steps until I figured out what all of the decrypted characters were, which are shown below:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;0x63, 0x63, 0x73, 0x2d, 0x70, 0x61, 0x73, 0x73, 0x77, 0x64, 0x34, 0x34, 0x00
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;I assumed 0x00 indicated that this was the end of the string and stopped after seeing it. I sent over these values to the program using python, and I was able to crack the puzzle.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;python -c &quot;print('\x63\x63\x73\x2d\x70\x61\x73\x73\x77\x64\x34\x34')&quot; | ./login
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/cracked.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
-
-&lt;section class=&quot;related&quot;&gt;
-  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
-  &lt;ul class=&quot;post-list&quot;&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/27/creating-a-barebones-debugger.html&quot;&gt;
-          Creating a Barebones Debugger
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
-          Reversing the buildString CTF challenge
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
-          Cracking D4RKFL0W's Crackme-4
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-  &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I am going to show you how I reverse engineered this binary and cracked the password. First, when we run the program, we can see that the program is asking us to input a password. If we input the incorrect password, the program says, “Wrong!”</summary></entry><entry><title type="html">Creating a Barebones Debugger</title><link href="http://localhost:4000/2020/02/27/creating-a-barebones-debugger.html" rel="alternate" type="text/html" title="Creating a Barebones Debugger" /><published>2020-02-27T00:00:00-05:00</published><updated>2020-02-27T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/27/creating-a-barebones-debugger</id><content type="html" xml:base="http://localhost:4000/2020/02/27/creating-a-barebones-debugger.html">&lt;p&gt;Today, I will be showing how I created a basic debugger in C. This won’t be a very complicated debugger as it will only allow you to do three things: see the values of the registers, step through one instruction, and read hex values from memory. Obviously, this is nothing compared to something like IDA Pro, but making a basic debugger did help me understand what the debugger is actually doing when we are using it.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-03-08T13:28:39-04:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Creating a Barebones Debugger</title><link href="http://localhost:4000/2020/03/07/creating-a-barebones-debugger.html" rel="alternate" type="text/html" title="Creating a Barebones Debugger" /><published>2020-03-07T00:00:00-05:00</published><updated>2020-03-07T00:00:00-05:00</updated><id>http://localhost:4000/2020/03/07/creating-a-barebones-debugger</id><content type="html" xml:base="http://localhost:4000/2020/03/07/creating-a-barebones-debugger.html">&lt;p&gt;Today, I will be showing how I created a basic debugger in C. This won’t be a very complicated debugger as it will only allow you to do three things: see the values of the registers, step through one instruction, and read hex values from memory. Obviously, this is nothing compared to something like IDA Pro, but making a basic debugger did help me understand what the debugger is actually doing when we are using it.&lt;/p&gt;
 
 &lt;p&gt;The first thing that we need to do is to run the program we want to debug in a separate process using fork(). The program’s name will be given as a command line argument to our debugger, and any additional arguments that we want to past to the program we are currently debugging can also be passed as arguments. Once we call fork() to make a copy of this process, we will make the child process call &lt;code class=&quot;highlighter-rouge&quot;&gt;ptrace(PTRACE_TRACEME, 0, 0, 0);&lt;/code&gt;, which will let the child process know that it is going to be debugged by the parent process. The &lt;code class=&quot;highlighter-rouge&quot;&gt;ptrace()&lt;/code&gt; function will be used throughout our code as it allows the parent process to control and observe the child process. From there, we will use execv() to actually execute the program that we want to execute. As soon as this happens, the tracee (the program being debugged) stop pause execution on a SIGTRAP, which will be used to prevent the tracee from executing any more code unless the tracer/debugger allows it.&lt;/p&gt;
 
@@ -265,7 +206,66 @@ r15 0x0
       &lt;/li&gt;
     
   &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I will be showing how I created a basic debugger in C. This won’t be a very complicated debugger as it will only allow you to do three things: see the values of the registers, step through one instruction, and read hex values from memory. Obviously, this is nothing compared to something like IDA Pro, but making a basic debugger did help me understand what the debugger is actually doing when we are using it.</summary></entry><entry><title type="html">Reversing the buildString CTF challenge</title><link href="http://localhost:4000/2020/02/22/reversing-buildString-program.html" rel="alternate" type="text/html" title="Reversing the buildString CTF challenge" /><published>2020-02-22T00:00:00-05:00</published><updated>2020-02-22T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/22/reversing-buildString-program</id><content type="html" xml:base="http://localhost:4000/2020/02/22/reversing-buildString-program.html">&lt;p&gt;Earlier today, I had gone to VMI’s 2020 Cyberfusion CTF with my college’s CTF team (we won first place!), and I’m going to show how I solved one of their reverse engineering challenges. I was given a binary file called &lt;a href=&quot;../../../assets/other/2020-2-22-reversing-buildString-program/buildString&quot;&gt;buildString&lt;/a&gt;, and upon executing the file, I was greeted with the following output.&lt;/p&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I will be showing how I created a basic debugger in C. This won’t be a very complicated debugger as it will only allow you to do three things: see the values of the registers, step through one instruction, and read hex values from memory. Obviously, this is nothing compared to something like IDA Pro, but making a basic debugger did help me understand what the debugger is actually doing when we are using it.</summary></entry><entry><title type="html">Cracking Silva97’s login-cipher</title><link href="http://localhost:4000/2020/02/27/cracking-Silva97-login-cipher.html" rel="alternate" type="text/html" title="Cracking Silva97's login-cipher" /><published>2020-02-27T00:00:00-05:00</published><updated>2020-02-27T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/27/cracking-Silva97-login-cipher</id><content type="html" xml:base="http://localhost:4000/2020/02/27/cracking-Silva97-login-cipher.html">&lt;p&gt;Today, I am going to show you how I reverse engineered &lt;a href=&quot;https://crackmes.one/crackme/5db0ef9f33c5d46f00e2c729&quot;&gt;this binary&lt;/a&gt; and cracked the password.  First, when we run the program, we can see that the program is asking us to input a password. If we input the incorrect password, the program says, “Wrong!”&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/output.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;This is what the main function looks like in Ghidra. Note that I renamed some variables/functions so that the code can be easier to read.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/main.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;There’s some interesting stuff happening here. First of all, the print() function will take an encrypted string, decrypt it, and print it out. The encryption appears to be some sort of modified caesar cipher, but I’m not going to go too in depth into this function because it does not matter. The important thing to note is that the line that says&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;uVar1 = check_input(input,&quot;fhz4yhx|~g=5&quot;);&quot;&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;will check whether the given input is correct or not. If the input is correct, the check_input() function will return 0, else, it will return 1 (this can be figured out by stepping over the function in a debugger using an input value that we know is incorrect). Clearly, our goal here is to figure out what input value makes the check_input() function return 0.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/check_input.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The second parameter to the check_input() function contains the correct input, but in an encrypted form. The gen_character() function will decrypt the input and return a single character, and successive calls to gen_character() using 0 as the input will return the next decrypted character. The while loop in the middle of the code will check whether each input character is equal to the decrypted character that gen_character() returned. Since we now know where the correct input is being decrypted in the code, all we have to do is set a breakpoint right after the gen_character() function is executed and look at it’s return value.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/first_value.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I used radare2 to step over the first call to the gen_character() function. The decrypted character is 0x63, which is returned in rax. Next, I set rip equal to the second call to the gen_character() function using “dr rip = 0x55f90fc16409”, and I stepped over that line of code to figure out what the next decrypted character is. This also ended being 0x63.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/next_value.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I once again set rip to the gen_character() function and stepped over that line of code to figure out the next decrypted character, and I repeated these steps until I figured out what all of the decrypted characters were, which are shown below:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;0x63, 0x63, 0x73, 0x2d, 0x70, 0x61, 0x73, 0x73, 0x77, 0x64, 0x34, 0x34, 0x00
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;I assumed 0x00 indicated that this was the end of the string and stopped after seeing it. I sent over these values to the program using python, and I was able to crack the puzzle.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;python -c &quot;print('\x63\x63\x73\x2d\x70\x61\x73\x73\x77\x64\x34\x34')&quot; | ./login
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/cracked.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
+
+&lt;section class=&quot;related&quot;&gt;
+  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
+  &lt;ul class=&quot;post-list&quot;&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/03/07/creating-a-barebones-debugger.html&quot;&gt;
+          Creating a Barebones Debugger
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
+          Reversing the buildString CTF challenge
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
+          Cracking D4RKFL0W's Crackme-4
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+  &lt;/ul&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I am going to show you how I reverse engineered this binary and cracked the password. First, when we run the program, we can see that the program is asking us to input a password. If we input the incorrect password, the program says, “Wrong!”</summary></entry><entry><title type="html">Reversing the buildString CTF challenge</title><link href="http://localhost:4000/2020/02/22/reversing-buildString-program.html" rel="alternate" type="text/html" title="Reversing the buildString CTF challenge" /><published>2020-02-22T00:00:00-05:00</published><updated>2020-02-22T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/22/reversing-buildString-program</id><content type="html" xml:base="http://localhost:4000/2020/02/22/reversing-buildString-program.html">&lt;p&gt;Earlier today, I had gone to VMI’s 2020 Cyberfusion CTF with my college’s CTF team (we won first place!), and I’m going to show how I solved one of their reverse engineering challenges. I was given a binary file called &lt;a href=&quot;../../../assets/other/2020-2-22-reversing-buildString-program/buildString&quot;&gt;buildString&lt;/a&gt;, and upon executing the file, I was greeted with the following output.&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-22-reversing-buildString-program/output.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
 
@@ -290,7 +290,7 @@ r15 0x0
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/27/creating-a-barebones-debugger.html&quot;&gt;
+        &lt;a href=&quot;/2020/03/07/creating-a-barebones-debugger.html&quot;&gt;
           Creating a Barebones Debugger
         &lt;/a&gt;
       &lt;/li&gt;
@@ -357,7 +357,7 @@ c7(): rax = 0x22
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/27/creating-a-barebones-debugger.html&quot;&gt;
+        &lt;a href=&quot;/2020/03/07/creating-a-barebones-debugger.html&quot;&gt;
           Creating a Barebones Debugger
         &lt;/a&gt;
       &lt;/li&gt;
@@ -890,7 +890,7 @@ exploit
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/27/creating-a-barebones-debugger.html&quot;&gt;
+        &lt;a href=&quot;/2020/03/07/creating-a-barebones-debugger.html&quot;&gt;
           Creating a Barebones Debugger
         &lt;/a&gt;
       &lt;/li&gt;
@@ -1069,7 +1069,7 @@ optional arguments:
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/27/creating-a-barebones-debugger.html&quot;&gt;
+        &lt;a href=&quot;/2020/03/07/creating-a-barebones-debugger.html&quot;&gt;
           Creating a Barebones Debugger
         &lt;/a&gt;
       &lt;/li&gt;
@@ -1178,7 +1178,7 @@ flag is flag{!#&amp;amp;*/5&amp;lt;DMW}
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/27/creating-a-barebones-debugger.html&quot;&gt;
+        &lt;a href=&quot;/2020/03/07/creating-a-barebones-debugger.html&quot;&gt;
           Creating a Barebones Debugger
         &lt;/a&gt;
       &lt;/li&gt;
@@ -1298,7 +1298,7 @@ call foo
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/27/creating-a-barebones-debugger.html&quot;&gt;
+        &lt;a href=&quot;/2020/03/07/creating-a-barebones-debugger.html&quot;&gt;
           Creating a Barebones Debugger
         &lt;/a&gt;
       &lt;/li&gt;
@@ -1342,7 +1342,7 @@ call foo
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/27/creating-a-barebones-debugger.html&quot;&gt;
+        &lt;a href=&quot;/2020/03/07/creating-a-barebones-debugger.html&quot;&gt;
           Creating a Barebones Debugger
         &lt;/a&gt;
       &lt;/li&gt;
