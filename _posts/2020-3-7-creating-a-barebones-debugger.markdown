@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Creating a Barebones Debugger"
-date: 2020-2-27
+date: 2020-3-7
 ---
 
 Today, I will be showing how I created a basic debugger in C. This won't be a very complicated debugger as it will only allow you to do three things: see the values of the registers, step through one instruction, and read hex values from memory. Obviously, this is nothing compared to something like IDA Pro, but making a basic debugger did help me understand what the debugger is actually doing when we are using it.
