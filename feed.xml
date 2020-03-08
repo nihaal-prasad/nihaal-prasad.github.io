@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-02-27T11:12:22-05:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Cracking Silva97’s login-cipher</title><link href="http://localhost:4000/2020/02/27/cracking-Silva97-login-cipher.html" rel="alternate" type="text/html" title="Cracking Silva97's login-cipher" /><published>2020-02-27T00:00:00-05:00</published><updated>2020-02-27T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/27/cracking-Silva97-login-cipher</id><content type="html" xml:base="http://localhost:4000/2020/02/27/cracking-Silva97-login-cipher.html">&lt;p&gt;Today, I am going to show you how I reverse engineered &lt;a href=&quot;https://crackmes.one/crackme/5db0ef9f33c5d46f00e2c729&quot;&gt;this binary&lt;/a&gt; and cracked the password.  First, when we run the program, we can see that the program is asking us to input a password. If we input the incorrect password, the program says, “Wrong!”&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-03-08T13:20:29-04:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Cracking Silva97’s login-cipher</title><link href="http://localhost:4000/2020/02/27/cracking-Silva97-login-cipher.html" rel="alternate" type="text/html" title="Cracking Silva97's login-cipher" /><published>2020-02-27T00:00:00-05:00</published><updated>2020-02-27T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/27/cracking-Silva97-login-cipher</id><content type="html" xml:base="http://localhost:4000/2020/02/27/cracking-Silva97-login-cipher.html">&lt;p&gt;Today, I am going to show you how I reverse engineered &lt;a href=&quot;https://crackmes.one/crackme/5db0ef9f33c5d46f00e2c729&quot;&gt;this binary&lt;/a&gt; and cracked the password.  First, when we run the program, we can see that the program is asking us to input a password. If we input the incorrect password, the program says, “Wrong!”&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/output.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
 
@@ -39,6 +39,12 @@
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/27/creating-a-barebones-debugger.html&quot;&gt;
+          Creating a Barebones Debugger
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
           Reversing the buildString CTF challenge
         &lt;/a&gt;
@@ -50,14 +56,216 @@
         &lt;/a&gt;
       &lt;/li&gt;
     
+  &lt;/ul&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I am going to show you how I reverse engineered this binary and cracked the password. First, when we run the program, we can see that the program is asking us to input a password. If we input the incorrect password, the program says, “Wrong!”</summary></entry><entry><title type="html">Creating a Barebones Debugger</title><link href="http://localhost:4000/2020/02/27/creating-a-barebones-debugger.html" rel="alternate" type="text/html" title="Creating a Barebones Debugger" /><published>2020-02-27T00:00:00-05:00</published><updated>2020-02-27T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/27/creating-a-barebones-debugger</id><content type="html" xml:base="http://localhost:4000/2020/02/27/creating-a-barebones-debugger.html">&lt;p&gt;Today, I will be showing how I created a basic debugger in C. This won’t be a very complicated debugger as it will only allow you to do three things: see the values of the registers, step through one instruction, and read hex values from memory. Obviously, this is nothing compared to something like IDA Pro, but making a basic debugger did help me understand what the debugger is actually doing when we are using it.&lt;/p&gt;
+
+&lt;p&gt;The first thing that we need to do is to run the program we want to debug in a separate process using fork(). The program’s name will be given as a command line argument to our debugger, and any additional arguments that we want to past to the program we are currently debugging can also be passed as arguments. Once we call fork() to make a copy of this process, we will make the child process call &lt;code class=&quot;highlighter-rouge&quot;&gt;ptrace(PTRACE_TRACEME, 0, 0, 0);&lt;/code&gt;, which will let the child process know that it is going to be debugged by the parent process. The &lt;code class=&quot;highlighter-rouge&quot;&gt;ptrace()&lt;/code&gt; function will be used throughout our code as it allows the parent process to control and observe the child process. From there, we will use execv() to actually execute the program that we want to execute. As soon as this happens, the tracee (the program being debugged) stop pause execution on a SIGTRAP, which will be used to prevent the tracee from executing any more code unless the tracer/debugger allows it.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;// Represents the PID of the program being debugged
+static int pid = 0;
+
+// Forks this process, runs the given executable using the given arguments, and returns the PID to the parent
+int run(char **argv) {
+    pid = fork();
+
+    // If statement will only execute if we are the child process
+    if(pid == 0) {
+        ptrace(PTRACE_TRACEME, 0, 0, 0); // Allow the parent to trace us
+        execv(argv[1], &amp;amp;(argv[2])); // Execute the program we wanted to execute.
+        // The tracee should stop on SIGTRAP as soon as execv() is called.
+        // This will prevent the tracee from executing any code unless the tracer allows it to using ptrace()
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Now, the child process has the program that we want to debug loaded up into it, and it has paused execution so that we can start to take control of it as its parent process. Inside our main function, we need to obtain the program that we must run from the command line arguments and call run(). Then we will also use &lt;code class=&quot;highlighter-rouge&quot;&gt;ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_EXITKILL);&lt;/code&gt; on the parent process so that if the parent exits, then the child process must also exit.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;// Main function
+int main(int argc, char **argv) {
+    // Make sure we have the correct number of arguments
+    if(argc != 2) {
+        printf(&quot;Usage: ./debug &amp;lt;program&amp;gt; &amp;lt;additional arguments&amp;gt;\n&quot;);
+        exit(0);
+    }
+
+    run(argv); // Run the given executable and obtain its PID
+    ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_EXITKILL); // Make sure that if the tracer exits, then the tracee must also exit
+    debugger(pid); // Run the debugger
+}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The debugger() function is a function that I made to help me process commands inputted by the user. It will parse the command the user types in and calls the correct function to do the action that the user requested. I also made a print_help() function that will print out all of the possible commands that can be used.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;// Reads a line of input
+void readline(char *input) {
+    // Reads a line of input
+    char buf[500];
+    printf(&quot;&amp;gt; &quot;);
+    fgets(input, 500, stdin);
+
+    // Get rid of the '\n' character
+    int len = strlen(input);
+    if(len &amp;gt;= 2 &amp;amp;&amp;amp; input[len-1] == '\n') {
+        input[len-1] = '\0';
+    }
+}
+
+// Prints the help menu
+void print_help() {
+    printf(&quot;regs: Prints out the values of each register.\n&quot;);
+    printf(&quot;step: Executes a single instruction.\n&quot;);
+    printf(&quot;mem &amp;lt;addr&amp;gt;: Reads the value at the given memory address.\n&quot;);
+    printf(&quot;quit: Closes the debugger.\n&quot;);
+}
+
+// Actual debugger code
+void debugger() {
+    char *input = malloc(500); // Input that the user types in
+
+    // Loop until the user types in &quot;exit&quot;
+    do {
+        readline(input); // Read a command
+
+        // Parse the command
+        if(strncmp(&quot;regs&quot;, input, 5) == 0 || strncmp(&quot;r&quot;, input, 2) == 0) {
+            print_regs();
+        } else if(strncmp(&quot;step&quot;, input, 5) == 0 || strncmp(&quot;s&quot;, input, 2) == 0) {
+            step();
+        } else if(strncmp(&quot;mem &quot;, input, 4) == 0) {
+            strtok(input, &quot; &quot;); // Mem should have a single input parameter, which is the memory address to read in hex
+            read_mem(strtok(NULL, &quot; &quot;));
+        } else if(strncmp(&quot;help&quot;, input, 5) == 0 || strncmp(&quot;h&quot;, input, 2) == 0) {
+            print_help();
+        }
+    } while(strncmp(input, &quot;exit&quot;, 5) &amp;amp;&amp;amp; strncmp(input, &quot;quit&quot;, 5) &amp;amp;&amp;amp; strncmp(input, &quot;q&quot;, 2));
+}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The first thing that I will show you how to do is how to read the values of the registers in the debugged program. We will be using the &lt;code class=&quot;highlighter-rouge&quot;&gt;ptrace(PTRACE_GETREGS, pid, 0, &amp;amp;regs)&lt;/code&gt; function to read the values of the registers in the debugged program. The “regs” variable that we’ll use as an input parameter for this function has a type of &lt;code class=&quot;highlighter-rouge&quot;&gt;struct user_regs_struct&lt;/code&gt;, and the ptrace() function will store the values of the registers inside of that variable. The values of the registers can then be easily read by using the regs variable (i.e. use &lt;code class=&quot;highlighter-rouge&quot;&gt;regs.rax&lt;/code&gt; to read the value of rax).&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;// Prints out all of the register values inside of the process we're debugging
+void print_regs() {
+    // Create the struct that will contain all of the process' registers
+    struct user_regs_struct regs;
+
+    // Read the values of each register and store it inside of the struct
+    ptrace(PTRACE_GETREGS, pid, 0, &amp;amp;regs);
+
+    // Print out each value
+    printf(&quot;rip 0x%llx\n&quot;, regs.rip);
+    printf(&quot;rax 0x%llx\n&quot;, regs.rax);
+    printf(&quot;rbx 0x%llx\n&quot;, regs.rbx);
+    printf(&quot;rcx 0x%llx\n&quot;, regs.rcx);
+    printf(&quot;rdx 0x%llx\n&quot;, regs.rdx);
+    printf(&quot;rsi 0x%llx\n&quot;, regs.rsi);
+    printf(&quot;rdi 0x%llx\n&quot;, regs.rdi);
+    printf(&quot;rsp 0x%llx\n&quot;, regs.rsp);
+    printf(&quot;rbp 0x%llx\n&quot;, regs.rbp);
+    printf(&quot;r8 0x%llx\n&quot;, regs.r8);
+    printf(&quot;r9 0x%llx\n&quot;, regs.r9);
+    printf(&quot;r10 0x%llx\n&quot;, regs.r10);
+    printf(&quot;r11 0x%llx\n&quot;, regs.r11);
+    printf(&quot;r12 0x%llx\n&quot;, regs.r12);
+    printf(&quot;r13 0x%llx\n&quot;, regs.r13);
+    printf(&quot;r14 0x%llx\n&quot;, regs.r14);
+    printf(&quot;r15 0x%llx\n&quot;, regs.r15);
+}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;To read any word from memory, we can use &lt;code class=&quot;highlighter-rouge&quot;&gt;ptrace(PTRACE_PEEKDATA, pid, addr, 0)&lt;/code&gt;, where addr is a long representing the address that we want to read from. This function will return a long variable that we can then print out in hex.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;// Reads the value at the given memory address
+void read_mem(char *addr_input) {
+    // Make sure that the input isn't NULL
+    if(addr_input != NULL) {
+        long addr = strtol(addr_input, 0, 16); // Convert the address from a hex string to a long
+        long data = ptrace(PTRACE_PEEKDATA, pid, addr, 0); // Obtain the data
+        printf(&quot;%lx\n&quot;, data);
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Stepping through a single line of assembly code is even easier. We can just call &lt;code class=&quot;highlighter-rouge&quot;&gt;ptrace(PTRACE_SINGLESTEP, pid, 0, 0);&lt;/code&gt;, which will just execute one line of code.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;// Steps through a single line of assembly code
+void step() {
+    ptrace(PTRACE_SINGLESTEP, pid, 0, 0);
+}
+
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Now we should have a working debugger. You can try using this to debug a basic program, and it should work just fine.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ ./debug todebug
+&amp;gt; help
+regs: Prints out the values of each register.
+step: Executes a single instruction.
+mem &amp;lt;addr&amp;gt;: Reads the value at the given memory address.
+quit: Closes the debugger.
+&amp;gt; regs
+rip 0x7fcfb2eee090
+rax 0x0
+rbx 0x0
+rcx 0x0
+rdx 0x0
+rsi 0x0
+rdi 0x0
+rsp 0x7fff2e69c670
+rbp 0x0
+r8 0x0
+r9 0x0
+r10 0x0
+r11 0x0
+r12 0x0
+r13 0x0
+r14 0x0
+r15 0x0
+&amp;gt; mem 0x7fcfb2eee090
+f98e8e78948
+&amp;gt; step
+&amp;gt; r
+rip 0x7fcfb2eee093
+rax 0x0
+rbx 0x0
+rcx 0x0
+rdx 0x0
+rsi 0x0
+rdi 0x7fff2e69c670
+rsp 0x7fff2e69c670
+rbp 0x0
+r8 0x0
+r9 0x0
+r10 0x0
+r11 0x0
+r12 0x0
+r13 0x0
+r14 0x0
+r15 0x0
+&amp;gt; q
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;section class=&quot;related&quot;&gt;
+  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
+  &lt;ul class=&quot;post-list&quot;&gt;
+    
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
-          Useful OSCP Notes
+        &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
+          Cracking Silva97's login-cipher
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
+          Reversing the buildString CTF challenge
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
+          Cracking D4RKFL0W's Crackme-4
         &lt;/a&gt;
       &lt;/li&gt;
     
   &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I am going to show you how I reverse engineered this binary and cracked the password. First, when we run the program, we can see that the program is asking us to input a password. If we input the incorrect password, the program says, “Wrong!”</summary></entry><entry><title type="html">Reversing the buildString CTF challenge</title><link href="http://localhost:4000/2020/02/22/reversing-buildString-program.html" rel="alternate" type="text/html" title="Reversing the buildString CTF challenge" /><published>2020-02-22T00:00:00-05:00</published><updated>2020-02-22T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/22/reversing-buildString-program</id><content type="html" xml:base="http://localhost:4000/2020/02/22/reversing-buildString-program.html">&lt;p&gt;Earlier today, I had gone to VMI’s 2020 Cyberfusion CTF with my college’s CTF team (we won first place!), and I’m going to show how I solved one of their reverse engineering challenges. I was given a binary file called &lt;a href=&quot;../../../assets/other/2020-2-22-reversing-buildString-program/buildString&quot;&gt;buildString&lt;/a&gt;, and upon executing the file, I was greeted with the following output.&lt;/p&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I will be showing how I created a basic debugger in C. This won’t be a very complicated debugger as it will only allow you to do three things: see the values of the registers, step through one instruction, and read hex values from memory. Obviously, this is nothing compared to something like IDA Pro, but making a basic debugger did help me understand what the debugger is actually doing when we are using it.</summary></entry><entry><title type="html">Reversing the buildString CTF challenge</title><link href="http://localhost:4000/2020/02/22/reversing-buildString-program.html" rel="alternate" type="text/html" title="Reversing the buildString CTF challenge" /><published>2020-02-22T00:00:00-05:00</published><updated>2020-02-22T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/22/reversing-buildString-program</id><content type="html" xml:base="http://localhost:4000/2020/02/22/reversing-buildString-program.html">&lt;p&gt;Earlier today, I had gone to VMI’s 2020 Cyberfusion CTF with my college’s CTF team (we won first place!), and I’m going to show how I solved one of their reverse engineering challenges. I was given a binary file called &lt;a href=&quot;../../../assets/other/2020-2-22-reversing-buildString-program/buildString&quot;&gt;buildString&lt;/a&gt;, and upon executing the file, I was greeted with the following output.&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-22-reversing-buildString-program/output.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
 
@@ -82,6 +290,12 @@
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/27/creating-a-barebones-debugger.html&quot;&gt;
+          Creating a Barebones Debugger
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
           Cracking Silva97's login-cipher
         &lt;/a&gt;
@@ -90,12 +304,6 @@
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
           Cracking D4RKFL0W's Crackme-4
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
-          Useful OSCP Notes
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -149,6 +357,12 @@ c7(): rax = 0x22
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/27/creating-a-barebones-debugger.html&quot;&gt;
+          Creating a Barebones Debugger
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
           Cracking Silva97's login-cipher
         &lt;/a&gt;
@@ -157,12 +371,6 @@ c7(): rax = 0x22
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
           Reversing the buildString CTF challenge
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/06/useful-oscp-notes.html&quot;&gt;
-          Useful OSCP Notes
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -682,6 +890,12 @@ exploit
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/27/creating-a-barebones-debugger.html&quot;&gt;
+          Creating a Barebones Debugger
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
           Cracking Silva97's login-cipher
         &lt;/a&gt;
@@ -690,12 +904,6 @@ exploit
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
           Reversing the buildString CTF challenge
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
-          Cracking D4RKFL0W's Crackme-4
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -861,6 +1069,12 @@ optional arguments:
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/27/creating-a-barebones-debugger.html&quot;&gt;
+          Creating a Barebones Debugger
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
           Cracking Silva97's login-cipher
         &lt;/a&gt;
@@ -869,12 +1083,6 @@ optional arguments:
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
           Reversing the buildString CTF challenge
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
-          Cracking D4RKFL0W's Crackme-4
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -970,6 +1178,12 @@ flag is flag{!#&amp;amp;*/5&amp;lt;DMW}
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/27/creating-a-barebones-debugger.html&quot;&gt;
+          Creating a Barebones Debugger
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
           Cracking Silva97's login-cipher
         &lt;/a&gt;
@@ -978,12 +1192,6 @@ flag is flag{!#&amp;amp;*/5&amp;lt;DMW}
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
           Reversing the buildString CTF challenge
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
-          Cracking D4RKFL0W's Crackme-4
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1090,6 +1298,12 @@ call foo
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/02/27/creating-a-barebones-debugger.html&quot;&gt;
+          Creating a Barebones Debugger
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
           Cracking Silva97's login-cipher
         &lt;/a&gt;
@@ -1098,12 +1312,6 @@ call foo
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
           Reversing the buildString CTF challenge
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
-          Cracking D4RKFL0W's Crackme-4
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1134,143 +1342,10 @@ call foo
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
-          Cracking Silva97's login-cipher
+        &lt;a href=&quot;/2020/02/27/creating-a-barebones-debugger.html&quot;&gt;
+          Creating a Barebones Debugger
         &lt;/a&gt;
       &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
-          Reversing the buildString CTF challenge
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
-          Cracking D4RKFL0W's Crackme-4
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-  &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">I was recently able to get my hands on a Chromebook for free. Normally, ChromeOS (which is one of the most useless OSes created) just allows the user to do very basic tasks, such as browsing the internet or accessing documents, and is more geared towards older and more non-technical users. However, it is possible to unlock other potential uses for ChromeOS, one of which is running Linux on the Chromebook. In this post, I’m going to go ahead and show you exactly how I was able to get Ubuntu up and running in my Chromebook using a nice tool called crouton.</summary></entry><entry><title type="html">Access Point That Shows You Memes When You Connect To It</title><link href="http://localhost:4000/2018/12/21/wifi-that-only-shows-memes.html" rel="alternate" type="text/html" title="Access Point That Shows You Memes When You Connect To It" /><published>2018-12-21T00:00:00-05:00</published><updated>2018-12-21T00:00:00-05:00</updated><id>http://localhost:4000/2018/12/21/wifi-that-only-shows-memes</id><content type="html" xml:base="http://localhost:4000/2018/12/21/wifi-that-only-shows-memes.html">&lt;p&gt;Hello everyone! Today I’m going to show you how I built an access point that is able to send memes to anyone who connects to it. The way it works is simple: First the user connects to the access point from the Wifi settings on their device, and once they try connecting to any website, they’ll be shown a meme instead. You can see in the images below how this appears on my phone after it has connected to my wifi.&lt;/p&gt;
-
-&lt;p&gt;&lt;img style=&quot;width: 60%; height: 60%;&quot; src=&quot;../../../assets/img/2018-12-21-wifi-that-only-shows-memes/availablenetworks.jpg&quot; /&gt;
-&lt;img style=&quot;width: 60%; height: 60%;&quot; src=&quot;../../../assets/img/2018-12-21-wifi-that-only-shows-memes/meme1.jpg&quot; /&gt;
-&lt;img style=&quot;width: 10%: height: 10%;&quot; src=&quot;../../../assets/img/2018-12-21-wifi-that-only-shows-memes/meme2.jpg&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;As you can see, whenever someone tries to connect to a website after connecting to my wireless access point, they will instead be redirected to a web page that shows random memes. Also, if you refresh the page, a different meme will be randomly chosen.&lt;/p&gt;
-
-&lt;p&gt;The first thing I did to set this up was grab my new &lt;a href=&quot;https://www.raspberrypi.org/&quot;&gt;Raspberry Pi&lt;/a&gt; that I had just bought and install the &lt;a href=&quot;https://www.raspberrypi.org/downloads/raspbian/&quot;&gt;Raspbian OS&lt;/a&gt; using &lt;a href=&quot;https://www.raspberrypi.org/downloads/noobs/&quot;&gt;NOOBS&lt;/a&gt;.&lt;/p&gt;
-
-&lt;p&gt;&lt;img style=&quot;width: 50%; height: 50%; float: right;&quot; src=&quot;../../../assets/img/2018-12-21-wifi-that-only-shows-memes/raspberrypi.jpg&quot; /&gt;
-&lt;img style=&quot;width: 50%; height: 50%;&quot; src=&quot;../../../assets/img/2018-12-21-wifi-that-only-shows-memes/noobs.jpg&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;Next, I had to configure my Raspberry Pi to work as an access point. This took me a couple of steps. First, I had to go download all of the tools that I would use.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;sudo apt install hostapd dnsmasq libmicrohttpd-dev
-git clone https://github.com/nodogsplash/nodogsplash.git
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;I also went online and downloaded a bunch of memes that I liked. Then I went into my /etc/dhcpcd.conf file and added the following line to the file:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;denyinterfaces wlan0
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;I also had to setup a static IP address for my Raspberry Pi for obvious reasons. I did this by appending the /etc/network/interfaces file with these lines:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;auto wlan0
-iface wlan0 inet static
-address 192.168.1.1
-netmask 255.255.255.0
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;This allowed me to setup a static IP address of 192.168.1.1. Once I did this, I had to restart dhcpcd using this command:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;sudo service dhcpcd restart
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;The next step was to configure hostapd. Hostapd was the program that I was going to use to make my Raspberry Pi turn into an access point. I created a file called /etc/hostapd/hostapd.conf and added these settings to it:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;interface=wlan0 # Use wlan0 interface
-driver=nl80211 # Use this driver (you might have to google which driver is the correct one for your wifi card)
-ctrl_interface=/var/run/hostapd # Location of hostapd program
-ctrl_interface_group=0
-ssid=ClickHereForMemes # SSID that will be broadcasted
-hw_mode=g
-channel=6 # Which channel we are on
-wpa=0 # Disable encryption
-beacon_int=100 # How often we will send out a beacon
-ignore_broadcast_ssid=0 # Don't ignore broadcast requests
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;I had disabled WPA2 encryption because this was a simple project, and I didn’t really care whether my Raspberry Pi got hacked or not. But if you wanted to setup WPA2 encryption, you could do it using this configuration file.&lt;/p&gt;
-
-&lt;p&gt;I had to tell hostapd where to look for the config file when it starts up on boot, so I opened up /etc/default/hostapd, and replaced this line:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;#DAEMON_CONF=&quot;&quot;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;with this line:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;DAEMON_CONF=&quot;/etc/hostapd/hostapd.conf&quot;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Now that our access point is working, I had to go configure dnsmasq. Dnsmasq is used as a lightweight DNS and DHCP server, which makes it perfect for this project. Since I didn’t want to lose the original configuration file, I moved it.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;sudo mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;I then created a new /etc/dnsmasq.conf file and typed this in there:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;interace=wlan0 # Which interface we will use
-listen-address=192.168.1.1 # What address we are listening on (which should be our static IP)
-bind-interfaces # Bind the interfaces
-server=8.8.8.8 # Use Google's DNS server
-domain-needed
-bogus-priv
-dhcp-range=192.168.1.50,192.168.1.150,12h # Give IP addresses in the range of 192.168.1.50-150 with a 12 hour lease time
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Now our access point should be fully setup. Our final step is to setup a captive portal using nodogsplash. This captive portal will work as the website that only shows memes. I had to install nodogslash from the github repository that I cloned earlier.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;cd ~/nodogsplash
-make
-sudo make install
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;I went into the /etc/nodogsplash/nodogsplash.conf file and changed the GatewayInterface&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;GatewayInterface wlan0
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Now we have to actually go and edit the captive portal to display memes instead of displaying a captive portal. The html files for the captive portal are located at /etc/nodogsplash/htdocs/. I edited the splash.html file to look like this:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;html&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;head&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;nt&quot;&gt;&amp;lt;title&amp;gt;&lt;/span&gt;Random Memes&lt;span class=&quot;nt&quot;&gt;&amp;lt;/title&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/head&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;body&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;nt&quot;&gt;&amp;lt;img&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;/&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- Note: None of these memes were created by me --&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;nt&quot;&gt;&amp;lt;script&amp;gt;&lt;/span&gt;
-            &lt;span class=&quot;nx&quot;&gt;files&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;250freetacos.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;2no3du.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;accidentally.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;armordoesntmatch.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;baby.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;backboneofthiscompany.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;becomethevaccumcleaner.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;beforeyougo.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;birdsroom.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;blueshell.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;bombassdick.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;bothlinesoftext.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;cameoutofthepurple.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;cleverargument.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;collectingpokemon.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;computerexpert.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;coughsyrup.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;dawgwall.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;deadinside.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;diarreah.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;formalpictureofbaby.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;freeshipping.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;fuckmatthew.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;genderpaygap.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;gettingreadyforbed.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;godwhy.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;goodbyehighschool.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;goodexamples.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;headphones.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;highonacid.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;hotelblanker.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;howthingsaregoing.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;hulksmash.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;iamconfusion.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;ididntchoosethuglife.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;ihategraveyards.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;imgonnamissyou.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;improviseadaptovercome.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;infinitelectricity.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;intellectualdominance.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;itlookslikeapotato.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;itswednesday.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;justchillingnaked.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;lookingatmemesinbathroom.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;makingdildos.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;marriage.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;monopolyisbetterthanpizza.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;mycutepet.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;myheart.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;nodogsallowed.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;nogoodanswer.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;noitspatrick.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;notacop.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;parallelparking.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;parasites.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;peppapig.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;pokingpeopleatfunerals.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;pretendingtowork.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;problemsolving.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;putmebackintoacoma.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;reallythatsthespermthatwon.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;recordedconversation.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;researchonisis.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;sayingno.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;schrodingersplates.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;sentencewithouta.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;shoppingcarts.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;shortpeoplesuck.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;sleepinginvideogames.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;sneezing.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;solutiontopeopleeatingyourfood.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;soundmorephotosynthesis.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;studentloans.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;stuffynose.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;stupidshit.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;talktorocks.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;taskmanager.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;temporarybuildings.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;thankyou.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;thedouchestorecalled.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;thefemaleisontheright.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;theidiotshouse.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;thesacredtexts.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;timetoretire.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;universityofnorthtexas.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;wheremyloveis.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;whoistheloveofmylife.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;whospresentingnext.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;whyarethewaythatyouare.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;wifeswrath.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;wificonnected.png&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;yelpforcoworkers.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;yomamasofatshesataxi.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;youdontfloss.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;yourfat.jpeg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;yourpov.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;yourstupid.jpg&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
-            &lt;span class=&quot;nx&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;Math&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;floor&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;Math&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;files&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;length&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-            &lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;image&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;document&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;images&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
-            &lt;span class=&quot;nx&quot;&gt;image&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;src&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;img/&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;files&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
-        &lt;span class=&quot;nt&quot;&gt;&amp;lt;/script&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/body&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;nt&quot;&gt;&amp;lt;/html&amp;gt;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;This is essentially a small script that randomly selects one of the memes I’ve downloaded and displays it. I also moved all of the images of the memes I downloaded earlier to /etc/nodogsplash/htdocs/img/.&lt;/p&gt;
-
-&lt;p&gt;There is just one more step. The computer needs to know that it has to start nodogsplash on boot, so I opened the /etc/rc.local file added “nodogsplash” on top of the line that says “exit 0”.&lt;/p&gt;
-
-&lt;p&gt;And that’s it! All I had to do now was to reboot my computer so that all of my settings would be applied. Thanks for reading this!&lt;/p&gt;
-
-&lt;section class=&quot;related&quot;&gt;
-  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
-  &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
@@ -1284,11 +1359,5 @@ sudo make install
         &lt;/a&gt;
       &lt;/li&gt;
     
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/21/cracking-d4rkfl0w-crackme-4.html&quot;&gt;
-          Cracking D4RKFL0W's Crackme-4
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
   &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">Hello everyone! Today I’m going to show you how I built an access point that is able to send memes to anyone who connects to it. The way it works is simple: First the user connects to the access point from the Wifi settings on their device, and once they try connecting to any website, they’ll be shown a meme instead. You can see in the images below how this appears on my phone after it has connected to my wifi.</summary></entry></feed>
+&lt;/section&gt;</content><author><name></name></author><summary type="html">I was recently able to get my hands on a Chromebook for free. Normally, ChromeOS (which is one of the most useless OSes created) just allows the user to do very basic tasks, such as browsing the internet or accessing documents, and is more geared towards older and more non-technical users. However, it is possible to unlock other potential uses for ChromeOS, one of which is running Linux on the Chromebook. In this post, I’m going to go ahead and show you exactly how I was able to get Ubuntu up and running in my Chromebook using a nice tool called crouton.</summary></entry></feed>
