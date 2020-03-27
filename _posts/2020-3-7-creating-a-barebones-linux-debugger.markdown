@@ -1,10 +1,10 @@
 ---
 layout: post
-title: "Creating a Barebones Debugger"
+title: "Creating a Barebones Linux Debugger"
 date: 2020-3-7
 ---
 
-Today, I will be showing how I created a basic debugger in C. This won't be a very complicated debugger as it will only allow you to do three things: see the values of the registers, step through one instruction, and read hex values from memory. Obviously, this is nothing compared to something like IDA Pro, but making a basic debugger did help me understand what the debugger is actually doing when we are using it.
+Today, I will be showing how I created a basic debugger in C for Linux programs. This won't be a very complicated debugger as it will only allow you to do three things: see the values of the registers, step through one instruction, and read hex values from memory. Obviously, this is nothing compared to something like IDA Pro, but making a basic debugger did help me understand what the debugger is actually doing when we are using it.
 
 The first thing that we need to do is to run the program we want to debug in a separate process using fork(). The program's name will be given as a command line argument to our debugger, and any additional arguments that we want to past to the program we are currently debugging can also be passed as arguments. Once we call fork() to make a copy of this process, we will make the child process call `ptrace(PTRACE_TRACEME, 0, 0, 0);`, which will let the child process know that it is going to be debugged by the parent process. The `ptrace()` function will be used throughout our code as it allows the parent process to control and observe the child process. From there, we will use execv() to actually execute the program that we want to execute. As soon as this happens, the tracee (the program being debugged) stop pause execution on a SIGTRAP, which will be used to prevent the tracee from executing any more code unless the tracer/debugger allows it.
 
