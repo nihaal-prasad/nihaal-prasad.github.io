@@ -4,7 +4,7 @@ title: "Return Oriented Programming Tutorial"
 date: 2020-10-14
 ---
 
-In this blog post, I will be explaining how you can make use of Return Oriented Programming (ROP) gadgets in order to obtain execute code when NX is enabled. I will also be solving one of ROP Emporium's challenges by using a ROP chain.
+In this blog post, I will be explaining how you can make use of Return Oriented Programming (ROP) gadgets in order to execute code when NX is enabled. I will also be solving one of ROP Emporium's challenges by using a ROP chain.
 
 ### What is NX?
 
@@ -14,9 +14,9 @@ In a typical stack overflow, the attacker "injects" shellcode into the stack, an
 
 ### What are ROP Chains?
 
-Suppose we have a binary with NX enabled, and we have already figured out how to overwrite the return address and control RIP via buffer overflow. ROP chains will allow us to get around the problems that NX cause. The way this works is, we will make RIP point to a line of assembly code that is marked as executable in the binary instead of simply injecting our shellcode into the running process.
+Suppose we have a binary with NX enabled, and we have already figured out how to overwrite the return address and control RIP via buffer overflow. ROP chains will allow us to get around the problems that NX causes. The way this works is, we will make RIP point to a line of assembly code that is marked as executable in the binary instead of simply injecting our shellcode into the running process.
 
-Since we have complete control over RIP, we can theoretically make the program jump to any address in the binary, but we will want to specifcally focus on finding one or a few lines of code in the program that end with a RET instruction. These lines of code will be referred to as a "ROP gadget." Since each ROP gadget ends with a RET instruction, and since we can overwrite the return address multiple times, we can "chain" multiple ROP gadgets together to execute the code that we want.
+Since we have complete control over RIP, we can theoretically make the program jump to any address in the binary, but we will want to specifically focus on finding one or a few lines of code in the program that end with a RET instruction. These lines of code will be referred to as a "ROP gadget." Since each ROP gadget ends with a RET instruction, and since we can overwrite the return address multiple times, we can "chain" multiple ROP gadgets together to execute the code that we want.
 
 Don't worry if this doesn't really make sense to you yet. It will make more sense when you look at an example.
 
@@ -185,7 +185,7 @@ nth paddr      vaddr      len size section type  string
 
 ### Writing the String
 
-Using rabin2, we can see that there are several writeable sections in the binary. We can write our "flag.txt" string in the `.data` section, which is writeable and is located at `0x00601028`. Theoretically, the `.bss` section should also work just fine.
+Using rabin2, we can see that there are several writable sections in the binary. We can write our "flag.txt" string in the `.data` section, which is writable and is located at `0x00601028`. Theoretically, the `.bss` section should also work just fine.
 ```bash
 $ rabin2 -S write4
 [Sections]
@@ -223,7 +223,7 @@ nth paddr        size vaddr       vsize perm name
 28  0x00001876  0x103 0x00000000  0x103 ---- .shstrtab
 ```
 
-"flag.txt" written as a Python byte array is `b'\x66\x6c\x61\x67\x2e\x74\x78\x74'`.
+We need to figure out what "flag.txt" looks like in hexadecimal.
 
 ```bash
 $ python
@@ -235,7 +235,7 @@ Type "help", "copyright", "credits" or "license" for more information.
 '666c61672e747874'
 ```
 
-Now we know that we need to write the bytes `0x66 0x6c 0x61 0x67 0x2e 0x74 0x78 0x74` ("flag.txt" written in hex) at memory location `0x00601028`. Alright, so how do we actually accomplish this? The first step would be to search for some code in the binary that is in the form `mov [%], %; ret`. If we could find code that does this, then we could write the hex bytes for "flag.txt" at memory location `0x00601028` by modifying the registers accordingly and jumping to that line of code.
+Now we know that we need to write the bytes `0x66 0x6c 0x61 0x67 0x2e 0x74 0x78 0x74` at memory location `0x00601028`, so how do we actually accomplish this? The first step would be to search for some code in the binary that is in the form `mov [%], %; ret`. If we could find code that does this, then we could write the hex bytes for "flag.txt" at memory location `0x00601028` by modifying the registers accordingly and jumping to that line of code.
 
 We can find a line of code in this form by using a tool called ropper. Ropper allows us to easily find ROP gadgets in binaries that we can use.
 ```bash
@@ -265,7 +265,7 @@ $ ropper --file write4 --search "pop r14%; ret"
 0x0000000000400690: pop r14; pop r15; ret;
 ```
 
-Luckily for us, in this scenario the `pop r14` and `pop r15` instructions were right next to each other. This means that we can put both of their values on the stack without needing another ROP gadget (recall that since our input buffer is on the stack, we can add more and more addresses on the stack).
+Luckily for us, in this scenario the `pop r14` and `pop r15` instructions were right next to each other. This means that we can put both of their values on the stack without needing another ROP gadget.
 
 So far, our stack buffer overflow should look like this:
 - "A" written 40 times.
@@ -280,7 +280,7 @@ This gives us the following input (which won't work yet).
 python -c "import sys; sys.stdout.buffer.write(b'A'*40 + b'\x90\x06\x40\x00\x00\x00\x00\x00' + b'\x28\x10\x60\x00\x00\x00\x00\x00' + b'\x66\x6c\x61\x67\x2e\x74\x78\x74' + b'\x28\x06\x40\x00\x00\x00\x00\x00')" | ./write4
 ```
 
-In case you still don't understand why this works, here is what is actually going on:
+In case you still don't understand this ROP chain, here is what is actually going on:
 1. Because of the buffer overflow, RIP is overwritten with `0x0000000000400690`, which is the location of the `pop r14; pop r15; ret` ROP gadget.
 2. When `pop r14` is executed, we will get `0x0000000000601028` in `r14`.
 3. When `pop r15` is executed, we will get `0x666c61672e747874` in `r15`.
