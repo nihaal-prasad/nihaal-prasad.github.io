@@ -13,7 +13,7 @@ body {
   padding: 0; }
 
 html {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", Arial, sans-serif;
+  font-family: Times New Roman;
   font-size: 1rem;
   line-height: 1.5; }
   @media (min-width: 49rem) {
@@ -28,7 +28,7 @@ main, article, section {
   display: block; }
 
 a {
-  color: #000000;
+  color: #002b4f;
   text-decoration: none; }
   a:hover, a:focus {
     text-decoration: underline; }
@@ -70,11 +70,11 @@ button, input[type="submit"] {
   cursor: pointer;
   background: transparent;
   border-color: #e5e5e5;
-  color: #000000;
+  color: #002b4f;
   transition: color 0.6s ease-in-out, border-color 0.6s ease-in-out, background 0.6s ease-in-out; }
   button:hover, input[type="submit"]:hover {
-    background: #000000;
-    border-color: #000000;
+    background: #002b4f;
+    border-color: #002b4f;
     color: white;
     box-shadow: 1px 1px 1px rgba(0, 0, 0, 0.16); }
 
@@ -82,7 +82,7 @@ h1, h2, h3, h4, h5, h6, .site-title {
   margin-bottom: 0.5rem;
   font-weight: 600;
   line-height: 1.25;
-  color: #001b44;
+  color: #000000;
   text-rendering: optimizeLegibility; }
 
 h1 {
@@ -163,7 +163,7 @@ a svg, .icon svg {
   height: 1em; }
 
 a svg {
-  fill: #000000; }
+  fill: #002b4f; }
 
 .icon {
   vertical-align: middle; }
@@ -420,12 +420,12 @@ a svg {
 
 code,
 pre {
-  font-family: Menlo, Monaco, "Courier New", monospace; }
+  font-family: "Bitstream Vera Sans Mono", monospace; }
 
 code {
   padding: .25em .5em;
   font-size: 85%;
-  color: #bf616a;
+  color: #fc0000;
   background-color: #f9f9f9;
   border-radius: 3px; }
 
@@ -521,7 +521,7 @@ body {
 
 .content {
   background: #fff;
-  color: #515151;
+  color: #000000;
   padding: 2rem; }
 
 /* -----------------------------------------------------------
@@ -591,7 +591,7 @@ body {
 
   .container {
     background: #fff;
-    color: #515151;
+    color: #000000;
     padding: 4rem 4rem 0;
     height: 100vh; }
     .container > header {
@@ -692,7 +692,7 @@ article + *, .post-body ~ section {
 .page-title,
 .post-title,
 .post-title a {
-  color: #001b44; }
+  color: #000000; }
 
 .page-title,
 .post-title {
@@ -730,7 +730,7 @@ h2.post-title, h2.page-title {
     color: #999;
     white-space: nowrap; }
   .posts-list li a:hover {
-    color: #000000;
+    color: #002b4f;
     text-decoration: none; }
     .posts-list li a:hover small {
       color: inherit; }
@@ -812,7 +812,7 @@ button.disqus-load {
   white-space: nowrap;
   opacity: 0.75; }
   .tags-list a .tag-count {
-    background: #000000;
+    background: #002b4f;
     color: rgba(255, 255, 255, 0.8);
     margin-left: 0.25em;
     border-radius: 1000px;
