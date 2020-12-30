@@ -11,7 +11,7 @@
 
   <title>
     
-      Solving a Basic Crackme Using Ghidra &middot; Nihaal Prasad
+      Creating a Basic Heap Allocator &middot; Nihaal Prasad
     
   </title>
 
@@ -184,7 +184,7 @@
 
     <main class="container">
       <div class="content">
-  <h1 class="page-heading">Solving a Basic Crackme Using Ghidra</h1>
+  <h1 class="page-heading">Creating a Basic Heap Allocator</h1>
   <div class="post-meta">
   <span class="post-categories">
     
@@ -193,101 +193,607 @@
 
   <hr>
   <div class="post-body">
-    <p>Recently, the NSA released a free reverse-engineering tool called <a href="https://www.nsa.gov/resources/everyone/ghidra/">Ghidra</a>. Today, I decided to take a look at it and try to solve a basic crackme using this tool. <a href="https://crackmes.one/crackme/5c1a939633c5d41e58e005d1">This</a> is the link to the crackme that I will be trying to solve today.</p>
+    <p>The heap is an important segment of memory that grows upwards, towards the stack. This section of memory is used by computers to dynamically allocate memory to store whatever data they need for their programs to work. Heap allocators are used by programs in order to allot and keep track of chunks of memory that are being used inside of the heap. Modern operating systems use efficient and effective heap allocators in their systems, but this blog post will just be going over how a very basic heap allocator can be constructed in C.</p>
 
-<p>Once I downloaded the crackme file, I ran it and looked at what the program did. Here is its basic output:</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>enter the magic string
-a
-wrong string
-No flag for you.
-</code></pre></div></div>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>enter the magic string
-Some Random Input
-too long...sorry no flag for you!!!
-</code></pre></div></div>
-<p>It looks like it takes some sort of input value, and if that input value is what it expects, then it will print out the flag. If the input value is incorrect or too long, then it will print out a different message. Our goal here is to find out the correct input value.</p>
-
-<p>I started up Ghidra, created a new project, and added the binary file to my project. You can do this by first clicking File-&gt;New Project, and then dragging and dropping the binary file into the project.</p>
-
-<p><img src="../../../assets/img/2019-solving-a-basic-crackme-using-ghidra/ghidra_project.png" /></p>
-
-<p><img style="float: right" src="../../../assets/img/2019-solving-a-basic-crackme-using-ghidra/symbol_tree.png" /></p>
-
-<p>When I opened the file in Ghidra, a pop-up came up in Ghidra asking me if I wanted to analyze the binary now. I hit yes and waited a second before it was done analyzing the file. Then I went to the symbol tree on the left, typed in “main” to find the main function, and clicked on it. This brought me to the main method, and on the other two windows I could see the main method’s assembly and decompiled code.</p>
-
-<p>Here is the decompiled code. I changed a few of the variable names to make it a little bit more readable. You can do this by right-clicking on the variable and clicking “Rename variable.”</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>undefined8 main(void)
-
-{
-  size_t len;
-  size_t len2;
-  long lVar1;
-  char input [112];
-  int counter;
-  int strValues;
-  
-  strValues = 0;
-  puts("enter the magic string");
-  fgets(input,100,stdin);
-  len = strlen(input);
-  if (len &lt; 0xc) {
-    counter = 0;
-    while( true ) {
-      len2 = strlen(input);
-      if (len2 &lt;= (ulong)(long)counter) break;
-      strValues = strValues + (int)input[(long)counter];
-      counter = counter + 1;
-    }
-    if (strValues == 1000) {
-      lVar1 = strcat_str();
-      printf("flag is flag{");
-      counter = 0;
-      while (counter &lt; 10) {
-        putchar((int)*(char *)(lVar1 + (long)counter));
-        counter = counter + 1;
-      }
-      puts("}");
-    }
-    else {
-      puts("wrong string\nNo flag for you.");
-    }
-  }
-  else {
-    puts("too long...sorry no flag for you!!!");
-  }
-  return 0;
-}
+<p>Four functions will be implemented in this basic heap allocator:</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="o">*</span><span class="n">heap_alloc</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">size</span><span class="p">);</span> <span class="c1">// Allocates memory on the heap</span>
+<span class="n">heap_header_t</span> <span class="o">*</span><span class="n">best_fit</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">size</span><span class="p">);</span> <span class="c1">// Finds a free block (if available)</span>
+<span class="kt">void</span> <span class="n">heap_free</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">block</span><span class="p">);</span> <span class="c1">// Frees memory on the heap</span>
+<span class="kt">void</span> <span class="n">heap_defrag</span><span class="p">();</span> <span class="c1">// Defrags the heap</span>
 </code></pre></div></div>
 
-<p>The first thing that the code does is print out “enter the magic string” and reads in the value that you typed in into a variable that I named “input”. It also calculates the length of this input variable and makes sure that it is less than 12 (which makes it a maximum of ten characters plus a newline character). After that, there is a loop that adds up all of the ascii values of each character of the input into an integer that I named “strValues”. Then, finally, it prints out the flag if the total values of all the added ascii values equals 1000.</p>
-
-<p>Since I knew that I could type in a maximum of ten characters, the first thing I tried to do was to divide 1000 by 10 to figure out the ascii value of the characters that I needed to type in ten times. Since 1000/10 = 100, and ‘d’ is 100 in ascii, I decided to type in ‘d’ ten times and see what happened.</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ python -c "print('d' * 10)" | ./rev30
-enter the magic string
-wrong string
-No flag for you.
+<p>Every chunk of memory on this heap allocator will have a header, which is shown below. The header will store information such as the size of the chunk and whether the chunk is being used or not. All free chunks in the heap allocator will be stored in a linked list, which is why two pointers for storing the next and previous value on the linked list of free chunks are included in the structure.</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">heap_header</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">heap_header</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span> <span class="c1">// Next value in linked list.</span>
+    <span class="k">struct</span> <span class="n">heap_header</span> <span class="o">*</span><span class="n">prev</span><span class="p">;</span> <span class="c1">// Previous value in list.</span>
+    <span class="kt">size_t</span> <span class="n">size</span><span class="p">;</span> <span class="c1">// Amount of memory allocated for user.</span>
+    <span class="kt">char</span> <span class="n">free</span><span class="p">;</span> <span class="c1">// Set to 1 if memory isn't being used.</span>
+<span class="p">};</span>
 </code></pre></div></div>
 
-<p>Unforunately, this did not work. At first I didn’t understand why this didn’t work, but then I realized that I forgot to take into account the fact that the while loop was also adding up the value of the newline character, which had an ascii value of 10. This meant that instead of doing 1000/10 to figure out the ascii value of the character I had to type in 10 times, I had to do (1000-10)/10 to take this into account. This gave me a value of 99, or ‘c’ in ascii. I tried to use ‘c’ ten times, and lo and behold:</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ python -c "print('c' * 10)" | ./rev03 
-enter the magic string
-flag is flag{!#&amp;*/5&lt;DMW}
+<p>The header should always be aligned to a multiple of four bytes. In this implementation, the heap allocator will make all headers have a size of 32 bytes. This alignment property can be easily implemented by defining the structure inside of a union, as shown below.</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Header for each chunk of allocated memory</span>
+<span class="k">typedef</span> <span class="k">union</span> <span class="n">heap_header</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="p">{</span> <span class="c1">// Actual header data that we care about</span>
+        <span class="k">union</span> <span class="n">heap_header</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span> <span class="c1">// Next value in linked list.</span>
+        <span class="k">union</span> <span class="n">heap_header</span> <span class="o">*</span><span class="n">prev</span><span class="p">;</span> <span class="c1">// Previous value in list.</span>
+        <span class="kt">size_t</span> <span class="n">size</span><span class="p">;</span> <span class="c1">// Amount of memory allocated for user.</span>
+        <span class="kt">char</span> <span class="n">free</span><span class="p">;</span> <span class="c1">// Set to 1 if memory isn't being used.</span>
+    <span class="p">}</span> <span class="n">data</span><span class="p">;</span>
+    <span class="kt">char</span> <span class="n">align</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span> <span class="c1">// Only used to align header to 32 bytes</span>
+<span class="p">}</span> <span class="n">heap_header_t</span><span class="p">;</span>
 </code></pre></div></div>
 
-<p>Thanks for reading this writeup. I hope you enjoyed it.</p>
+<p>A static global containing the head of the linked list is required for this to work. Note that this linked list will only be used to store free chunks, and it should not contain any chunks that are not free.</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Head for the linked list of free chunks</span>
+<span class="k">static</span> <span class="n">heap_header_t</span> <span class="o">*</span><span class="n">head</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>It is also necessary to keep track of where the heap begins and ends. This can be done using two global void pointers. Note that the end of the heap is also called the “program break.”</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Start and end of the heap</span>
+<span class="k">static</span> <span class="kt">void</span> <span class="o">*</span><span class="n">heap_start</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+<span class="k">static</span> <span class="kt">void</span> <span class="o">*</span><span class="n">heap_end</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>Throughout the code, the <code class="highlighter-rouge">sbrk(intptr_t increment)</code> function, which is located in <code class="highlighter-rouge">unistd.h</code>, will be used to increase or decrease the size of the heap. The <code class="highlighter-rouge">increment</code> value may be positive or negative, and if it is set to zero, then the program break will be returned.</p>
+
+<p>When a program is first initialized, the start and end of the program’s heap should be the same since no memory has been allocated for the heap yet. When the first call to <code class="highlighter-rouge">heap_alloc()</code> occurs, the values of the start and end of the heap must be recorded using the code shown below.</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// If the heap has not been initialized, then initialize it</span>
+<span class="k">if</span><span class="p">(</span><span class="n">heap_start</span> <span class="o">==</span> <span class="nb">NULL</span> <span class="o">&amp;&amp;</span> <span class="n">heap_end</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">heap_start</span> <span class="o">=</span> <span class="n">sbrk</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="n">heap_end</span> <span class="o">=</span> <span class="n">heap_start</span><span class="p">;</span>
+<span class="p">}</span>
+
+</code></pre></div></div>
+
+<p>When a user calls <code class="highlighter-rouge">heap_alloc()</code>, the heap allocator should first check whether a free chunk already exists in the linked list of free chunks. This heap allocator will search for a suitable free chunk by using the best fit algorithm, which returns the smallest chunk that satisfies the user’s size requirement. If a suitable free chunk is found, then it must be unlinked from the linked list of free chunks and returned to the user.</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">heap_header_t</span> <span class="o">*</span><span class="n">ret</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+
+<span class="c1">// Check if a suitable chunk already exists in the linked list.</span>
+<span class="c1">// Assume that size is given to us by the user</span>
+<span class="n">ret</span> <span class="o">=</span> <span class="n">best_fit</span><span class="p">(</span><span class="n">size</span><span class="p">);</span>
+<span class="k">if</span><span class="p">(</span><span class="n">ret</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// If we found a suitable free chunk in the linked list, then remove</span>
+    <span class="c1">// that chunk from the linked list of free chunks.</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span> <span class="o">=</span> <span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">ret</span> <span class="o">==</span> <span class="n">head</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">head</span> <span class="o">=</span> <span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span><span class="p">;</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">head</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">head</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>The best fit algorithm is implemented as follows:</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Loops through the linked list and finds a chunk that has a size big enough to store</span>
+<span class="c1">// the user's data. Uses the best fit algorithm. May return NULL if there is no free</span>
+<span class="c1">// chunk in the linked list, in which case the size of the heap must be increased.</span>
+<span class="n">heap_header_t</span> <span class="o">*</span><span class="nf">best_fit</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">size</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">heap_header_t</span> <span class="o">*</span><span class="n">ret</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="n">heap_header_t</span> <span class="o">*</span><span class="n">curr</span> <span class="o">=</span> <span class="n">head</span><span class="p">;</span>
+    <span class="k">while</span><span class="p">(</span><span class="n">curr</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// Check if this current chunk meets the size requirements.</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">curr</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span> <span class="o">&gt;=</span> <span class="n">size</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">ret</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+                <span class="c1">// If we haven't found a chunk yet, then store this one</span>
+                <span class="n">ret</span> <span class="o">=</span> <span class="n">curr</span><span class="p">;</span>
+            <span class="p">}</span> <span class="k">else</span> <span class="k">if</span><span class="p">(</span><span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span> <span class="o">&lt;=</span> <span class="n">curr</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span><span class="p">)</span> <span class="p">{</span>
+                <span class="c1">// If we have already found a chunk, then only store this</span>
+                <span class="c1">// one if it has a smaller size than the stored chunk (or,</span>
+                <span class="c1">// in other words, if it has the better fit).</span>
+                <span class="n">ret</span> <span class="o">=</span> <span class="n">curr</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+
+        <span class="c1">// Go to the next chunk in the linked list</span>
+        <span class="n">curr</span> <span class="o">=</span> <span class="n">curr</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>If this algorithm returns NULL, then the heap allocator must increase the size of the heap so that a new chunk can be created and returned to the user. This can easily be done using the <code class="highlighter-rouge">sbrk()</code> function described earlier.</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// If there are no free chunks in the linked list with a big enough</span>
+<span class="c1">// size for the requested data, then increase the size of the heap.</span>
+<span class="n">ret</span> <span class="o">=</span> <span class="n">sbrk</span><span class="p">(</span><span class="n">size</span> <span class="o">+</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">));</span>
+<span class="k">if</span><span class="p">(</span><span class="n">ret</span> <span class="o">==</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">size</span><span class="p">;</span>
+<span class="n">heap_end</span> <span class="o">+=</span> <span class="n">size</span> <span class="o">+</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>The <code class="highlighter-rouge">heap_alloc()</code> function should now look something like this:</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Allocates memory on the heap</span>
+<span class="kt">void</span> <span class="o">*</span><span class="nf">heap_alloc</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">size</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">heap_header_t</span> <span class="o">*</span><span class="n">ret</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+
+    <span class="c1">// Make sure some idiot didn't try to allocate zero bytes of memory.</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">size</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// If the heap has not been initialized, then initialize it</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">heap_start</span> <span class="o">==</span> <span class="nb">NULL</span> <span class="o">&amp;&amp;</span> <span class="n">heap_end</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">heap_start</span> <span class="o">=</span> <span class="n">sbrk</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+            <span class="n">heap_end</span> <span class="o">=</span> <span class="n">heap_start</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="c1">// Check if a suitable chunk already exists in the linked list.</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="n">best_fit</span><span class="p">(</span><span class="n">size</span><span class="p">);</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">ret</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// If we found a suitable free chunk in the linked list, then remove</span>
+            <span class="c1">// that chunk from the linked list of free chunks.</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span> <span class="o">=</span> <span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">ret</span> <span class="o">==</span> <span class="n">head</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">head</span> <span class="o">=</span> <span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span><span class="p">;</span>
+                <span class="k">if</span><span class="p">(</span><span class="n">head</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="n">head</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="c1">// If there are no free chunks in the linked list with a big enough</span>
+            <span class="c1">// size for the requested data, then increase the size of the heap.</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="n">sbrk</span><span class="p">(</span><span class="n">size</span> <span class="o">+</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">));</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">ret</span> <span class="o">==</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+            <span class="p">}</span>
+            <span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">size</span><span class="p">;</span>
+            <span class="n">heap_end</span> <span class="o">+=</span> <span class="n">size</span> <span class="o">+</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">);</span>
+        <span class="p">}</span>
+
+        <span class="c1">// Mark the chunk as not free and return</span>
+        <span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">free</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">ret</span> <span class="o">+</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Next, the heap allocator needs to deal with freeing up used memory. This is done by marking the chunk as free and defragging the entire heap. Note that this is not the most efficient way to go about doing this.</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Frees the given block of memory.</span>
+<span class="kt">void</span> <span class="nf">heap_free</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">block</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">block</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// Mark the chunk of memory as free</span>
+        <span class="n">heap_header_t</span> <span class="o">*</span><span class="n">to_free</span> <span class="o">=</span> <span class="p">(</span><span class="n">heap_header_t</span> <span class="o">*</span><span class="p">)</span> <span class="p">(</span><span class="n">block</span> <span class="o">-</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">));</span>
+        <span class="n">to_free</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">free</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+
+        <span class="c1">// Defrag the heap (will automatically modify linked list)</span>
+        <span class="n">heap_defrag</span><span class="p">();</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Defragmentation does three things in this implementation:</p>
+<ol>
+  <li>If two or more free blocks are sitting right next to each other, they will be combined to form one giant free block.</li>
+  <li>If a free block is sitting at the end of the heap, then the program break will be reduced so that the free blocks are deleted.</li>
+  <li>The entire linked list of free blocks will be reconstructed.</li>
+</ol>
+
+<p>To complete requirements 1 and 3, the defragmentation algorithm must start at the beginning of the heap and loop through every chunk. It must also store the last free chunk it saw. For every free chunk, the defragmentation algorithm will do the following:</p>
+<ol>
+  <li>Check if the current chunk is adjacent to the last free chunk it saw. If so, increment the size of the last free chunk so that it “gobbles up” the current chunk.</li>
+  <li>Else, add the current chunk to the linked list.</li>
+</ol>
+
+<p>If there are no free chunks in the linked list, then the algorithm will just make the current chunk the head of the linked list. The first part of the defragmentation algorithm is shown below. Note that the implementation “loops through” the chunks by adding the size of the current chunk to a pointer to the current chunk.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">heap_header_t</span> <span class="o">*</span><span class="n">chunk</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">,</span> <span class="o">*</span><span class="n">last_free_chunk</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+<span class="kt">void</span> <span class="o">*</span><span class="n">curr</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">size</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+<span class="c1">// Loop through every chunk</span>
+<span class="n">curr</span> <span class="o">=</span> <span class="n">heap_start</span><span class="p">;</span>
+<span class="k">while</span><span class="p">(</span><span class="n">curr</span> <span class="o">&lt;</span> <span class="n">heap_end</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">chunk</span> <span class="o">=</span> <span class="p">(</span><span class="n">heap_header_t</span> <span class="o">*</span><span class="p">)</span> <span class="n">curr</span><span class="p">;</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">free</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// Check if this is a free chunk</span>
+        <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">head</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// If there is no linked list, then make this the head</span>
+            <span class="n">head</span> <span class="o">=</span> <span class="n">chunk</span><span class="p">;</span>
+            <span class="n">head</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+            <span class="n">head</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+            <span class="n">last_free_chunk</span> <span class="o">=</span> <span class="n">chunk</span><span class="p">;</span> <span class="c1">// Save the last free chunk</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span> <span class="c1">// Else, add the chunk to the linked list</span>
+            <span class="c1">// Check if the current chunk is adjacent to the last free</span>
+            <span class="c1">// chunk that we stored.</span>
+            <span class="k">if</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">last_free_chunk</span> <span class="o">+</span> <span class="n">last_free_chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span>
+                    <span class="o">+</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">)</span> <span class="o">==</span> <span class="n">curr</span><span class="p">)</span> <span class="p">{</span>
+                <span class="c1">// Instead of adding this chunk to the linked list, just</span>
+                <span class="c1">// increase the size of the last free chunk.</span>
+                <span class="n">last_free_chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span> <span class="o">+=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">)</span> <span class="o">+</span> <span class="n">chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span><span class="p">;</span>
+            <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+                <span class="c1">// If chunks aren't adjacent, then just add the current</span>
+                <span class="c1">// chunk to the linked list.</span>
+                <span class="n">chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span> <span class="o">=</span> <span class="n">last_free_chunk</span><span class="p">;</span>
+                <span class="k">if</span><span class="p">(</span><span class="n">last_free_chunk</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="n">last_free_chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">chunk</span><span class="p">;</span>
+                <span class="p">}</span>
+                <span class="n">chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+                <span class="n">last_free_chunk</span> <span class="o">=</span> <span class="n">chunk</span><span class="p">;</span> <span class="c1">// Save the last free chunk</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="n">curr</span> <span class="o">+=</span> <span class="n">chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span> <span class="o">+</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>The second part of the defragmentation algorithm will reduce the size of the heap if the last free chunk is at the end of the heap.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Check if the last free chunk is at the end of the heap</span>
+<span class="n">size</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">)</span> <span class="o">+</span> <span class="n">last_free_chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span><span class="p">;</span>
+<span class="k">if</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">last_free_chunk</span> <span class="o">+</span> <span class="n">size</span> <span class="o">==</span> <span class="n">heap_end</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// If so, reduce the size of the heap with sbrk() and check for errors</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">sbrk</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="n">size</span><span class="p">)</span> <span class="o">==</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="c1">// If the head of the linked list was the last freed chunk,</span>
+    <span class="c1">// then we should set it to the previous chunk.</span>
+    <span class="k">if</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">head</span> <span class="o">+</span> <span class="n">size</span> <span class="o">==</span> <span class="n">heap_end</span> <span class="o">&amp;&amp;</span>
+            <span class="n">head</span> <span class="o">!=</span> <span class="n">heap_start</span> <span class="o">&amp;&amp;</span> <span class="n">head</span><span class="p">)</span> <span class="p">{</span>
+
+        <span class="n">head</span> <span class="o">=</span> <span class="n">head</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span><span class="p">;</span> <span class="c1">// Set head to the previous value</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">head</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// Delete the next value in the linked list</span>
+            <span class="n">head</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="c1">// Reduce the size of the heap</span>
+    <span class="n">heap_end</span> <span class="o">-=</span> <span class="n">size</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>This is what the entire algorithm looks like:</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Defragmentation does the following:</span>
+<span class="c1">// 1.) Combines free blocks sitting next to each other.</span>
+<span class="c1">// 2.) Reduces the size of the heap if there are free block(s) at the end.</span>
+<span class="c1">// 3.) Reconstructs the entire linked list of free blocks.</span>
+<span class="kt">void</span> <span class="nf">heap_defrag</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">heap_header_t</span> <span class="o">*</span><span class="n">chunk</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">,</span> <span class="o">*</span><span class="n">last_free_chunk</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">curr</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">size</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="c1">// Delete the linked list</span>
+    <span class="n">head</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+
+    <span class="c1">// Loop through every chunk</span>
+    <span class="n">curr</span> <span class="o">=</span> <span class="n">heap_start</span><span class="p">;</span>
+    <span class="k">while</span><span class="p">(</span><span class="n">curr</span> <span class="o">&lt;</span> <span class="n">heap_end</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">chunk</span> <span class="o">=</span> <span class="p">(</span><span class="n">heap_header_t</span> <span class="o">*</span><span class="p">)</span> <span class="n">curr</span><span class="p">;</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">free</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// Check if this is a free chunk</span>
+            <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">head</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// If there is no linked list, then make this the head</span>
+                <span class="n">head</span> <span class="o">=</span> <span class="n">chunk</span><span class="p">;</span>
+                <span class="n">head</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+                <span class="n">head</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+                <span class="n">last_free_chunk</span> <span class="o">=</span> <span class="n">chunk</span><span class="p">;</span> <span class="c1">// Save the last free chunk</span>
+            <span class="p">}</span> <span class="k">else</span> <span class="p">{</span> <span class="c1">// Else, add the chunk to the linked list</span>
+                <span class="c1">// Check if the current chunk is adjacent to the last free</span>
+                <span class="c1">// chunk that we stored.</span>
+                <span class="k">if</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">last_free_chunk</span> <span class="o">+</span> <span class="n">last_free_chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span>
+                        <span class="o">+</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">)</span> <span class="o">==</span> <span class="n">curr</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="c1">// Instead of adding this chunk to the linked list, just</span>
+                    <span class="c1">// increase the size of the last free chunk.</span>
+                    <span class="n">last_free_chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span> <span class="o">+=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">)</span> <span class="o">+</span> <span class="n">chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span><span class="p">;</span>
+                <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+                    <span class="c1">// If chunks aren't adjacent, then just add the current</span>
+                    <span class="c1">// chunk to the linked list.</span>
+                    <span class="n">chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span> <span class="o">=</span> <span class="n">last_free_chunk</span><span class="p">;</span>
+                    <span class="k">if</span><span class="p">(</span><span class="n">last_free_chunk</span><span class="p">)</span> <span class="p">{</span>
+                        <span class="n">last_free_chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">chunk</span><span class="p">;</span>
+                    <span class="p">}</span>
+                    <span class="n">chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+                    <span class="n">last_free_chunk</span> <span class="o">=</span> <span class="n">chunk</span><span class="p">;</span> <span class="c1">// Save the last free chunk</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="n">curr</span> <span class="o">+=</span> <span class="n">chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span> <span class="o">+</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="c1">// Check if the last free chunk is at the end of the heap</span>
+    <span class="n">size</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">)</span> <span class="o">+</span> <span class="n">last_free_chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span><span class="p">;</span>
+    <span class="k">if</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">last_free_chunk</span> <span class="o">+</span> <span class="n">size</span> <span class="o">==</span> <span class="n">heap_end</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// If so, reduce the size of the heap with sbrk() and check for errors</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">sbrk</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="n">size</span><span class="p">)</span> <span class="o">==</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+        <span class="p">}</span>
+
+        <span class="c1">// If the head of the linked list was the last freed chunk,</span>
+        <span class="c1">// then we should set it to the previous chunk.</span>
+        <span class="k">if</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">head</span> <span class="o">+</span> <span class="n">size</span> <span class="o">==</span> <span class="n">heap_end</span> <span class="o">&amp;&amp;</span>
+                <span class="n">head</span> <span class="o">!=</span> <span class="n">heap_start</span> <span class="o">&amp;&amp;</span> <span class="n">head</span><span class="p">)</span> <span class="p">{</span>
+
+            <span class="n">head</span> <span class="o">=</span> <span class="n">head</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span><span class="p">;</span> <span class="c1">// Set head to the previous value</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">head</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// Delete the next value in the linked list</span>
+                <span class="n">head</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+
+        <span class="c1">// Reduce the size of the heap</span>
+        <span class="n">heap_end</span> <span class="o">-=</span> <span class="n">size</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>The basic heap allocator implementation is complete. Now a <code class="highlighter-rouge">main()</code> function can be created to test out whether the heap allocator works.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Main function</span>
+<span class="kt">void</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">buf0</span><span class="p">,</span> <span class="o">*</span><span class="n">buf1</span><span class="p">,</span> <span class="o">*</span><span class="n">buf2</span><span class="p">;</span>
+
+    <span class="n">buf0</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">heap_alloc</span><span class="p">(</span><span class="mi">60</span><span class="p">);</span>
+    <span class="n">strcpy</span><span class="p">(</span><span class="n">buf0</span><span class="p">,</span> <span class="s">"Buffer 0 is working.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+    <span class="n">buf1</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">heap_alloc</span><span class="p">(</span><span class="mi">60</span><span class="p">);</span>
+    <span class="n">strcpy</span><span class="p">(</span><span class="n">buf1</span><span class="p">,</span> <span class="s">"Buffer 1 is working.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"%s%s"</span><span class="p">,</span> <span class="n">buf0</span><span class="p">,</span> <span class="n">buf1</span><span class="p">);</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">"Freeing buffer 0.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+    <span class="n">heap_free</span><span class="p">(</span><span class="n">buf0</span><span class="p">);</span>
+
+    <span class="n">buf2</span> <span class="o">=</span> <span class="n">heap_alloc</span><span class="p">(</span><span class="mi">50</span><span class="p">);</span>
+    <span class="n">strcpy</span><span class="p">(</span><span class="n">buf2</span><span class="p">,</span> <span class="s">"Buffer 2 has been allocated.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"%s"</span><span class="p">,</span> <span class="n">buf2</span><span class="p">);</span>
+
+    <span class="k">if</span><span class="p">(</span><span class="n">buf0</span> <span class="o">==</span> <span class="n">buf2</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">"Buffer 2 has been allocated using buffer 0's chunk.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">"Freeing buffer 1.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+    <span class="n">heap_free</span><span class="p">(</span><span class="n">buf1</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"Freeing buffer 2.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+    <span class="n">heap_free</span><span class="p">(</span><span class="n">buf2</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>This is what heap.h looks like:</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#ifndef HEAP_H
+#define HEAP_H
+</span>
+<span class="cp">#include &lt;stdio.h&gt;
+</span>
+<span class="c1">// Header for each chunk of allocated memory</span>
+<span class="k">typedef</span> <span class="k">union</span> <span class="n">heap_header</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="p">{</span> <span class="c1">// Actual header data that we care about</span>
+        <span class="k">union</span> <span class="n">heap_header</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span> <span class="c1">// Next value in linked list.</span>
+        <span class="k">union</span> <span class="n">heap_header</span> <span class="o">*</span><span class="n">prev</span><span class="p">;</span> <span class="c1">// Previous value in list.</span>
+        <span class="kt">size_t</span> <span class="n">size</span><span class="p">;</span> <span class="c1">// Amount of memory allocated for user.</span>
+        <span class="kt">char</span> <span class="n">free</span><span class="p">;</span> <span class="c1">// Set to 1 if memory isn't being used.</span>
+    <span class="p">}</span> <span class="n">data</span><span class="p">;</span>
+    <span class="kt">char</span> <span class="n">align</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span> <span class="c1">// Only used to align header to 32 bytes</span>
+<span class="p">}</span> <span class="n">heap_header_t</span><span class="p">;</span>
+
+<span class="c1">// Functions</span>
+<span class="kt">void</span> <span class="o">*</span><span class="n">heap_alloc</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">size</span><span class="p">);</span> <span class="c1">// Allocates memory on the heap</span>
+<span class="n">heap_header_t</span> <span class="o">*</span><span class="n">best_fit</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">size</span><span class="p">);</span> <span class="c1">// Finds a free block (if available)</span>
+<span class="kt">void</span> <span class="n">heap_free</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">block</span><span class="p">);</span> <span class="c1">// Frees memory on the heap</span>
+<span class="kt">void</span> <span class="n">heap_defrag</span><span class="p">();</span> <span class="c1">// Defrags the heap</span>
+
+<span class="cp">#endif
+</span></code></pre></div></div>
+
+<p>This is what heap.c looks like:</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;pthread.h&gt;
+#include &lt;string.h&gt;
+#include "heap.h"
+</span>
+<span class="c1">// Start and end of the heap</span>
+<span class="k">static</span> <span class="kt">void</span> <span class="o">*</span><span class="n">heap_start</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+<span class="k">static</span> <span class="kt">void</span> <span class="o">*</span><span class="n">heap_end</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+
+<span class="c1">// Head for the linked list of free chunks</span>
+<span class="k">static</span> <span class="n">heap_header_t</span> <span class="o">*</span><span class="n">head</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+
+<span class="c1">// Allocates memory on the heap</span>
+<span class="kt">void</span> <span class="o">*</span><span class="nf">heap_alloc</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">size</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">heap_header_t</span> <span class="o">*</span><span class="n">ret</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+
+    <span class="c1">// Make sure some idiot didn't try to allocate zero bytes of memory.</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">size</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// If the heap has not been initialized, then initialize it</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">heap_start</span> <span class="o">==</span> <span class="nb">NULL</span> <span class="o">&amp;&amp;</span> <span class="n">heap_end</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">heap_start</span> <span class="o">=</span> <span class="n">sbrk</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+            <span class="n">heap_end</span> <span class="o">=</span> <span class="n">heap_start</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="c1">// Check if a suitable chunk already exists in the linked list.</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="n">best_fit</span><span class="p">(</span><span class="n">size</span><span class="p">);</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">ret</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// If we found a suitable free chunk in the linked list, then remove</span>
+            <span class="c1">// that chunk from the linked list of free chunks.</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span> <span class="o">=</span> <span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">ret</span> <span class="o">==</span> <span class="n">head</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">head</span> <span class="o">=</span> <span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span><span class="p">;</span>
+                <span class="k">if</span><span class="p">(</span><span class="n">head</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="n">head</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="c1">// If there are no free chunks in the linked list with a big enough</span>
+            <span class="c1">// size for the requested data, then increase the size of the heap.</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="n">sbrk</span><span class="p">(</span><span class="n">size</span> <span class="o">+</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">));</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">ret</span> <span class="o">==</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+            <span class="p">}</span>
+            <span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">size</span><span class="p">;</span>
+            <span class="n">heap_end</span> <span class="o">+=</span> <span class="n">size</span> <span class="o">+</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">);</span>
+        <span class="p">}</span>
+
+        <span class="c1">// Mark the chunk as not free and return</span>
+        <span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">free</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">ret</span> <span class="o">+</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// Loops through the linked list and finds a chunk that has a size big enough to store</span>
+<span class="c1">// the user's data. Uses the best fit algorithm. May return NULL if there is no free</span>
+<span class="c1">// chunk in the linked list, in which case the size of the heap must be increased.</span>
+<span class="n">heap_header_t</span> <span class="o">*</span><span class="nf">best_fit</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">size</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">heap_header_t</span> <span class="o">*</span><span class="n">ret</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="n">heap_header_t</span> <span class="o">*</span><span class="n">curr</span> <span class="o">=</span> <span class="n">head</span><span class="p">;</span>
+    <span class="k">while</span><span class="p">(</span><span class="n">curr</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// Check if this current chunk meets the size requirements.</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">curr</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span> <span class="o">&gt;=</span> <span class="n">size</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">ret</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+                <span class="c1">// If we haven't found a chunk yet, then store this one</span>
+                <span class="n">ret</span> <span class="o">=</span> <span class="n">curr</span><span class="p">;</span>
+            <span class="p">}</span> <span class="k">else</span> <span class="k">if</span><span class="p">(</span><span class="n">ret</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span> <span class="o">&lt;=</span> <span class="n">curr</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span><span class="p">)</span> <span class="p">{</span>
+                <span class="c1">// If we have already found a chunk, then only store this</span>
+                <span class="c1">// one if it has a smaller size than the stored chunk (or,</span>
+                <span class="c1">// in other words, if it has the better fit).</span>
+                <span class="n">ret</span> <span class="o">=</span> <span class="n">curr</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+
+        <span class="c1">// Go to the next chunk in the linked list</span>
+        <span class="n">curr</span> <span class="o">=</span> <span class="n">curr</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// Frees the given block of memory.</span>
+<span class="kt">void</span> <span class="nf">heap_free</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">block</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">block</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// Mark the chunk of memory as free</span>
+        <span class="n">heap_header_t</span> <span class="o">*</span><span class="n">to_free</span> <span class="o">=</span> <span class="p">(</span><span class="n">heap_header_t</span> <span class="o">*</span><span class="p">)</span> <span class="p">(</span><span class="n">block</span> <span class="o">-</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">));</span>
+        <span class="n">to_free</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">free</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+
+        <span class="c1">// Defrag the heap (will automatically modify linked list)</span>
+        <span class="n">heap_defrag</span><span class="p">();</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// Defragmentation does the following:</span>
+<span class="c1">// 1.) Combines free blocks sitting next to each other.</span>
+<span class="c1">// 2.) Reduces the size of the heap if there are free block(s) at the end.</span>
+<span class="c1">// 3.) Reconstructs the entire linked list of free blocks.</span>
+<span class="kt">void</span> <span class="nf">heap_defrag</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">heap_header_t</span> <span class="o">*</span><span class="n">chunk</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">,</span> <span class="o">*</span><span class="n">last_free_chunk</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">curr</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">size</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="c1">// Delete the linked list</span>
+    <span class="n">head</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+
+    <span class="c1">// Loop through every chunk</span>
+    <span class="n">curr</span> <span class="o">=</span> <span class="n">heap_start</span><span class="p">;</span>
+    <span class="k">while</span><span class="p">(</span><span class="n">curr</span> <span class="o">&lt;</span> <span class="n">heap_end</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">chunk</span> <span class="o">=</span> <span class="p">(</span><span class="n">heap_header_t</span> <span class="o">*</span><span class="p">)</span> <span class="n">curr</span><span class="p">;</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">free</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// Check if this is a free chunk</span>
+            <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">head</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// If there is no linked list, then make this the head</span>
+                <span class="n">head</span> <span class="o">=</span> <span class="n">chunk</span><span class="p">;</span>
+                <span class="n">head</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+                <span class="n">head</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+                <span class="n">last_free_chunk</span> <span class="o">=</span> <span class="n">chunk</span><span class="p">;</span> <span class="c1">// Save the last free chunk</span>
+            <span class="p">}</span> <span class="k">else</span> <span class="p">{</span> <span class="c1">// Else, add the chunk to the linked list</span>
+                <span class="c1">// Check if the current chunk is adjacent to the last free</span>
+                <span class="c1">// chunk that we stored.</span>
+                <span class="k">if</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">last_free_chunk</span> <span class="o">+</span> <span class="n">last_free_chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span>
+                        <span class="o">+</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">)</span> <span class="o">==</span> <span class="n">curr</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="c1">// Instead of adding this chunk to the linked list, just</span>
+                    <span class="c1">// increase the size of the last free chunk.</span>
+                    <span class="n">last_free_chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span> <span class="o">+=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">)</span> <span class="o">+</span> <span class="n">chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span><span class="p">;</span>
+                <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+                    <span class="c1">// If chunks aren't adjacent, then just add the current</span>
+                    <span class="c1">// chunk to the linked list.</span>
+                    <span class="n">chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span> <span class="o">=</span> <span class="n">last_free_chunk</span><span class="p">;</span>
+                    <span class="k">if</span><span class="p">(</span><span class="n">last_free_chunk</span><span class="p">)</span> <span class="p">{</span>
+                        <span class="n">last_free_chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">chunk</span><span class="p">;</span>
+                    <span class="p">}</span>
+                    <span class="n">chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+                    <span class="n">last_free_chunk</span> <span class="o">=</span> <span class="n">chunk</span><span class="p">;</span> <span class="c1">// Save the last free chunk</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="n">curr</span> <span class="o">+=</span> <span class="n">chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span> <span class="o">+</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="c1">// Check if the last free chunk is at the end of the heap</span>
+    <span class="n">size</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">heap_header_t</span><span class="p">)</span> <span class="o">+</span> <span class="n">last_free_chunk</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">size</span><span class="p">;</span>
+    <span class="k">if</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">last_free_chunk</span> <span class="o">+</span> <span class="n">size</span> <span class="o">==</span> <span class="n">heap_end</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// If so, reduce the size of the heap with sbrk() and check for errors</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">sbrk</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="n">size</span><span class="p">)</span> <span class="o">==</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+        <span class="p">}</span>
+
+        <span class="c1">// If the head of the linked list was the last freed chunk,</span>
+        <span class="c1">// then we should set it to the previous chunk.</span>
+        <span class="k">if</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">head</span> <span class="o">+</span> <span class="n">size</span> <span class="o">==</span> <span class="n">heap_end</span> <span class="o">&amp;&amp;</span>
+                <span class="n">head</span> <span class="o">!=</span> <span class="n">heap_start</span> <span class="o">&amp;&amp;</span> <span class="n">head</span><span class="p">)</span> <span class="p">{</span>
+
+            <span class="n">head</span> <span class="o">=</span> <span class="n">head</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">prev</span><span class="p">;</span> <span class="c1">// Set head to the previous value</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">head</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// Delete the next value in the linked list</span>
+                <span class="n">head</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">.</span><span class="n">next</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+
+        <span class="c1">// Reduce the size of the heap</span>
+        <span class="n">heap_end</span> <span class="o">-=</span> <span class="n">size</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// Main function</span>
+<span class="kt">void</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">buf0</span><span class="p">,</span> <span class="o">*</span><span class="n">buf1</span><span class="p">,</span> <span class="o">*</span><span class="n">buf2</span><span class="p">;</span>
+
+    <span class="n">buf0</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">heap_alloc</span><span class="p">(</span><span class="mi">60</span><span class="p">);</span>
+    <span class="n">strcpy</span><span class="p">(</span><span class="n">buf0</span><span class="p">,</span> <span class="s">"Buffer 0 is working.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+    <span class="n">buf1</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">heap_alloc</span><span class="p">(</span><span class="mi">60</span><span class="p">);</span>
+    <span class="n">strcpy</span><span class="p">(</span><span class="n">buf1</span><span class="p">,</span> <span class="s">"Buffer 1 is working.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"%s%s"</span><span class="p">,</span> <span class="n">buf0</span><span class="p">,</span> <span class="n">buf1</span><span class="p">);</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">"Freeing buffer 0.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+    <span class="n">heap_free</span><span class="p">(</span><span class="n">buf0</span><span class="p">);</span>
+
+    <span class="n">buf2</span> <span class="o">=</span> <span class="n">heap_alloc</span><span class="p">(</span><span class="mi">50</span><span class="p">);</span>
+    <span class="n">strcpy</span><span class="p">(</span><span class="n">buf2</span><span class="p">,</span> <span class="s">"Buffer 2 has been allocated.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"%s"</span><span class="p">,</span> <span class="n">buf2</span><span class="p">);</span>
+
+    <span class="k">if</span><span class="p">(</span><span class="n">buf0</span> <span class="o">==</span> <span class="n">buf2</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">"Buffer 2 has been allocated using buffer 0's chunk.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">"Freeing buffer 1.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+    <span class="n">heap_free</span><span class="p">(</span><span class="n">buf1</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"Freeing buffer 2.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+    <span class="n">heap_free</span><span class="p">(</span><span class="n">buf2</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Compiling and running the program produces the following output.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ gcc -o heap heap.h heap.c
+$ ./heap
+Buffer 0 is working.
+Buffer 1 is working.
+Freeing buffer 0.
+Buffer 2 has been allocated.
+Buffer 2 has been allocated using buffer 0's chunk.
+Freeing buffer 1.
+Freeing buffer 2.
+</code></pre></div></div>
 
 <section class="related">
   <h3 style="color: black">Related Posts</h3>
   <ul class="post-list">
-    
-      <li style="color: black; font-size: 9;">
-        <a href="/2020/12/30/creating-a-basic-heap-allocator.html">
-          Creating a Basic Heap Allocator
-        </a>
-      </li>
     
       <li style="color: black; font-size: 9;">
         <a href="/2020/12/29/defeating-aslr-via-memory-leak.html">
@@ -298,6 +804,12 @@ flag is flag{!#&amp;*/5&lt;DMW}
       <li style="color: black; font-size: 9;">
         <a href="/2020/10/25/mining-hero-vulnerabilities.html">
           Mining Hero Vulnerabilities
+        </a>
+      </li>
+    
+      <li style="color: black; font-size: 9;">
+        <a href="/2020/10/21/simple-heap-buffer-overflow.html">
+          Simple Heap Buffer Overflow
         </a>
       </li>
     
