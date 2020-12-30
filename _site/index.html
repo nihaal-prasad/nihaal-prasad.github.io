@@ -189,6 +189,16 @@
   <hr>
   <div class="post-body">
     <div class="home"><h3>
+                <a class="post-link" href="/2020/12/29/defeating-aslr-via-memory-leak.html">
+                Defeating ASLR via Memory Leak
+                </a>
+            </h3>
+            <div id="page-preview" style="margin-left: 5%">
+                <p><p>Address Space Layout Randomization (ASLR) is a modern exploit mitigation technique that Operating Systems typically use to randomize addresses when a process is executed. This is implemented by having the OS change the locations of special areas, such as the base of executable, the heap, the stack, and any libraries that are loaded in memory. Since memory addresses are unpredictable when ASLR is turned on, hardcoded addresses can no longer be used in exploits when ASLR is enabled.</p>
+
+</p>
+            </div>
+            <hr /><h3>
                 <a class="post-link" href="/2020/10/25/mining-hero-vulnerabilities.html">
                 Mining Hero Vulnerabilities
                 </a>
@@ -225,16 +235,6 @@
             </h3>
             <div id="page-preview" style="margin-left: 5%">
                 <p><p>Today, I will be writing up how I solved the <a href="https://www.vulnhub.com/entry/greenoptic-1,510/#">GreenOptic: 1</a> challenge from VulnHub. This was quite a difficult box to do as it led me down a bunch of rabbit-holes, but nonetheless, I was able to solve it. The challenge was designed to be realistic, and all of the things that I came across were things that could be found in a real environment.</p>
-
-</p>
-            </div>
-            <hr /><h3>
-                <a class="post-link" href="/2020/03/27/creating-a-barebones-windows-debugger.html">
-                Creating a Barebones Windows Debugger
-                </a>
-            </h3>
-            <div id="page-preview" style="margin-left: 5%">
-                <p><p>Today, I will be showing how I created a basic debugger in C for Windows programs. This will be very similar to the <a href="https://nihaal-prasad.github.io/2020/03/07/creating-a-barebones-linux-debugger.html">Linux Debugger</a> that I made a while back, but will be quite different because I will be using the Windows debugging API as opposed to the Linux one.</p>
 
 </p>
             </div>
