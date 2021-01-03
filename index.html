@@ -189,6 +189,16 @@
   <hr>
   <div class="post-body">
     <div class="home"><h3>
+                <a class="post-link" href="/2021/01/03/got-overwrite-using-format-strings.html">
+                GOT Overwrite Using Format Strings
+                </a>
+            </h3>
+            <div id="page-preview" style="margin-left: 5%">
+                <p><p>The Global Offset Table (GOT) is a table of memory addresses, and the location of the GOT is always known at runtime. Typically, the GOT is used to store the address of various functions in libraries that are loaded into the program. Because of PIE, libraries will be relocated at runtime, so the only way for a running process to know the location of a certain library function is by looking it up inside of the GOT.</p>
+
+</p>
+            </div>
+            <hr /><h3>
                 <a class="post-link" href="/2020/12/30/creating-a-basic-heap-allocator.html">
                 Creating a Basic Heap Allocator
                 </a>
@@ -225,16 +235,6 @@
             </h3>
             <div id="page-preview" style="margin-left: 5%">
                 <p><p>Earlier today, I was messing around with some code, and I came up with <a href="../../../assets/other/2020-10-21-heap-buffer-overflow/people.c">this vulnerable program</a>. This program was written using bad programming habits on purpose, and I am going to show you how it is vulnerable to a buffer overflow. This isn’t a complicated vulnerability, and while it does involve corrupting memory on the heap, it does not require you to have in-depth knowledge about how the heap works (unlike many other heap exploits).</p>
-
-</p>
-            </div>
-            <hr /><h3>
-                <a class="post-link" href="/2020/10/14/return-oriented-programming-tutorial.html">
-                Return Oriented Programming Tutorial
-                </a>
-            </h3>
-            <div id="page-preview" style="margin-left: 5%">
-                <p><p>In this blog post, I will be explaining how you can make use of Return Oriented Programming (ROP) gadgets in order to execute code when NX is enabled. I will also be solving one of ROP Emporium’s challenges by using a ROP chain.</p>
 
 </p>
             </div>
