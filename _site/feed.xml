@@ -1,4 +1,160 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2021-01-03T14:15:30-05:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">GOT Overwrite Using Format Strings</title><link href="http://localhost:4000/2021/01/03/got-overwrite-using-format-strings.html" rel="alternate" type="text/html" title="GOT Overwrite Using Format Strings" /><published>2021-01-03T00:00:00-05:00</published><updated>2021-01-03T00:00:00-05:00</updated><id>http://localhost:4000/2021/01/03/got-overwrite-using-format-strings</id><content type="html" xml:base="http://localhost:4000/2021/01/03/got-overwrite-using-format-strings.html">&lt;p&gt;The Global Offset Table (GOT) is a table of memory addresses, and the location of the GOT is always known at runtime. Typically, the GOT is used to store the address of various functions in libraries that are loaded into the program. Because of PIE, libraries will be relocated at runtime, so the only way for a running process to know the location of a certain library function is by looking it up inside of the GOT.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2021-01-08T10:15:54-05:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Hooking Linux Function Calls Via LD_PRELOAD</title><link href="http://localhost:4000/2021/01/07/hooking-linux-function-calls-via-ld-preload.html" rel="alternate" type="text/html" title="Hooking Linux Function Calls Via LD_PRELOAD" /><published>2021-01-07T00:00:00-05:00</published><updated>2021-01-07T00:00:00-05:00</updated><id>http://localhost:4000/2021/01/07/hooking-linux-function-calls-via-ld-preload</id><content type="html" xml:base="http://localhost:4000/2021/01/07/hooking-linux-function-calls-via-ld-preload.html">&lt;p&gt;Hooking functions is the act of replacing a pointer to a function with a different pointer so that another function is called instead of the original function. For example, suppose there was a function &lt;code class=&quot;highlighter-rouge&quot;&gt;x()&lt;/code&gt; being called inside of a program. If an attacker has write permissions to the binary file, then the attacker can replace the code calling &lt;code class=&quot;highlighter-rouge&quot;&gt;x()&lt;/code&gt; with code that calls some malicious function &lt;code class=&quot;highlighter-rouge&quot;&gt;y()&lt;/code&gt; instead.&lt;/p&gt;
+
+&lt;p&gt;Below contains the code that will be used for this tutorial. The code contains a &lt;code class=&quot;highlighter-rouge&quot;&gt;check_pass()&lt;/code&gt; function, which checks whether a user-supplied password is equal to the string “p@ssw0rd”. In real life, the program would (hopefully) not use a hardcoded plaintext password and instead query a database of hashed passwords. For this example, let’s ignore the fact that the password could be retrieved with the &lt;code class=&quot;highlighter-rouge&quot;&gt;strings&lt;/code&gt; command, and let’s assume that the attacker has no idea what the password is.&lt;/p&gt;
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;cp&quot;&gt;#include &amp;lt;stdio.h&amp;gt;
+#include &amp;lt;stdlib.h&amp;gt;
+#include &amp;lt;string.h&amp;gt;
+&lt;/span&gt;
+&lt;span class=&quot;cp&quot;&gt;#define BUF_SIZE 100
+&lt;/span&gt;
+&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;correct&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;You typed in the correct password!&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;incorrect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;You typed in an incorrect password!&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;check_pass&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;buf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;BUF_SIZE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Enter the password: &quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;fgets&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;buf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;BUF_SIZE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;stdin&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;strncmp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;p@ssw0rd&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;buf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;correct&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;incorrect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;check_pass&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Compiling and executing the program displays the following:&lt;/p&gt;
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;gcc &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; check_pass check_pass.c
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;./check_pass
+Enter the password: Hello
+You typed &lt;span class=&quot;k&quot;&gt;in &lt;/span&gt;an incorrect password!
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;./check_pass
+Enter the password: p@ssw0rd
+You typed &lt;span class=&quot;k&quot;&gt;in &lt;/span&gt;the correct password!
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Let’s say that the attacker wants to execute the &lt;code class=&quot;highlighter-rouge&quot;&gt;correct()&lt;/code&gt; function without even knowing the correct password. The attacker will first want to find the address of the code that calls &lt;code class=&quot;highlighter-rouge&quot;&gt;incorrect()&lt;/code&gt; inside of the binary file. Then, the assembly instruction can be patched so that it calls &lt;code class=&quot;highlighter-rouge&quot;&gt;correct()&lt;/code&gt; instead of &lt;code class=&quot;highlighter-rouge&quot;&gt;incorrect()&lt;/code&gt;.&lt;/p&gt;
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;objdump &lt;span class=&quot;nt&quot;&gt;-dj&lt;/span&gt; .text &lt;span class=&quot;nt&quot;&gt;-M&lt;/span&gt; intel check_pass| &lt;span class=&quot;nb&quot;&gt;grep &lt;/span&gt;correct
+0000000000001155 &amp;lt;correct&amp;gt;:
+0000000000001168 &amp;lt;incorrect&amp;gt;:
+    11d8:       e8 78 ff ff ff          call   1155 &amp;lt;correct&amp;gt;
+    11e4:       e8 7f ff ff ff          call   1168 &amp;lt;incorrect&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;From this object dump, we can see that the line of assembly code that calls &lt;code class=&quot;highlighter-rouge&quot;&gt;incorrect()&lt;/code&gt; is &lt;code class=&quot;highlighter-rouge&quot;&gt;0x11e4&lt;/code&gt; bytes into the file. The function &lt;code class=&quot;highlighter-rouge&quot;&gt;correct()&lt;/code&gt; is located &lt;code class=&quot;highlighter-rouge&quot;&gt;0x1155&lt;/code&gt; bytes into the file. This means that if we change the instruction that is &lt;code class=&quot;highlighter-rouge&quot;&gt;0x11e4&lt;/code&gt; bytes into the file to call &lt;code class=&quot;highlighter-rouge&quot;&gt;0x1155&lt;/code&gt;, we can execute the &lt;code class=&quot;highlighter-rouge&quot;&gt;correct()&lt;/code&gt; function without typing in the correct password.&lt;/p&gt;
+
+&lt;p&gt;I wrote a small Python script for patching binaries in one shell command, which can be downloaded &lt;a href=&quot;https://github.com/nihaal-prasad/Patcher/tree/main&quot;&gt;here&lt;/a&gt;. We will use this script to modify the instruction &lt;code class=&quot;highlighter-rouge&quot;&gt;0x11e4&lt;/code&gt;bytes into the file. This way, the program will still call &lt;code class=&quot;highlighter-rouge&quot;&gt;correct()&lt;/code&gt; even if an incorrect password is given.&lt;/p&gt;
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;./patcher.py &lt;span class=&quot;nt&quot;&gt;-a&lt;/span&gt; check_pass 0x11e4 CALL 0x1155
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;objdump &lt;span class=&quot;nt&quot;&gt;-dj&lt;/span&gt; .text &lt;span class=&quot;nt&quot;&gt;-M&lt;/span&gt; intel check_pass| &lt;span class=&quot;nb&quot;&gt;grep &lt;/span&gt;correct
+0000000000001155 &amp;lt;correct&amp;gt;:
+0000000000001168 &amp;lt;incorrect&amp;gt;:
+    11d8:       e8 78 ff ff ff          call   1155 &amp;lt;correct&amp;gt;
+    11e4:       e8 6c ff ff ff          call   1155 &amp;lt;correct&amp;gt;
+
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;./check_pass
+Enter the password: WrongPassword
+You typed &lt;span class=&quot;k&quot;&gt;in &lt;/span&gt;the correct password!
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;That’s all it takes to overwrite a function pointer. Now, let’s suppose that the attacker isn’t satisfied with having a correct password; the attacker wants to have a working shell be executed as well. In order to do this, the attacker needs to create his own function and replace the instruction at &lt;code class=&quot;highlighter-rouge&quot;&gt;0x11e4&lt;/code&gt; with a pointer to his own function. There are several methods of doing this, but the method that will be discussed today involves using the &lt;code class=&quot;highlighter-rouge&quot;&gt;LD_PRELOAD&lt;/code&gt; trick.&lt;/p&gt;
+
+&lt;p&gt;Typically, whenever a process knows that it needs to use a function from an external library, the process needs to load that library into memory and resolve symbols at runtime. There is an environment variable called &lt;code class=&quot;highlighter-rouge&quot;&gt;LD_PRELOAD&lt;/code&gt;, which will contain a list of libraries that will be loaded before any other library. If the attacker modifies the &lt;code class=&quot;highlighter-rouge&quot;&gt;LD_PRELOAD&lt;/code&gt; variable, the attacker can specify his own library to load.&lt;/p&gt;
+
+&lt;p&gt;In order to insert a malicious function into the program, the attacker will do the following:&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;Find a legitimate library function (let’s suppose this function is called &lt;code class=&quot;highlighter-rouge&quot;&gt;x()&lt;/code&gt;).&lt;/li&gt;
+  &lt;li&gt;Patch a &lt;code class=&quot;highlighter-rouge&quot;&gt;CALL&lt;/code&gt; instruction to call the PLT entry of the legitimate library function. (In our case, this would be the &lt;code class=&quot;highlighter-rouge&quot;&gt;CALL&lt;/code&gt; instruction at &lt;code class=&quot;highlighter-rouge&quot;&gt;0x11e4&lt;/code&gt;.)&lt;/li&gt;
+  &lt;li&gt;Create a malicious library that contains a function with the same name as the legitimate library function.&lt;/li&gt;
+  &lt;li&gt;Use &lt;code class=&quot;highlighter-rouge&quot;&gt;LD_PRELOAD&lt;/code&gt; to load the malicious library.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Because &lt;code class=&quot;highlighter-rouge&quot;&gt;LD_PRELOAD&lt;/code&gt; loads the malicious library before the legitimate library, the symbol for &lt;code class=&quot;highlighter-rouge&quot;&gt;x()&lt;/code&gt; will be resolved to be the function inside of the malicious library instead of the function inside of the legitimate library. Because the attacker has patched some &lt;code class=&quot;highlighter-rouge&quot;&gt;CALL&lt;/code&gt; instruction with the address of the PLT for &lt;code class=&quot;highlighter-rouge&quot;&gt;x()&lt;/code&gt;, whenever that call instruction is executed, the attacker’s version of &lt;code class=&quot;highlighter-rouge&quot;&gt;x()&lt;/code&gt; will be called.&lt;/p&gt;
+
+&lt;p&gt;For step 1, let’s first find some of the PLT entries that are being used in the program.&lt;/p&gt;
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;objdump &lt;span class=&quot;nt&quot;&gt;-dj&lt;/span&gt; .text &lt;span class=&quot;nt&quot;&gt;-M&lt;/span&gt; intel check_pass| &lt;span class=&quot;nb&quot;&gt;grep &lt;/span&gt;plt
+    112e:       e8 2d ff ff ff          call   1060 &amp;lt;__cxa_finalize@plt&amp;gt;
+    1160:       e8 cb fe ff ff          call   1030 &amp;lt;puts@plt&amp;gt;
+    1173:       e8 b8 fe ff ff          call   1030 &amp;lt;puts@plt&amp;gt;
+    118f:       e8 ac fe ff ff          call   1040 &amp;lt;&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt;@plt&amp;gt;
+    11a7:       e8 a4 fe ff ff          call   1050 &amp;lt;fgets@plt&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Here, we can see that the following functions are called at some point in the program:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;__cxa_finalize(void *d)&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;puts()&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;printf()&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;fgets()&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Any of these functions can be overwritten, but for this example, we’ll choose &lt;code class=&quot;highlighter-rouge&quot;&gt;__cxa_finalize(void *d)&lt;/code&gt;, which is typically called at the end of a program. The PLT entry for this function is &lt;code class=&quot;highlighter-rouge&quot;&gt;0x1060&lt;/code&gt;. Now, we can use Python to patch the instruction at &lt;code class=&quot;highlighter-rouge&quot;&gt;0x11e4&lt;/code&gt; to call &lt;code class=&quot;highlighter-rouge&quot;&gt;__cxa_finalize(void *d)&lt;/code&gt;. To complete step 2, we’ll use my &lt;a href=&quot;https://github.com/nihaal-prasad/Patcher&quot;&gt;Patcher&lt;/a&gt; script again.&lt;/p&gt;
+
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;./patcher.py &lt;span class=&quot;nt&quot;&gt;-a&lt;/span&gt; check_pass 0x11e4 call 0x1060
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;objdump &lt;span class=&quot;nt&quot;&gt;-dj&lt;/span&gt; .text &lt;span class=&quot;nt&quot;&gt;-M&lt;/span&gt; intel check_pass | &lt;span class=&quot;nb&quot;&gt;grep &lt;/span&gt;11e4
+    11e4:       e8 77 fe ff ff          call   1060 &amp;lt;__cxa_finalize@plt&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;For step 3, we need to create a malicious library file that redefines the &lt;code class=&quot;highlighter-rouge&quot;&gt;__cxa_finalize(void *d)&lt;/code&gt; function. Note that this function takes in one &lt;code class=&quot;highlighter-rouge&quot;&gt;void *&lt;/code&gt; as a parameter, so we need to include that &lt;code class=&quot;highlighter-rouge&quot;&gt;void *&lt;/code&gt; in the function declaration.&lt;/p&gt;
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;cat &lt;/span&gt;library.c
+&lt;span class=&quot;c&quot;&gt;#include &amp;lt;stdio.h&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;#include &amp;lt;stdlib.h&amp;gt;&lt;/span&gt;
+
+void __cxa_finalize&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;void &lt;span class=&quot;k&quot;&gt;*&lt;/span&gt;d&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    system&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;/bin/sh&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;gcc &lt;span class=&quot;nt&quot;&gt;-shared&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-fPIC&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; library.so library.c
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Finally, to get ourselves a shell, run the command shown below. This will set the &lt;code class=&quot;highlighter-rouge&quot;&gt;LD_PRELOAD&lt;/code&gt; environment variable to be our malicious environment variable so that our version of the &lt;code class=&quot;highlighter-rouge&quot;&gt;__cxa_finalize(void *d)&lt;/code&gt; function gets called. Note that the second shell prompt ($) is caused by our version of &lt;code class=&quot;highlighter-rouge&quot;&gt;__cxa_finalize(void *d)&lt;/code&gt; being executed.&lt;/p&gt;
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ LD_PRELOAD&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$PWD&lt;/span&gt;/library.so ./check_pass
+Enter the password: SomethingWrong
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;whoami
+&lt;/span&gt;nihaal
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;As you can see write here, an attacker can use this technique to hook their own function and execute arbitrary code. In real life, people can use this technique to modify the behavior of a program and bypass security features (for example, one could hook a function checking a license key with their own function that does not check the license key).&lt;/p&gt;
+
+&lt;p&gt;References:&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;https://binaryresearch.github.io/2019/08/29/A-Technique-for-Hooking-Internal-Functions-of-Dynamically-Linked-ELF-Binaries.html&lt;/li&gt;
+  &lt;li&gt;https://www.baeldung.com/linux/ld_preload-trick-what-is&lt;/li&gt;
+  &lt;li&gt;https://www.keystone-engine.org/&lt;/li&gt;
+  &lt;li&gt;https://www.malwaretech.com/2015/01/inline-hooking-for-programmers-part-1.html&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;section class=&quot;related&quot;&gt;
+  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
+  &lt;ul class=&quot;post-list&quot;&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
+          GOT Overwrite Using Format Strings
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
+          Creating a Basic Heap Allocator
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
+          Defeating ASLR via Memory Leak
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+  &lt;/ul&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Hooking functions is the act of replacing a pointer to a function with a different pointer so that another function is called instead of the original function. For example, suppose there was a function x() being called inside of a program. If an attacker has write permissions to the binary file, then the attacker can replace the code calling x() with code that calls some malicious function y() instead.</summary></entry><entry><title type="html">GOT Overwrite Using Format Strings</title><link href="http://localhost:4000/2021/01/03/got-overwrite-using-format-strings.html" rel="alternate" type="text/html" title="GOT Overwrite Using Format Strings" /><published>2021-01-03T00:00:00-05:00</published><updated>2021-01-03T00:00:00-05:00</updated><id>http://localhost:4000/2021/01/03/got-overwrite-using-format-strings</id><content type="html" xml:base="http://localhost:4000/2021/01/03/got-overwrite-using-format-strings.html">&lt;p&gt;The Global Offset Table (GOT) is a table of memory addresses, and the location of the GOT is always known at runtime. Typically, the GOT is used to store the address of various functions in libraries that are loaded into the program. Because of PIE, libraries will be relocated at runtime, so the only way for a running process to know the location of a certain library function is by looking it up inside of the GOT.&lt;/p&gt;
 
 &lt;p&gt;The Procedure Linkage Table (PLT) contains entries for every external library function in the program. The PLT entry for a function contains some executable code that essentially looks up the address of the function inside of the GOT and jumps to that address. If this is the first time that the function has been called, then the GOT entry will simply point to some code that will figure out the real address of the function. The second time that the function gets called, the GOT entry should point to the real address of the function. This can be summed up in the following steps:&lt;/p&gt;
 &lt;ol&gt;
@@ -275,6 +431,12 @@ AABBBB0x42424242
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/07/hooking-linux-function-calls-via-ld-preload.html&quot;&gt;
+          Hooking Linux Function Calls Via LD_PRELOAD
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
           Creating a Basic Heap Allocator
         &lt;/a&gt;
@@ -283,12 +445,6 @@ AABBBB0x42424242
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
           Defeating ASLR via Memory Leak
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
-          Mining Hero Vulnerabilities
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -896,6 +1052,12 @@ Freeing buffer 2.
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/07/hooking-linux-function-calls-via-ld-preload.html&quot;&gt;
+          Hooking Linux Function Calls Via LD_PRELOAD
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
           GOT Overwrite Using Format Strings
         &lt;/a&gt;
@@ -904,12 +1066,6 @@ Freeing buffer 2.
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
           Defeating ASLR via Memory Leak
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
-          Mining Hero Vulnerabilities
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1156,6 +1312,12 @@ $cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/07/hooking-linux-function-calls-via-ld-preload.html&quot;&gt;
+          Hooking Linux Function Calls Via LD_PRELOAD
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
           GOT Overwrite Using Format Strings
         &lt;/a&gt;
@@ -1164,12 +1326,6 @@ $cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
           Creating a Basic Heap Allocator
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/10/25/mining-hero-vulnerabilities.html&quot;&gt;
-          Mining Hero Vulnerabilities
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1584,6 +1740,12 @@ Please enter a number 1-4 to continue...
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/07/hooking-linux-function-calls-via-ld-preload.html&quot;&gt;
+          Hooking Linux Function Calls Via LD_PRELOAD
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
           GOT Overwrite Using Format Strings
         &lt;/a&gt;
@@ -1592,12 +1754,6 @@ Please enter a number 1-4 to continue...
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
           Creating a Basic Heap Allocator
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
-          Defeating ASLR via Memory Leak
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1794,6 +1950,12 @@ flag{insert_flag_here}
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/07/hooking-linux-function-calls-via-ld-preload.html&quot;&gt;
+          Hooking Linux Function Calls Via LD_PRELOAD
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
           GOT Overwrite Using Format Strings
         &lt;/a&gt;
@@ -1802,12 +1964,6 @@ flag{insert_flag_here}
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
           Creating a Basic Heap Allocator
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
-          Defeating ASLR via Memory Leak
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -2144,6 +2300,12 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/07/hooking-linux-function-calls-via-ld-preload.html&quot;&gt;
+          Hooking Linux Function Calls Via LD_PRELOAD
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
           GOT Overwrite Using Format Strings
         &lt;/a&gt;
@@ -2152,12 +2314,6 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
           Creating a Basic Heap Allocator
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
-          Defeating ASLR via Memory Leak
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -2308,6 +2464,12 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/07/hooking-linux-function-calls-via-ld-preload.html&quot;&gt;
+          Hooking Linux Function Calls Via LD_PRELOAD
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
           GOT Overwrite Using Format Strings
         &lt;/a&gt;
@@ -2316,12 +2478,6 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
           Creating a Basic Heap Allocator
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
-          Defeating ASLR via Memory Leak
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -2682,6 +2838,12 @@ void ReadMemory(char *addr_hex, int n) {
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/07/hooking-linux-function-calls-via-ld-preload.html&quot;&gt;
+          Hooking Linux Function Calls Via LD_PRELOAD
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
           GOT Overwrite Using Format Strings
         &lt;/a&gt;
@@ -2690,12 +2852,6 @@ void ReadMemory(char *addr_hex, int n) {
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
           Creating a Basic Heap Allocator
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
-          Defeating ASLR via Memory Leak
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -2890,63 +3046,10 @@ r15 0x0
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
-          GOT Overwrite Using Format Strings
+        &lt;a href=&quot;/2021/01/07/hooking-linux-function-calls-via-ld-preload.html&quot;&gt;
+          Hooking Linux Function Calls Via LD_PRELOAD
         &lt;/a&gt;
       &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
-          Creating a Basic Heap Allocator
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
-          Defeating ASLR via Memory Leak
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-  &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I will be showing how I created a basic debugger in C for Linux programs. This won’t be a very complicated debugger as it will only allow you to do three things: see the values of the registers, step through one instruction, and read hex values from memory. Obviously, this is nothing compared to something like IDA Pro, but making a basic debugger did help me understand what the debugger is actually doing when we are using it.</summary></entry><entry><title type="html">Cracking Silva97’s login-cipher</title><link href="http://localhost:4000/2020/02/27/cracking-Silva97-login-cipher.html" rel="alternate" type="text/html" title="Cracking Silva97's login-cipher" /><published>2020-02-27T00:00:00-05:00</published><updated>2020-02-27T00:00:00-05:00</updated><id>http://localhost:4000/2020/02/27/cracking-Silva97-login-cipher</id><content type="html" xml:base="http://localhost:4000/2020/02/27/cracking-Silva97-login-cipher.html">&lt;p&gt;Today, I am going to show you how I reverse engineered &lt;a href=&quot;https://crackmes.one/crackme/5db0ef9f33c5d46f00e2c729&quot;&gt;this binary&lt;/a&gt; and cracked the password.  First, when we run the program, we can see that the program is asking us to input a password. If we input the incorrect password, the program says, “Wrong!”&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/output.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;This is what the main function looks like in Ghidra. Note that I renamed some variables/functions so that the code can be easier to read.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/main.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;There’s some interesting stuff happening here. First of all, the print() function will take an encrypted string, decrypt it, and print it out. The encryption appears to be some sort of modified caesar cipher, but I’m not going to go too in depth into this function because it does not matter. The important thing to note is that the line that says&lt;/p&gt;
-
-&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;uVar1 = check_input(input,&quot;fhz4yhx|~g=5&quot;);&quot;&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;will check whether the given input is correct or not. If the input is correct, the check_input() function will return 0, else, it will return 1 (this can be figured out by stepping over the function in a debugger using an input value that we know is incorrect). Clearly, our goal here is to figure out what input value makes the check_input() function return 0.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/check_input.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;The second parameter to the check_input() function contains the correct input, but in an encrypted form. The gen_character() function will decrypt the input and return a single character, and successive calls to gen_character() using 0 as the input will return the next decrypted character. The while loop in the middle of the code will check whether each input character is equal to the decrypted character that gen_character() returned. Since we now know where the correct input is being decrypted in the code, all we have to do is set a breakpoint right after the gen_character() function is executed and look at it’s return value.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/first_value.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;I used radare2 to step over the first call to the gen_character() function. The decrypted character is 0x63, which is returned in rax. Next, I set rip equal to the second call to the gen_character() function using “dr rip = 0x55f90fc16409”, and I stepped over that line of code to figure out what the next decrypted character is. This also ended being 0x63.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/next_value.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;I once again set rip to the gen_character() function and stepped over that line of code to figure out the next decrypted character, and I repeated these steps until I figured out what all of the decrypted characters were, which are shown below:&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;0x63, 0x63, 0x73, 0x2d, 0x70, 0x61, 0x73, 0x73, 0x77, 0x64, 0x34, 0x34, 0x00
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;I assumed 0x00 indicated that this was the end of the string and stopped after seeing it. I sent over these values to the program using python, and I was able to crack the puzzle.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;python -c &quot;print('\x63\x63\x73\x2d\x70\x61\x73\x73\x77\x64\x34\x34')&quot; | ./login
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;&lt;img src=&quot;../../../assets/img/2020-2-27-cracking-Silva97-login-cipher/cracked.png&quot; style=&quot;margin-left: auto; margin-right: auto;&quot; /&gt;&lt;/p&gt;
-
-&lt;section class=&quot;related&quot;&gt;
-  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
-  &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
@@ -2960,11 +3063,5 @@ r15 0x0
         &lt;/a&gt;
       &lt;/li&gt;
     
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
-          Defeating ASLR via Memory Leak
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
   &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I am going to show you how I reverse engineered this binary and cracked the password. First, when we run the program, we can see that the program is asking us to input a password. If we input the incorrect password, the program says, “Wrong!”</summary></entry></feed>
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I will be showing how I created a basic debugger in C for Linux programs. This won’t be a very complicated debugger as it will only allow you to do three things: see the values of the registers, step through one instruction, and read hex values from memory. Obviously, this is nothing compared to something like IDA Pro, but making a basic debugger did help me understand what the debugger is actually doing when we are using it.</summary></entry></feed>
