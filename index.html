@@ -189,6 +189,16 @@
   <hr>
   <div class="post-body">
     <div class="home"><h3>
+                <a class="post-link" href="/2021/01/07/hooking-linux-function-calls-via-ld-preload.html">
+                Hooking Linux Function Calls Via LD_PRELOAD
+                </a>
+            </h3>
+            <div id="page-preview" style="margin-left: 5%">
+                <p><p>Hooking functions is the act of replacing a pointer to a function with a different pointer so that another function is called instead of the original function. For example, suppose there was a function <code class="highlighter-rouge">x()</code> being called inside of a program. If an attacker has write permissions to the binary file, then the attacker can replace the code calling <code class="highlighter-rouge">x()</code> with code that calls some malicious function <code class="highlighter-rouge">y()</code> instead.</p>
+
+</p>
+            </div>
+            <hr /><h3>
                 <a class="post-link" href="/2021/01/03/got-overwrite-using-format-strings.html">
                 GOT Overwrite Using Format Strings
                 </a>
@@ -225,16 +235,6 @@
             </h3>
             <div id="page-preview" style="margin-left: 5%">
                 <p><p><a href="../../../assets/other/2020-10-25-mining-hero-vulnerabilities/text-game.cpp">Mining Hero</a> (click <a href="../../../assets/other/2020-10-25-mining-hero-vulnerabilities/text-game">here</a> for the binary) is a CTF problem I solved when I played in MetaCTF over this weekend. It involves chaining an integer overflow vulnerability with a format string vulnerability in order to obtain the flag. This is my writeup for how I exploited the binary.</p>
-
-</p>
-            </div>
-            <hr /><h3>
-                <a class="post-link" href="/2020/10/21/simple-heap-buffer-overflow.html">
-                Simple Heap Buffer Overflow
-                </a>
-            </h3>
-            <div id="page-preview" style="margin-left: 5%">
-                <p><p>Earlier today, I was messing around with some code, and I came up with <a href="../../../assets/other/2020-10-21-heap-buffer-overflow/people.c">this vulnerable program</a>. This program was written using bad programming habits on purpose, and I am going to show you how it is vulnerable to a buffer overflow. This isn’t a complicated vulnerability, and while it does involve corrupting memory on the heap, it does not require you to have in-depth knowledge about how the heap works (unlike many other heap exploits).</p>
 
 </p>
             </div>

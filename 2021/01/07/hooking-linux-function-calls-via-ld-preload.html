@@ -11,7 +11,7 @@
 
   <title>
     
-      How I Made A Small Home Backup Server Using Rsync Over SSH &middot; Nihaal Prasad
+      Hooking Linux Function Calls Via LD_PRELOAD &middot; Nihaal Prasad
     
   </title>
 
@@ -184,7 +184,7 @@
 
     <main class="container">
       <div class="content">
-  <h1 class="page-heading">How I Made A Small Home Backup Server Using Rsync Over SSH</h1>
+  <h1 class="page-heading">Hooking Linux Function Calls Via LD_PRELOAD</h1>
   <div class="post-meta">
   <span class="post-categories">
     
@@ -193,106 +193,142 @@
 
   <hr>
   <div class="post-body">
-    <p>Have you ever been worried about losing your files? I definitely am. A little while back, I was working on a coding project for one of my computer science classes at college, when I realized that if something happened to my laptop, such as getting hit with a virus infection or being dropped, I could easily lose all of my hard work. Imagine how horrible it would be if you lost/damaged your school computer and didn’t have any backups!</p>
+    <p>Hooking functions is the act of replacing a pointer to a function with a different pointer so that another function is called instead of the original function. For example, suppose there was a function <code class="highlighter-rouge">x()</code> being called inside of a program. If an attacker has write permissions to the binary file, then the attacker can replace the code calling <code class="highlighter-rouge">x()</code> with code that calls some malicious function <code class="highlighter-rouge">y()</code> instead.</p>
 
-<p><img style="float: right;" src="../../../assets/img/2018-11-24-rsync-backup-server/Crying_GIF.gif" /></p>
+<p>Below contains the code that will be used for this tutorial. The code contains a <code class="highlighter-rouge">check_pass()</code> function, which checks whether a user-supplied password is equal to the string “p@ssw0rd”. In real life, the program would (hopefully) not use a hardcoded plaintext password and instead query a database of hashed passwords. For this example, let’s ignore the fact that the password could be retrieved with the <code class="highlighter-rouge">strings</code> command, and let’s assume that the attacker has no idea what the password is.</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+</span>
+<span class="cp">#define BUF_SIZE 100
+</span>
+<span class="kt">void</span> <span class="nf">correct</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"You typed in the correct password!</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<span class="p">}</span>
 
-<p>Since I didn’t want to ever have to deal with redoing an assignment, I decided that I would figure out how to make a simple backup server at home so that I could backup all of my files when I’m outside the house. After some research, I found a program called <a href="https://en.wikipedia.org/wiki/Rsync">rsync</a> that could easily sync your files with another computer over SSH. I’m now going to go over what I did to set this up.</p>
+<span class="kt">void</span> <span class="nf">incorrect</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"You typed in an incorrect password!</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<span class="p">}</span>
 
-<p>The only thing I needed (aside from the laptop that I was going to backup) was an SSH server. Since I only required enough memory to backup the things that I was doing in college and some other random files that I had on my computer, I didn’t need to buy some expensive server hardware. I had an old cheap <a href="https://www.cnet.com/products/dell-optiplex-380/specs/">Dell Optiplex 380 Desktop</a> sitting in my basement, which only had 2GB of RAM, a 256GB hard drive, and Ubuntu OS installed on it, and it worked just fine for this project (because they didn’t want it, one of my teachers from high school gave it to me as a prize for winning something, and it was just sitting in my basement since). Although I haven’t tried it, someone could also probably do the same thing by setting up the backup server in a <a href="https://www.raspberrypi.org/">Raspberry Pi</a> connected to an external hard drive.</p>
+<span class="kt">void</span> <span class="nf">check_pass</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="n">BUF_SIZE</span><span class="p">];</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"Enter the password: "</span><span class="p">);</span>
+    <span class="n">fgets</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">BUF_SIZE</span><span class="p">,</span> <span class="n">stdin</span><span class="p">);</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">strncmp</span><span class="p">(</span><span class="s">"p@ssw0rd</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">correct</span><span class="p">();</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="n">incorrect</span><span class="p">();</span>
+    <span class="p">}</span>
+<span class="p">}</span>
 
-<p><img style="margin-left: auto; margin-right: auto;" src="../../../assets/img/2018-11-24-rsync-backup-server/Dell Optiplex.jpg" /></p>
-
-<p>Anyways, the first thing that I did was setup an <a href="https://en.wikipedia.org/wiki/Secure_Shell">SSH server</a> on my desktop computer. Since I was going to be using rsync on top of SSH, it was important that I was able to get this SSH server up and running. I used <a href="https://en.wikipedia.org/wiki/OpenSSH">openSSH</a> because it’s free and open source. To install openssh, I used this command on my Desktop computer:</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ sudo apt-get install openssh-server
-</code></pre></div></div>
-<p>Once I installed the SSH server, it started running by default. I checked that SSH is working by SSHing into my computer.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ ssh admin@localhost
-admin's password:
-&gt;
-</code></pre></div></div>
-<p>From there, I decided that I wanted to create a new user just for doing backups for security purposes.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ useradd backupuser
-$ passwd backupuser
-Changing password for user backupuser.
-New UNIX password:
-Retype new UNIX password:
-passwd: all authentication tokens updated successfully.
-</code></pre></div></div>
-<p>The next thing I wanted to do was to generate SSH keys on my laptop (which is NOT the same computer as the one that has the SSH server. This is the computer that I use for my school assignments).</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ ssh-keygen -t rsa
-Generating public/private rsa key pair.
-Enter file in which to save the key (/home/user/.ssh/id_rsa): /home/user/.backups/id_rsa
-Created directory '/home/user/.backups/'.
-Enter passphrase (empty for no passphrase): 
-Enter same passphrase again: 
-Your identification has been saved in /home/user/.backups/id_rsa.
-Your public key has been saved in /home/user/.backups/id_rsa.pub.
-</code></pre></div></div>
-<p>I then copied the keys from my laptop onto where the SSH server was:</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ ssh-copy-id -i /home/user/.backups/id_rsa.pub backupuser@[internal ip address]
-</code></pre></div></div>
-<p>Now that the public key was copied, I was able to use passwordless SSH authentication to login to my SSH server. Next, I opened the server’s SSH config file (located at /etc/ssh/sshd_config) using vim to change some settings for the SSH server. I made sure that I denied the admin user from using SSH, which made sure that the backup user was the only user that could use SSH.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>DenyUsers admin
-</code></pre></div></div>
-<p>I changed the banner to be the text inside the /etc/issue.net file. I also changed the /etc/issue.net file to say “ABSOLUTELY NO TRESPASSING” to anyone who tried to connect to the server.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Banner /etc/issue.net
-</code></pre></div></div>
-<p>Then I disabled X11 forwarding.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>X11Forwarding no
-</code></pre></div></div>
-<p>I disabled password authentication (it was no longer necessary after I copied the keys earlier).</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>PasswordAuthentication no
-</code></pre></div></div>
-<p>I disabled root login because that could become a security risk.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>PermitRootLogin no
-</code></pre></div></div>
-<p>I also changed the port number so that it would be harder to find (most port scanners will not scan for this port).</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Port 2222
-</code></pre></div></div>
-<p>Finally, after the SSH server was completely setup, I installed the rsync program on my laptop.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ sudo apt-get install rsync
-</code></pre></div></div>
-<p>And then I wrote a simple script that would use the rsync program (which is displayed below). I saved the script as “backup.sh” and ran it as root.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Desktop/ backupuser@[internal ip address]:~/Desktop/
-sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Documents/ backupuser@[internal ip address]:~/Documents/
-sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Pictures/ backupuser@[internal ip address]:~/Pictures/
-</code></pre></div></div>
-<p>It successfully copied all of the files in my Desktop, Documents, and Pictures folders over to the SSH server’s folders. Our backup server has worked!</p>
-
-<p>There was still a tiny bit more work to do. At the moment, the server would only work if my laptop was on the same network as my server. However, if I moved my laptop to a separate network (such as my college’s WiFi network), it would not work properly. To fix this, I logged onto my router settings and port-forwarded port 2222, which is where my SSH server is listening. I then changed my backup.sh script to use my public ip address instead of my internal ip address, and tried again. It worked!</p>
-
-<p><img style="margin-left: auto; margin-right: auto;" src="../../../assets/img/2018-11-24-rsync-backup-server/port-forwarding.png" /></p>
-
-<p>There was another problem. My router currently has a dynamic IP address, meaning that its IP address could change at any moment. As a result, I would have to change the IP address in my script if it changed, which could become a little bit annoying. So I went ahead and created an account at <a href="https://www.noip.com/">No-IP</a>, which is a service that grants you up to five free domain names for someone that has a dynamic IP address (you can buy more domain names if you want, but you get five of them for free).</p>
-
-<p><img style="margin-left: auto; margin-right: auto;" src="../../../assets/img/2018-11-24-rsync-backup-server/no-ip.png" /></p>
-
-<p>It was pretty easy to navigate No-IP’s web interface (I promise this wasn’t sponsored). I just used the “quick add” option on the dashboard, setup my hostname and domain name (since I only had a free account, I had to use one of their premade domain names). Then I had to go to my router’s settings and tell my router where the Dynamic Domain Name Server was located so that every time my dynamic IP address changed, my router would alert No-IP to change which IP address the domain name is pointing to.</p>
-
-<p><img style="margin-left: auto; margin-right: auto;" src="../../../assets/img/2018-11-24-rsync-backup-server/dynamic dns.png" /></p>
-
-<p>After setting up my domain in No-IP’s website, I was able to use it to connect to my backup server anywhere in the world by using the domain name.</p>
-
-<p>There was just one more little thing I had to do. By default, only root is able to send a shutdown signal to the computer over SSH. In contrast, I wanted my backup user to also be able to use the poweroff command so that I could remotely power down my server after I was done with my backups. I went ahead and <a href="https://askubuntu.com/questions/1190/how-can-i-make-shutdown-not-require-admin-password/1399#1399">changed the policies in the /usr/share/polkit-1/actions/org.freedesktop.consolekit.policy file</a>, which gave my backup user permission to use the poweroff command. I also added one extra line in my backup.sh script so that I would automatically shut down the server once I was done with it, making my backup.sh script look like this:</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Desktop/ backupuser@[domain name I got from No-IP's website]:~/Desktop/
-sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Documents/ backupuser@[domain name I got from No-IP's website]:~/Documents/
-sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Pictures/ backupuser@[domain name I got from No-IP's website]:~/Pictures/
-ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-IP's website] "systemctl poweroff -i"
+<span class="kt">void</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">check_pass</span><span class="p">();</span>
+<span class="p">}</span>
 </code></pre></div></div>
 
-<p>Finally, everything was completed. The backup server works quite well so far, and I am quite happy with its output.</p>
+<p>Compiling and executing the program displays the following:</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>gcc <span class="nt">-o</span> check_pass check_pass.c
+<span class="nv">$ </span>./check_pass
+Enter the password: Hello
+You typed <span class="k">in </span>an incorrect password!
+<span class="nv">$ </span>./check_pass
+Enter the password: p@ssw0rd
+You typed <span class="k">in </span>the correct password!
+</code></pre></div></div>
+
+<p>Let’s say that the attacker wants to execute the <code class="highlighter-rouge">correct()</code> function without even knowing the correct password. The attacker will first want to find the address of the code that calls <code class="highlighter-rouge">incorrect()</code> inside of the binary file. Then, the assembly instruction can be patched so that it calls <code class="highlighter-rouge">correct()</code> instead of <code class="highlighter-rouge">incorrect()</code>.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>objdump <span class="nt">-dj</span> .text <span class="nt">-M</span> intel check_pass| <span class="nb">grep </span>correct
+0000000000001155 &lt;correct&gt;:
+0000000000001168 &lt;incorrect&gt;:
+    11d8:       e8 78 ff ff ff          call   1155 &lt;correct&gt;
+    11e4:       e8 7f ff ff ff          call   1168 &lt;incorrect&gt;
+</code></pre></div></div>
+
+<p>From this object dump, we can see that the line of assembly code that calls <code class="highlighter-rouge">incorrect()</code> is <code class="highlighter-rouge">0x11e4</code> bytes into the file. The function <code class="highlighter-rouge">correct()</code> is located <code class="highlighter-rouge">0x1155</code> bytes into the file. This means that if we change the instruction that is <code class="highlighter-rouge">0x11e4</code> bytes into the file to call <code class="highlighter-rouge">0x1155</code>, we can execute the <code class="highlighter-rouge">correct()</code> function without typing in the correct password.</p>
+
+<p>I wrote a small Python script for patching binaries in one shell command, which can be downloaded <a href="https://github.com/nihaal-prasad/Patcher/tree/main">here</a>. We will use this script to modify the instruction <code class="highlighter-rouge">0x11e4</code>bytes into the file. This way, the program will still call <code class="highlighter-rouge">correct()</code> even if an incorrect password is given.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./patcher.py <span class="nt">-a</span> check_pass 0x11e4 CALL 0x1155
+<span class="nv">$ </span>objdump <span class="nt">-dj</span> .text <span class="nt">-M</span> intel check_pass| <span class="nb">grep </span>correct
+0000000000001155 &lt;correct&gt;:
+0000000000001168 &lt;incorrect&gt;:
+    11d8:       e8 78 ff ff ff          call   1155 &lt;correct&gt;
+    11e4:       e8 6c ff ff ff          call   1155 &lt;correct&gt;
+
+<span class="nv">$ </span>./check_pass
+Enter the password: WrongPassword
+You typed <span class="k">in </span>the correct password!
+</code></pre></div></div>
+
+<p>That’s all it takes to overwrite a function pointer. Now, let’s suppose that the attacker isn’t satisfied with having a correct password; the attacker wants to have a working shell be executed as well. In order to do this, the attacker needs to create his own function and replace the instruction at <code class="highlighter-rouge">0x11e4</code> with a pointer to his own function. There are several methods of doing this, but the method that will be discussed today involves using the <code class="highlighter-rouge">LD_PRELOAD</code> trick.</p>
+
+<p>Typically, whenever a process knows that it needs to use a function from an external library, the process needs to load that library into memory and resolve symbols at runtime. There is an environment variable called <code class="highlighter-rouge">LD_PRELOAD</code>, which will contain a list of libraries that will be loaded before any other library. If the attacker modifies the <code class="highlighter-rouge">LD_PRELOAD</code> variable, the attacker can specify his own library to load.</p>
+
+<p>In order to insert a malicious function into the program, the attacker will do the following:</p>
+<ol>
+  <li>Find a legitimate library function (let’s suppose this function is called <code class="highlighter-rouge">x()</code>).</li>
+  <li>Patch a <code class="highlighter-rouge">CALL</code> instruction to call the PLT entry of the legitimate library function. (In our case, this would be the <code class="highlighter-rouge">CALL</code> instruction at <code class="highlighter-rouge">0x11e4</code>.)</li>
+  <li>Create a malicious library that contains a function with the same name as the legitimate library function.</li>
+  <li>Use <code class="highlighter-rouge">LD_PRELOAD</code> to load the malicious library.</li>
+</ol>
+
+<p>Because <code class="highlighter-rouge">LD_PRELOAD</code> loads the malicious library before the legitimate library, the symbol for <code class="highlighter-rouge">x()</code> will be resolved to be the function inside of the malicious library instead of the function inside of the legitimate library. Because the attacker has patched some <code class="highlighter-rouge">CALL</code> instruction with the address of the PLT for <code class="highlighter-rouge">x()</code>, whenever that call instruction is executed, the attacker’s version of <code class="highlighter-rouge">x()</code> will be called.</p>
+
+<p>For step 1, let’s first find some of the PLT entries that are being used in the program.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>objdump <span class="nt">-dj</span> .text <span class="nt">-M</span> intel check_pass| <span class="nb">grep </span>plt
+    112e:       e8 2d ff ff ff          call   1060 &lt;__cxa_finalize@plt&gt;
+    1160:       e8 cb fe ff ff          call   1030 &lt;puts@plt&gt;
+    1173:       e8 b8 fe ff ff          call   1030 &lt;puts@plt&gt;
+    118f:       e8 ac fe ff ff          call   1040 &lt;<span class="nb">printf</span>@plt&gt;
+    11a7:       e8 a4 fe ff ff          call   1050 &lt;fgets@plt&gt;
+</code></pre></div></div>
+
+<p>Here, we can see that the following functions are called at some point in the program:</p>
+<ul>
+  <li><code class="highlighter-rouge">__cxa_finalize(void *d)</code></li>
+  <li><code class="highlighter-rouge">puts()</code></li>
+  <li><code class="highlighter-rouge">printf()</code></li>
+  <li><code class="highlighter-rouge">fgets()</code></li>
+</ul>
+
+<p>Any of these functions can be overwritten, but for this example, we’ll choose <code class="highlighter-rouge">__cxa_finalize(void *d)</code>, which is typically called at the end of a program. The PLT entry for this function is <code class="highlighter-rouge">0x1060</code>. Now, we can use Python to patch the instruction at <code class="highlighter-rouge">0x11e4</code> to call <code class="highlighter-rouge">__cxa_finalize(void *d)</code>. To complete step 2, we’ll use my <a href="https://github.com/nihaal-prasad/Patcher">Patcher</a> script again.</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./patcher.py <span class="nt">-a</span> check_pass 0x11e4 call 0x1060
+<span class="nv">$ </span>objdump <span class="nt">-dj</span> .text <span class="nt">-M</span> intel check_pass | <span class="nb">grep </span>11e4
+    11e4:       e8 77 fe ff ff          call   1060 &lt;__cxa_finalize@plt&gt;
+</code></pre></div></div>
+
+<p>For step 3, we need to create a malicious library file that redefines the <code class="highlighter-rouge">__cxa_finalize(void *d)</code> function. Note that this function takes in one <code class="highlighter-rouge">void *</code> as a parameter, so we need to include that <code class="highlighter-rouge">void *</code> in the function declaration.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span><span class="nb">cat </span>library.c
+<span class="c">#include &lt;stdio.h&gt;</span>
+<span class="c">#include &lt;stdlib.h&gt;</span>
+
+void __cxa_finalize<span class="o">(</span>void <span class="k">*</span>d<span class="o">)</span> <span class="o">{</span>
+    system<span class="o">(</span><span class="s2">"/bin/sh"</span><span class="o">)</span><span class="p">;</span>
+<span class="o">}</span>
+
+<span class="nv">$ </span>gcc <span class="nt">-shared</span> <span class="nt">-fPIC</span> <span class="nt">-o</span> library.so library.c
+</code></pre></div></div>
+
+<p>Finally, to get ourselves a shell, run the command shown below. This will set the <code class="highlighter-rouge">LD_PRELOAD</code> environment variable to be our malicious environment variable so that our version of the <code class="highlighter-rouge">__cxa_finalize(void *d)</code> function gets called. Note that the second shell prompt ($) is caused by our version of <code class="highlighter-rouge">__cxa_finalize(void *d)</code> being executed.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ LD_PRELOAD</span><span class="o">=</span><span class="nv">$PWD</span>/library.so ./check_pass
+Enter the password: SomethingWrong
+<span class="nv">$ </span><span class="nb">whoami
+</span>nihaal
+</code></pre></div></div>
+
+<p>As you can see write here, an attacker can use this technique to hook their own function and execute arbitrary code. In real life, people can use this technique to modify the behavior of a program and bypass security features (for example, one could hook a function checking a license key with their own function that does not check the license key).</p>
+
+<p>References:</p>
+<ol>
+  <li>https://binaryresearch.github.io/2019/08/29/A-Technique-for-Hooking-Internal-Functions-of-Dynamically-Linked-ELF-Binaries.html</li>
+  <li>https://www.baeldung.com/linux/ld_preload-trick-what-is</li>
+  <li>https://www.keystone-engine.org/</li>
+  <li>https://www.malwaretech.com/2015/01/inline-hooking-for-programmers-part-1.html</li>
+</ol>
 
 <section class="related">
   <h3 style="color: black">Related Posts</h3>
   <ul class="post-list">
-    
-      <li style="color: black; font-size: 9;">
-        <a href="/2021/01/07/hooking-linux-function-calls-via-ld-preload.html">
-          Hooking Linux Function Calls Via LD_PRELOAD
-        </a>
-      </li>
     
       <li style="color: black; font-size: 9;">
         <a href="/2021/01/03/got-overwrite-using-format-strings.html">
@@ -303,6 +339,12 @@ ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-
       <li style="color: black; font-size: 9;">
         <a href="/2020/12/30/creating-a-basic-heap-allocator.html">
           Creating a Basic Heap Allocator
+        </a>
+      </li>
+    
+      <li style="color: black; font-size: 9;">
+        <a href="/2020/12/29/defeating-aslr-via-memory-leak.html">
+          Defeating ASLR via Memory Leak
         </a>
       </li>
     
